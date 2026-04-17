@@ -1,5 +1,4 @@
-// src/layouts/AdminLayout.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, TrendingUp, BookOpen, 
   MessageSquare, LogOut, Menu, Bell, X, Shield 
@@ -10,7 +9,11 @@ const AdminLayout = ({ children }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Daftar menu navigasi Admin
+  // Otomatis tutup sidebar saat pindah halaman di mobile
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location]);
+
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
     { name: 'Manajemen User', icon: Users, path: '/admin/users' },
@@ -20,93 +23,107 @@ const AdminLayout = ({ children }) => {
   ];
 
   return (
-    <div className="flex min-h-screen bg-slate-50 relative font-sans">
-      {/* Overlay Sidebar untuk Mobile */}
+    <div className="flex min-h-screen bg-slate-50 font-sans overflow-x-hidden">
+      
+      {/* 1. OVERLAY UNTUK MOBILE (Layar Gelap saat Sidebar Buka) */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-[#0a1e36]/60 backdrop-blur-sm z-[60] md:hidden transition-opacity duration-300"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar Sidebar */}
-      <aside className={`fixed md:static inset-y-0 left-0 z-50 w-72 bg-[#0a1e36] text-white flex flex-col transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      {/* 2. SIDEBAR RESPONSIVE */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-[70] w-72 bg-[#0a1e36] text-white flex flex-col 
+        transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+        md:translate-x-0 md:static md:flex-shrink-0
+      `}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <Shield size={24} className="text-white" />
             </div>
-            <h1 className="text-2xl font-black tracking-tight uppercase">SITKA</h1>
+            <h1 className="text-xl font-black tracking-tight uppercase">SITKA ADMIN</h1>
           </div>
-          {/* Close button untuk mobile */}
-          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400">
+          {/* Tombol Close (Hanya Muncul di Mobile) */}
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 p-1">
             <X size={24} />
           </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 mt-4">
+        <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link 
                 key={item.name} 
                 to={item.path} 
-                onClick={() => setIsSidebarOpen(false)} // Tutup sidebar otomatis di mobile
-                className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all duration-300 ${
+                className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all duration-200 ${
                   isActive 
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' 
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <item.icon size={22} /> {item.name}
+                <item.icon size={20} /> 
+                <span className="text-sm">{item.name}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Tombol Keluar */}
         <div className="p-6 border-t border-white/5">
           <Link to="/" className="flex items-center gap-4 px-4 py-4 text-red-400 font-bold w-full hover:bg-red-500/10 rounded-2xl transition-all">
-            <LogOut size={22} /> Keluar
+            <LogOut size={20} /> <span className="text-sm">Keluar</span>
           </Link>
         </div>
       </aside>
 
-      {/* Main Area */}
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-8 sticky top-0 z-30">
-          {/* Burger Menu Button */}
-          <button onClick={() => setIsSidebarOpen(true)} className="md:hidden text-[#0a1e36]">
-            <Menu size={24} />
-          </button>
-          
-          <div className="hidden md:block">
-            <span className="text-[10px] font-black text-slate-300 tracking-[0.3em] uppercase">
-              Administrator System / {menuItems.find(i => i.path === location.pathname)?.name || 'Control Panel'}
-            </span>
+      {/* 3. MAIN AREA */}
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        
+        {/* HEADER RESPONSIVE */}
+        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50 flex-shrink-0">
+          <div className="flex items-center gap-4">
+            {/* Burger Menu Button (Hanya di Mobile) */}
+            <button 
+              onClick={() => setIsSidebarOpen(true)} 
+              className="md:hidden p-2 text-[#0a1e36] bg-slate-50 rounded-xl"
+            >
+              <Menu size={24} />
+            </button>
+            
+            <div className="hidden md:block">
+              <span className="text-[10px] font-black text-slate-300 tracking-[0.3em] uppercase">
+                System / {menuItems.find(i => i.path === location.pathname)?.name || 'Admin'}
+              </span>
+            </div>
           </div>
 
-          {/* Profil & Notifikasi */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 md:gap-6">
             <button className="relative text-slate-400 p-2 hover:bg-slate-50 rounded-xl transition-all">
-              <Bell size={22} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full border-2 border-white"></span>
+              <Bell size={20} />
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-indigo-500 rounded-full border-2 border-white"></span>
             </button>
-            <div className="flex items-center gap-4 text-right group cursor-pointer">
-              <div className="hidden sm:block">
-                <p className="text-sm font-bold text-[#0a1e36]">Super Admin</p>
-                <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest text-right">Root Access</p>
+            
+            <div className="flex items-center gap-3 group cursor-pointer">
+              <div className="hidden sm:block text-right">
+                <p className="text-xs font-bold text-[#0a1e36]">Super Admin</p>
+                <p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest">Root</p>
               </div>
-              <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center font-black text-indigo-600 border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-100 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-indigo-600 border-2 border-white shadow-sm transition-transform active:scale-95">
                 A
               </div>
             </div>
           </div>
         </header>
 
-        {/* Area Konten Dinamis */}
-        <div className="p-4 md:p-8 overflow-y-auto max-h-[calc(100vh-5rem)]">
-          {children}
+        {/* AREA KONTEN (Scrollable) */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </div>
       </main>
     </div>
