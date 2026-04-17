@@ -23,6 +23,10 @@ import SettingsOrtu from './pages/ortu/Settings';
 
 import AdminLayout from './layouts/AdminLayout';
 import DashboardAdmin from './pages/admin/DashboardAdmin';
+import ManajemenUser from "./pages/admin/ManajemenUser";
+import ManajemenPerkembangan from "./pages/admin/ManajemenPerkembangan";
+import Kurikulum from "./pages/admin/Kurikulum";
+import ChatAdmin from "./pages/admin/Chat";
 
 function App() {
   return (
@@ -36,44 +40,74 @@ function App() {
         path="/guru/dashboard" 
         element={<GuruLayout><DashboardGuru /></GuruLayout>} 
       />
-      
       <Route 
         path="/guru/nilai" 
         element={<GuruLayout><InputNilai /></GuruLayout>} 
       />
-      
       <Route 
         path="/guru/absensi" 
         element={<GuruLayout><Absensi /></GuruLayout>} 
       />
-      
       <Route 
         path="/guru/aktivitas" 
         element={<GuruLayout><Aktivitas /></GuruLayout>} 
       />
-      
       <Route 
         path="/guru/report" 
         element={<GuruLayout><Report /></GuruLayout>} 
       />
-      
-      {/* 2. UPDATE BAGIAN INI: Ganti div teks dengan komponen <Chat /> */}
       <Route 
         path="/guru/chat" 
         element={<GuruLayout><Chat /></GuruLayout>} 
       />
       <Route 
-  path="/guru/settings" 
-  element={<GuruLayout><Settings /></GuruLayout>} 
+        path="/guru/settings" 
+        element={<GuruLayout><Settings /></GuruLayout>} 
+      />
+
+      {/* Rute Role Ortu */}
+      <Route 
+        path="/ortu/dashboard" 
+        element={<OrtuLayout><DashboardOrtu /></OrtuLayout>}
+      />
+      <Route 
+        path="/ortu/laporan" 
+        element={<OrtuLayout><LaporanOrtu /></OrtuLayout>} 
+      />
+      <Route 
+        path="/ortu/aktivitas" 
+        element={<OrtuLayout><AktivitasOrtu /></OrtuLayout>} 
+      />
+      <Route 
+        path="/ortu/chat" 
+        element={<OrtuLayout><ChatOrtu /></OrtuLayout>} 
+      />
+      <Route 
+        path="/ortu/settings" 
+        element={<OrtuLayout><SettingsOrtu /></OrtuLayout>} 
+      />
+
+      {/* Rute Role Admin (DIPERBAIKI: ManajemenUser sekarang dibungkus AdminLayout) */}
+      <Route 
+        path="/admin/dashboard" 
+        element={<AdminLayout><DashboardAdmin /></AdminLayout>} 
+      />
+      <Route 
+        path="/admin/users" 
+        element={<AdminLayout><ManajemenUser /></AdminLayout>} 
+      />
+      <Route 
+  path="/admin/perkembangan" 
+  element={<AdminLayout><ManajemenPerkembangan /></AdminLayout>} 
 />
 <Route 
-path="/ortu/dashboard" element={<OrtuLayout><DashboardOrtu /></OrtuLayout>}
+  path="/admin/kurikulum" 
+  element={<AdminLayout><Kurikulum /></AdminLayout>} 
 />
-<Route path="/ortu/laporan" element={<OrtuLayout><LaporanOrtu /></OrtuLayout>} />
-<Route path="/ortu/aktivitas" element={<OrtuLayout><AktivitasOrtu /></OrtuLayout>} />
-<Route path="/ortu/chat" element={<OrtuLayout><ChatOrtu /></OrtuLayout>} />
-<Route path="/ortu/settings" element={<OrtuLayout><SettingsOrtu /></OrtuLayout>} />
-<Route path="/admin/dashboard" element={<AdminLayout><DashboardAdmin /></AdminLayout>} />
+<Route 
+  path="/admin/chat" 
+  element={<AdminLayout><ChatAdmin /></AdminLayout>} 
+/>
     </Routes>
   );
 }
