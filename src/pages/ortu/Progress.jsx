@@ -1,199 +1,203 @@
 // src/pages/ortu/Progress.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
-  TrendingUp, Save, Award, BarChart3, 
-  CheckCircle2, Star, Target
-} from 'lucide-react'; 
+  ChevronLeft, Save, Star, Heart, 
+  BrainCircuit, ShieldCheck, MessageCircle,
+  History, CheckCircle2, ArrowRight
+} from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const ProgressOrtu = () => {
+  const navigate = useNavigate();
+  const [catatan, setCatatan] = useState("");
+  const [lastSaved, setLastSaved] = useState(null); // State untuk rekap
+  
   const [tasks, setTasks] = useState([
-    { id: 1, category: "Kemandirian", task: "Anak mampu memakai baju/celana sendiri", score: null },
-    { id: 2, category: "Kemandirian", task: "Anak mampu makan sendiri tanpa disuapi", score: null },
-    { id: 3, category: "Kemandirian", task: "Anak mampu menaruh sepatu pada tempatnya", score: null },
-    { id: 4, category: "Kemandirian", task: "Anak berani ke toilet sendiri (Toilet Training)", score: null },
-    { id: 5, category: "Sosial", task: "Anak mau berbagi mainan dengan teman/saudara", score: null },
-    { id: 6, category: "Sosial", task: "Anak mampu merapikan mainan setelah digunakan", score: null },
-    { id: 7, category: "Sosial", task: "Anak menunjukkan sikap sabar (mengantre/menunggu)", score: null },
-    { id: 8, category: "Sosial", task: "Anak berani menyapa atau berpamitan (Salim)", score: null },
-    { id: 9, category: "Kognitif", task: "Anak mampu menghafal doa pendek (Makan/Tidur)", score: null },
-    { id: 10, category: "Kognitif", task: "Anak dapat menyebutkan warna/angka sederhana", score: null },
-    { id: 11, category: "Kognitif", task: "Anak antusias mendengarkan cerita/dongeng", score: null },
-    { id: 12, category: "Kognitif", task: "Anak mampu fokus melakukan tugas sampai selesai", score: null },
+    { id: 1, category: "Kemandirian", task: "Memakai baju sendiri", score: 0 },
+    { id: 2, category: "Kemandirian", task: "Makan tanpa disuapi", score: 0 },
+    { id: 3, category: "Sosial", task: "Berbagi mainan", score: 0 },
+    { id: 4, category: "Sosial", task: "Merapikan mainan", score: 0 },
+    { id: 5, category: "Kognitif", task: "Menghafal doa pendek", score: 0 },
   ]);
 
-  const handleScoreChange = (id, newScore) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, score: newScore } : t));
-  };
+  // Cek apakah ada data tersimpan saat pertama kali load
+  useEffect(() => {
+    const saved = localStorage.getItem('sitka_progress_data');
+    if (saved) setLastSaved(JSON.parse(saved));
+  }, []);
 
-  // --- LOGIC REKAPITULASI ---
-  const stats = useMemo(() => {
-    const categories = ["Kemandirian", "Sosial", "Kognitif"];
-    return categories.map(cat => {
-      const catTasks = tasks.filter(t => t.category === cat);
-      const filledTasks = catTasks.filter(t => t.score !== null);
-      const sum = filledTasks.reduce((acc, curr) => acc + curr.score, 0);
-      const avg = filledTasks.length > 0 ? (sum / filledTasks.length).toFixed(1) : 0;
-      const progress = filledTasks.length > 0 ? (filledTasks.length / catTasks.length) * 100 : 0;
-      
-      return { name: cat, avg, progress, totalFilled: filledTasks.length, total: catTasks.length };
-    });
-  }, [tasks]);
-
-  const calculateTotalScore = () => {
-    const filled = tasks.filter(t => t.score !== null);
-    if (filled.length === 0) return 0;
-    const sum = filled.reduce((acc, curr) => acc + curr.score, 0);
-    return ((sum / (tasks.length * 3)) * 100).toFixed(0);
+  const handleScore = (id, score) => {
+    setTasks(tasks.map(t => t.id === id ? { ...t, score } : t));
   };
 
   const handleSave = () => {
-    const filledCount = tasks.filter(t => t.score !== null).length;
-    if (filledCount < tasks.length) {
+    const belumIsi = tasks.some(t => t.score === 0);
+    if (belumIsi) {
       return Swal.fire({
-        title: 'Belum Lengkap',
-        text: `Bunda baru mengisi ${filledCount} dari ${tasks.length} poin perkembangan.`,
-        icon: 'warning',
-        confirmButtonColor: '#0a1e36'
+        icon: 'error',
+        title: 'Belum Lengkap!',
+        text: 'Bunda, masih ada poin yang belum dinilai nih.',
+        confirmButtonColor: '#306896'
       });
     }
 
+    const totalPoin = tasks.reduce((acc, curr) => acc + curr.score, 0);
+    const maxPoin = tasks.length * 3;
+    const persentase = Math.round((totalPoin / maxPoin) * 100);
+
+    const progressData = {
+      namaSiswa: "Aditya Pratama",
+      totalSkor: persentase,
+      tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      catatan: catatan,
+      items: tasks
+    };
+
+    localStorage.setItem('sitka_progress_data', JSON.stringify(progressData));
+    setLastSaved(progressData); // Update rekap di bawah secara instan
+
     Swal.fire({
-      title: 'Kirim Progress?',
-      text: "Data perkembangan si kecil akan langsung diteruskan ke Guru.",
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, Kirim Sekarang',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: '#0a1e36',
-      reverseButtons: true
-    }).then((result) => {
-      if (result.isConfirmed) {
-        Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Data telah disimpan.', confirmButtonColor: '#0a1e36' });
-      }
+      icon: 'success',
+      title: 'Berhasil Dikirim!',
+      text: 'Laporan perkembangan Aditya sudah diterima Guru.',
+      confirmButtonColor: '#306896',
+      timer: 2000
     });
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-36">
+    <div className="max-w-4xl mx-auto space-y-8 pb-32 animate-in fade-in duration-700">
       
       {/* HEADER */}
-      <div className="bg-[#0a1e36] p-8 md:p-12 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
-          <div>
-            <h2 className="text-3xl font-black mb-3 italic">Monitoring Bunda</h2>
-            <p className="text-indigo-200 text-sm font-medium max-w-md leading-relaxed">
-              Pantau perkembangan si kecil dari rumah dan hubungkan hasilnya dengan laporan guru.
-            </p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/10 min-w-[200px]">
-            <p className="text-[10px] font-black uppercase text-indigo-300 tracking-widest mb-2">Total Progress</p>
-            <div className="flex items-center justify-center gap-3">
-              <span className="text-5xl font-black">{calculateTotalScore()}%</span>
-              <TrendingUp className="text-emerald-400" size={32} />
-            </div>
-          </div>
+      <div className="flex items-center justify-between px-2">
+        <button 
+          onClick={() => navigate('/ortu/dashboard')}
+          className="p-4 bg-white border border-slate-100 rounded-2xl text-slate-500 hover:text-rose-500 hover:bg-rose-50 transition-all shadow-sm"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <h2 className="text-xl font-black text-[#0a1e36] italic uppercase tracking-widest">Penilaian Anak</h2>
+        <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+          <Star size={20} className="fill-indigo-600" />
         </div>
       </div>
 
-      {/* CHECKLIST ITEMS */}
-      <div className="grid grid-cols-1 gap-4">
-        {tasks.map((item, idx) => (
-          <div key={item.id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-6 hover:shadow-md transition-all group">
-            <div className="flex items-center gap-6 w-full text-left">
-               <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 font-black group-hover:bg-[#0a1e36] group-hover:text-white transition-all">
-                  {idx + 1}
-               </div>
-               <div>
-                 <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{item.category}</span>
-                 <p className="font-bold text-[#0a1e36] text-base leading-tight">{item.task}</p>
-               </div>
+      {/* INSTRUCTION */}
+      <div className="bg-[#0a1e36] p-10 rounded-[3rem] text-white shadow-xl relative overflow-hidden">
+        <div className="relative z-10">
+          <h3 className="text-2xl font-black mb-2 tracking-tight">Laporan Mingguan 📝</h3>
+          <p className="text-blue-100 text-sm opacity-80 leading-relaxed font-medium">
+            Yuk Bun, isi perkembangan kemandirian si kecil minggu ini. Guru akan memantau dari sekolah ya!
+          </p>
+        </div>
+        <div className="absolute right-[-30px] bottom-[-30px] w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
+      </div>
+
+      {/* TASK LIST */}
+      <div className="space-y-4">
+        {tasks.map((item) => (
+          <div key={item.id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:border-indigo-100 hover:shadow-md">
+            <div className="flex items-center gap-4 text-left">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-indigo-600 shrink-0">
+                {item.category === "Kemandirian" && <ShieldCheck size={24} />}
+                {item.category === "Sosial" && <Heart size={24} />}
+                {item.category === "Kognitif" && <BrainCircuit size={24} />}
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{item.category}</p>
+                <h4 className="font-bold text-[#0a1e36] text-sm md:text-base">{item.task}</h4>
+              </div>
             </div>
-            <div className="flex gap-4 bg-slate-50 p-2 rounded-[1.5rem] w-full lg:w-auto justify-center">
-               {[1, 2, 3].map((num) => (
-                 <button
+
+            <div className="flex items-center gap-2 bg-slate-100/50 p-2 rounded-2xl border border-slate-50 self-end md:self-center">
+              {[1, 2, 3].map((num) => (
+                <button
                   key={num}
-                  onClick={() => handleScoreChange(item.id, num)}
-                  className={`w-14 h-14 rounded-2xl font-black transition-all ${
+                  onClick={() => handleScore(item.id, num)}
+                  className={`w-12 h-10 rounded-xl font-black text-xs transition-all ${
                     item.score === num 
-                    ? (num === 1 ? 'bg-rose-500 text-white' : num === 2 ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white shadow-lg')
-                    : 'bg-white text-slate-300'
+                    ? (num === 1 ? 'bg-rose-500 text-white shadow-lg' : num === 2 ? 'bg-amber-500 text-white shadow-lg' : 'bg-emerald-500 text-white shadow-lg')
+                    : 'bg-white text-slate-400'
                   }`}
-                 >
-                   {num}
-                 </button>
-               ))}
+                >
+                  {num === 1 ? 'Kurang' : num === 2 ? 'Cukup' : 'Baik'}
+                </button>
+              ))}
             </div>
           </div>
         ))}
       </div>
 
-      {/* --- SECTION REKAPITULASI DI BAWAH --- */}
-      <div className="bg-white p-8 md:p-10 rounded-[3.5rem] border-2 border-slate-50 shadow-sm space-y-8">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
-            <BarChart3 size={24} />
-          </div>
-          <h3 className="text-xl font-black text-[#0a1e36]">Rekapitulasi Perkembangan</h3>
-        </div>
+      {/* INPUT CATATAN */}
+      <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-4">
+        <label className="flex items-center gap-2 font-black text-[#0a1e36] uppercase text-[10px] tracking-widest">
+          <MessageCircle size={16} className="text-indigo-600" /> Catatan untuk Bunda & Guru
+        </label>
+        <textarea 
+          placeholder="Contoh: Aditya sudah mau berbagi mainan sama adiknya..."
+          className="w-full p-6 bg-slate-50 rounded-[2rem] border-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium italic"
+          value={catatan}
+          onChange={(e) => setCatatan(e.target.value)}
+        ></textarea>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {stats.map(s => (
-            <div key={s.name} className="p-6 rounded-[2.5rem] bg-slate-50 border border-slate-100 relative overflow-hidden group">
-              <div className="relative z-10">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.name}</p>
-                <div className="flex items-end gap-2 mb-4">
-                  <h4 className="text-3xl font-black text-[#0a1e36]">{s.avg}</h4>
-                  <span className="text-xs font-bold text-slate-400 pb-1">/ 3.0</span>
-                </div>
-                
-                {/* Progress Bar Mini */}
-                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-indigo-600 transition-all duration-1000" 
-                    style={{ width: `${(s.avg / 3) * 100}%` }}
-                  ></div>
-                </div>
-                <p className="text-[9px] mt-2 font-bold text-slate-500 uppercase">
-                  {s.totalFilled} dari {s.total} Task Terisi
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+      <button 
+        onClick={handleSave}
+        className="w-full py-6 bg-indigo-600 text-white rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-3"
+      >
+        <Save size={18} /> Simpan Laporan
+      </button>
 
-        {/* PESAN MOTIVASI BERDASARKAN TOTAL */}
-        <div className="p-6 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-[2rem] border border-indigo-100 flex flex-col md:flex-row items-center justify-between gap-6">
-           <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm">
-                 <Award className="text-orange-500" size={30} />
+      {/* --- REKAPITULASI TERAKHIR (DIPERBAIKI) --- */}
+      {lastSaved && (
+        <div className="mt-12 bg-emerald-50 border-2 border-emerald-100 p-8 rounded-[3rem] space-y-6 animate-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200">
+                <CheckCircle2 size={20} />
               </div>
               <div>
-                <p className="font-bold text-[#0a1e36]">Analisa Tumbuh Kembang</p>
-                <p className="text-xs text-slate-500 italic">"Terus dampingi si kecil dengan penuh kasih sayang, Bunda!"</p>
+                <h3 className="font-black text-emerald-900 uppercase text-xs tracking-widest">Laporan Terakhir</h3>
+                <p className="text-[10px] font-bold text-emerald-600 italic">Terkirim: {lastSaved.tanggal}</p>
               </div>
-           </div>
-           <div className="flex gap-2">
-              <div className="px-4 py-2 bg-white rounded-xl text-[10px] font-black text-indigo-600 border border-indigo-100 uppercase tracking-tighter">
-                Kemandirian: {stats[0].avg >= 2.5 ? 'Sangat Baik' : 'Proses'}
+            </div>
+            <div className="text-right">
+              <span className="text-3xl font-black text-emerald-600 italic">{lastSaved.totalSkor}%</span>
+              <p className="text-[8px] font-black text-emerald-400 uppercase">Tingkat Kemandirian</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {lastSaved.items.map((it, idx) => (
+              <div key={idx} className="bg-white p-4 rounded-2xl border border-emerald-100 flex justify-between items-center">
+                <span className="text-[10px] font-bold text-slate-500 truncate mr-2">{it.task}</span>
+                <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${
+                  it.score === 3 ? 'bg-emerald-100 text-emerald-600' : it.score === 2 ? 'bg-amber-100 text-amber-600' : 'bg-rose-100 text-rose-600'
+                }`}>
+                  {it.score}
+                </span>
               </div>
-              <div className="px-4 py-2 bg-white rounded-xl text-[10px] font-black text-indigo-600 border border-indigo-100 uppercase tracking-tighter">
-                Sosial: {stats[1].avg >= 2.5 ? 'Sangat Baik' : 'Proses'}
-              </div>
-           </div>
+            ))}
+          </div>
+
+          {lastSaved.catatan && (
+            <div className="bg-white/50 p-4 rounded-2xl border border-dashed border-emerald-200">
+              <p className="text-[9px] font-black text-emerald-400 uppercase mb-1">Catatan Bunda:</p>
+              <p className="text-xs italic text-slate-600">"{lastSaved.catatan}"</p>
+            </div>
+          )}
+
+          <div className="text-center pt-2">
+            <button 
+              onClick={() => navigate('/ortu/dashboard')}
+              className="text-[10px] font-black text-emerald-600 uppercase flex items-center justify-center gap-2 w-full hover:gap-4 transition-all"
+            >
+              Kembali ke Dashboard <ArrowRight size={14} />
+            </button>
+          </div>
         </div>
-      </div>
-
-      {/* FLOATING SAVE BUTTON */}
-      <div className="fixed bottom-8 left-0 right-0 flex justify-center z-50 px-4">
-        <button 
-          onClick={handleSave}
-          className="flex items-center gap-4 px-12 py-5 bg-[#0a1e36] text-white rounded-full font-black text-sm uppercase tracking-[0.2em] shadow-2xl hover:scale-105 transition-all border-4 border-white"
-        >
-          <Save size={20} /> Simpan Data Ke Guru
-        </button>
-      </div>
-
+      )}
     </div>
   );
 };
