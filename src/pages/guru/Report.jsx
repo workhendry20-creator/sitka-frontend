@@ -1,156 +1,197 @@
-// src/pages/ortu/Progress.jsx
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import navigate
+// src/pages/guru/Report.jsx
+import React, { useState, useEffect } from 'react';
 import { 
-  ChevronLeft, Save, Star, Heart, 
-  BrainCircuit, ShieldCheck, MessageCircle 
+  ClipboardCheck, Search, User, ArrowUpRight, 
+  CheckCircle2, Clock, AlertCircle, Layers, ChevronDown 
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-const ProgressOrtu = () => {
-  const navigate = useNavigate(); // Inisialisasi navigate
-  const [catatan, setCatatan] = useState("");
-  
-  // Data list tugas yang harus diceklis
-  const [tasks, setTasks] = useState([
-    { id: 1, category: "Kemandirian", task: "Memakai baju sendiri", score: 0 },
-    { id: 2, category: "Kemandirian", task: "Makan tanpa disuapi", score: 0 },
-    { id: 3, category: "Sosial", task: "Berbagi mainan", score: 0 },
-    { id: 4, category: "Sosial", task: "Merapikan mainan", score: 0 },
-    { id: 5, category: "Kognitif", task: "Menghafal doa pendek", score: 0 },
-  ]);
+const ReportGuru = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedKelompok, setSelectedKelompok] = useState("A"); // Default Kelompok A
+  const [reports, setReports] = useState([]);
 
-  const handleScore = (id, score) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, score } : t));
+  // --- DATA MASTER SISWA PER KELOMPOK ---
+  const dataSiswa = {
+    A: [
+      { id: 101, namaSiswa: "Aditya Pratama", namaOrtu: "Mama Aditya" },
+      { id: 102, namaSiswa: "Budi Santoso", namaOrtu: "Ayah Budi" },
+      { id: 103, namaSiswa: "Rara Anindya", namaOrtu: "Bunda Rara" },
+    ],
+    B: [
+      { id: 201, namaSiswa: "Siti Aminah", namaOrtu: "Bunda Siti" },
+      { id: 202, namaSiswa: "Farhan Malik", namaOrtu: "Papa Farhan" },
+      { id: 203, namaSiswa: "Dina Lestari", namaOrtu: "Mama Dina" },
+    ]
   };
 
-  const handleSave = () => {
-    // Validasi: Pastikan semua sudah diisi
-    const belumIsi = tasks.some(t => t.score === 0);
-    if (belumIsi) {
+  useEffect(() => {
+    const rawData = localStorage.getItem('sitka_progress_data');
+    const currentSiswa = dataSiswa[selectedKelompok];
+
+    if (rawData) {
+      const parsedData = JSON.parse(rawData);
+      
+      const updatedReports = currentSiswa.map(siswa => {
+        // Simulasi: Kita hubungkan data localStorage ke Aditya (Kelompok A) atau Siti (Kelompok B) 
+        // untuk testing real-time
+        if (siswa.namaSiswa === "Aditya Pratama" || (selectedKelompok === 'B' && siswa.namaSiswa === "Siti Aminah")) {
+          return {
+            ...siswa,
+            status: "Sudah Mengisi",
+            totalSkor: `${parsedData.totalSkor}%`,
+            tanggal: parsedData.tanggal,
+            catatan: parsedData.catatan,
+            detailProgress: parsedData.items
+          };
+        }
+        return { ...siswa, status: "Belum Mengisi", totalSkor: "-", tanggal: "-", detailProgress: [], catatan: "-" };
+      });
+      setReports(updatedReports);
+    } else {
+      setReports(currentSiswa.map(s => ({ ...s, status: "Belum Mengisi", totalSkor: "-", tanggal: "-", detailProgress: [], catatan: "-" })));
+    }
+  }, [selectedKelompok]); // Reload data saat dropdown kelompok berubah
+
+  const showDetailModal = (siswa) => {
+    if (siswa.status === "Belum Mengisi") {
       return Swal.fire({
-        icon: 'error',
-        title: 'Oops...',
-        text: 'Mohon isi semua penilaian sebelum mengirim!',
-        confirmButtonColor: '#306896'
+        title: 'Data Belum Tersedia',
+        text: `Orang tua ${siswa.namaSiswa} belum mengirimkan laporan.`,
+        icon: 'info',
+        confirmButtonColor: '#0a1e36'
       });
     }
 
-    // Kalkulasi skor total dalam persen
-    const totalPoin = tasks.reduce((acc, curr) => acc + curr.score, 0);
-    const maxPoin = tasks.length * 3;
-    const persentase = Math.round((totalPoin / maxPoin) * 100);
-
-    // BENTUK DATA YANG DISESUAIKAN UNTUK GURU
-    const progressData = {
-      namaSiswa: "Aditya Pratama", // Sesuai dengan dashboard ortu
-      totalSkor: persentase,
-      tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-      catatan: catatan,
-      items: tasks // Mengirim detail item (score, task, category)
-    };
-
-    // SIMPAN KE LOCALSTORAGE (Database Realtime)
-    localStorage.setItem('sitka_progress_data', JSON.stringify(progressData));
+    const progressHTML = siswa.detailProgress.map(p => `
+      <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 mb-2 text-left shadow-sm">
+        <div class="pr-2">
+          <p class="text-[9px] font-black uppercase text-indigo-500 tracking-widest">${p.category}</p>
+          <p class="text-xs font-bold text-slate-700">${p.task}</p>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+          ${[1, 2, 3].map(num => `
+            <div class="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black ${
+              p.score === num 
+              ? (num === 1 ? 'bg-rose-500 text-white' : num === 2 ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white')
+              : 'bg-slate-100 text-slate-300'
+            }">${num}</div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
 
     Swal.fire({
-      icon: 'success',
-      title: 'Laporan Terkirim!',
-      text: 'Bunda berhasil mengirim perkembangan Aditya hari ini ke Guru.',
-      confirmButtonColor: '#306896'
-    }).then(() => {
-      navigate('/ortu/dashboard'); // Otomatis balik ke dashboard setelah sukses
+      title: `<div class="text-left"><p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Rincian Progress Kelompok ${selectedKelompok}</p><h3 class="text-xl font-black text-[#0a1e36]">${siswa.namaSiswa}</h3></div>`,
+      html: `<div class="max-h-[60vh] overflow-y-auto pr-2 text-left">
+        <div class="bg-indigo-50 p-4 rounded-2xl mb-4 border border-indigo-100">
+          <p class="text-[10px] font-black text-indigo-400 uppercase mb-1">Catatan Orang Tua</p>
+          <p class="text-sm font-medium text-indigo-900 italic">"${siswa.catatan || 'Tidak ada catatan.'}"</p>
+        </div>
+        <div class="space-y-1">${progressHTML}</div>
+      </div>`,
+      confirmButtonText: 'Tutup',
+      confirmButtonColor: '#0a1e36',
+      width: '500px'
     });
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      
-      {/* HEADER & TOMBOL KELUAR */}
-      <div className="flex items-center justify-between px-2">
-        <button 
-          onClick={() => navigate('/ortu/dashboard')} // FUNGSI KELUAR AKTIF
-          className="p-4 bg-white border border-slate-100 rounded-2xl text-slate-500 hover:text-rose-500 hover:bg-rose-50 transition-all shadow-sm"
-        >
-          <ChevronLeft size={24} />
-        </button>
-        <h2 className="text-xl font-black text-[#0a1e36] italic uppercase tracking-widest">Input Progress</h2>
-        <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
-          <Star size={20} className="fill-indigo-600" />
+    <div className="space-y-8 pb-20">
+      {/* HEADER */}
+      <div className="bg-[#0a1e36] p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <div className="flex items-center gap-4 mb-3">
+               <ClipboardCheck className="text-emerald-400" size={32} />
+               <h2 className="text-3xl font-black italic tracking-tight">Monitoring Progress</h2>
+            </div>
+            <p className="text-indigo-200 text-sm font-medium opacity-80 max-w-lg leading-relaxed">
+              Pantau perkembangan siswa berdasarkan kelompok belajar masing-masing.
+            </p>
+          </div>
+
+          {/* DROPDOWN KELOMPOK */}
+          <div className="relative w-full md:w-48 group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none">
+              <Layers size={18} />
+            </div>
+            <select 
+              value={selectedKelompok}
+              onChange={(e) => setSelectedKelompok(e.target.value)}
+              className="w-full pl-12 pr-10 py-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-sm font-black appearance-none cursor-pointer transition-all focus:ring-2 focus:ring-emerald-500 outline-none"
+            >
+              <option value="A" className="text-[#0a1e36]">Kelompok A</option>
+              <option value="B" className="text-[#0a1e36]">Kelompok B</option>
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none">
+              <ChevronDown size={18} />
+            </div>
+          </div>
+        </div>
+        <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px]"></div>
+      </div>
+
+      {/* SEARCH */}
+      <div className="px-2">
+        <div className="relative max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input 
+            type="text" 
+            placeholder={`Cari siswa di Kelompok ${selectedKelompok}...`}
+            className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl text-sm font-bold shadow-sm focus:ring-2 focus:ring-indigo-600 transition-all"
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
-      {/* INSTRUCTION CARD */}
-      <div className="bg-[#0a1e36] p-8 rounded-[3rem] text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10">
-          <h3 className="text-2xl font-black mb-2">Halo, Bunda! 👋</h3>
-          <p className="text-blue-100 text-sm opacity-80 leading-relaxed">
-            Berikan penilaian sejujur mungkin ya Bun, agar kami bisa membantu mengoptimalkan tumbuh kembang si kecil.
-          </p>
-        </div>
-        <Heart className="absolute right-[-20px] top-[-20px] w-48 h-48 text-rose-500/20 rotate-12" />
-      </div>
-
-      {/* TASK LIST */}
-      <div className="space-y-4">
-        {tasks.map((item) => (
-          <div key={item.id} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:border-indigo-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-indigo-600">
-                {item.category === "Kemandirian" && <ShieldCheck size={24} />}
-                {item.category === "Sosial" && <Heart size={24} />}
-                {item.category === "Kognitif" && <BrainCircuit size={24} />}
+      {/* CARDS LIST */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {reports.filter(d => d.namaSiswa.toLowerCase().includes(searchTerm.toLowerCase())).map((item) => (
+          <div 
+            key={item.id}
+            onClick={() => showDetailModal(item)}
+            className={`p-6 rounded-[2.5rem] border transition-all cursor-pointer group flex items-center justify-between ${
+              item.status === 'Sudah Mengisi' 
+              ? 'bg-white border-slate-100 hover:border-emerald-400 hover:shadow-xl' 
+              : 'bg-slate-50 border-dashed border-slate-200 opacity-60'
+            }`}
+          >
+            <div className="flex items-center gap-5">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner ${
+                item.status === 'Sudah Mengisi' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-400'
+              }`}>
+                {item.status === 'Sudah Mengisi' ? <CheckCircle2 size={28} /> : <User size={28} />}
               </div>
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{item.category}</p>
-                <h4 className="font-bold text-[#0a1e36]">{item.task}</h4>
+                <h4 className="font-black text-[#0a1e36] text-lg group-hover:text-emerald-600 transition-colors">{item.namaSiswa}</h4>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.namaOrtu}</span>
+                  <div className={`px-2 py-0.5 rounded-md text-[8px] font-black bg-slate-100 text-slate-400`}>KELOMPOK {selectedKelompok}</div>
+                </div>
               </div>
             </div>
 
-            {/* SCORING BUTTONS (1, 2, 3) */}
-            <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 self-end md:self-center">
-              {[1, 2, 3].map((num) => (
-                <button
-                  key={num}
-                  onClick={() => handleScore(item.id, num)}
-                  className={`w-10 h-10 rounded-xl font-black text-xs transition-all ${
-                    item.score === num 
-                    ? (num === 1 ? 'bg-rose-500 text-white shadow-lg shadow-rose-200' : num === 2 ? 'bg-amber-500 text-white shadow-lg shadow-amber-200' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-200')
-                    : 'bg-white text-slate-400 hover:bg-slate-200'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
+            <div className="text-right">
+              {item.status === 'Sudah Mengisi' ? (
+                <div className="flex flex-col items-end gap-1">
+                   <div className="text-emerald-600 font-black text-2xl italic flex items-center gap-1">
+                      {item.totalSkor} <ArrowUpRight size={16}/>
+                   </div>
+                   <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{item.tanggal}</span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-end opacity-30">
+                  <Clock size={20} className="text-slate-400" />
+                  <span className="text-[8px] font-black uppercase mt-1 text-slate-400">Menunggu</span>
+                </div>
+              )}
             </div>
           </div>
         ))}
       </div>
-
-      {/* CATATAN TAMBAHAN */}
-      <div className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-sm space-y-4">
-        <label className="flex items-center gap-2 font-black text-[#0a1e36] uppercase text-xs tracking-widest">
-          <MessageCircle size={16} /> Catatan untuk Guru (Opsional)
-        </label>
-        <textarea 
-          rows="4" 
-          placeholder="Ceritakan kejadian menarik atau kendala si kecil di rumah..."
-          className="w-full p-6 bg-slate-50 rounded-[2rem] border-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium italic"
-          value={catatan}
-          onChange={(e) => setCatatan(e.target.value)}
-        ></textarea>
-      </div>
-
-      {/* SUBMIT BUTTON */}
-      <button 
-        onClick={handleSave}
-        className="w-full py-6 bg-indigo-600 text-white rounded-[2.5rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-3"
-      >
-        <Save size={18} /> Simpan & Kirim ke Guru
-      </button>
-
     </div>
   );
 };
 
-export default ProgressOrtu;
+export default ReportGuru;
