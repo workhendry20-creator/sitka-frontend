@@ -1,13 +1,16 @@
 // src/layouts/OrtuLayout.jsx
 import React, { useState } from 'react';
+// Ganti yang tadinya "lucide-center" menjadi "lucide-react"
 import { 
   LayoutDashboard, ClipboardList, Image as ImageIcon, 
   MessageSquare, LogOut, Menu, Bell, X 
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 const OrtuLayout = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const menuItems = [
@@ -16,6 +19,31 @@ const OrtuLayout = ({ children }) => {
     { name: 'Aktivitas', icon: ImageIcon, path: '/ortu/aktivitas' },
     { name: 'Chat Guru', icon: MessageSquare, path: '/ortu/chat' },
   ];
+
+  // FUNGSI LOGOUT KHUSUS ORANG TUA
+  const handleLogout = () => {
+    Swal.fire({
+      title: 'Konfirmasi Keluar',
+      text: "Apakah Bunda yakin ingin keluar dari SITKA?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#306896',
+      cancelButtonColor: '#f43f5e',
+      confirmButtonText: 'Ya, Keluar!',
+      cancelButtonText: 'Batal',
+      reverseButtons: true,
+      customClass: {
+        popup: 'rounded-[2.5rem]',
+        confirmButton: 'rounded-xl px-6 py-3 font-bold text-xs uppercase tracking-widest',
+        cancelButton: 'rounded-xl px-6 py-3 font-bold text-xs uppercase tracking-widest'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Hapus session/token jika diperlukan
+        navigate('/'); 
+      }
+    });
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50 relative">
@@ -68,12 +96,15 @@ const OrtuLayout = ({ children }) => {
           })}
         </nav>
 
-        {/* Footer Sidebar */}
+        {/* Footer Sidebar - Ganti Link ke Button */}
         <div className="p-6 border-t border-gray-50">
-          <Link to="/" className="flex items-center gap-4 px-4 py-4 text-red-500 font-bold hover:bg-red-50 w-full rounded-2xl transition-all">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-4 px-4 py-4 text-red-500 font-bold hover:bg-red-50 w-full rounded-2xl transition-all"
+          >
             <LogOut size={22} />
             Keluar
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -93,14 +124,12 @@ const OrtuLayout = ({ children }) => {
             </span>
           </div>
 
-          {/* Profil & Notifikasi (Dibuat identik dengan Guru) */}
           <div className="flex items-center gap-3 md:gap-6">
             <button className="relative text-slate-400 hover:text-slate-600 p-2">
                <Bell size={22} />
                <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full border-2 border-white"></span>
             </button>
             
-            {/* KLIK AREA PROFIL MENUJU SETTINGS ORTU */}
             <Link to="/ortu/settings" className="flex items-center gap-3 md:gap-4 text-right group transition-all">
               <div className="hidden sm:block">
                 <p className="text-sm font-bold text-[#0a1e36] group-hover:text-[#306896] transition-colors">Mama Aditya</p>

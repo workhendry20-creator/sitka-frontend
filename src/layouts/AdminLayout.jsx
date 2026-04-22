@@ -3,10 +3,12 @@ import {
   LayoutDashboard, Users, TrendingUp, BookOpen, 
   MessageSquare, LogOut, Menu, Bell, X, Shield 
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 const AdminLayout = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Otomatis tutup sidebar saat pindah halaman di mobile
@@ -22,10 +24,36 @@ const AdminLayout = ({ children }) => {
     { name: 'Chat', icon: MessageSquare, path: '/admin/chat' },
   ];
 
+  // FUNGSI LOGOUT DENGAN POP-UP
+  const handleLogout = () => {
+    Swal.fire({
+      title: 'Konfirmasi Keluar',
+      text: "Apakah yakin ingin keluar dari SITKA?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#4f46e5',
+      cancelButtonColor: '#f43f5e',
+      confirmButtonText: 'Ya, Keluar!',
+      cancelButtonText: 'Batal',
+      reverseButtons: true,
+      customClass: {
+        popup: 'rounded-[2.5rem]',
+        confirmButton: 'rounded-xl px-6 py-3 font-bold text-xs uppercase tracking-widest',
+        cancelButton: 'rounded-xl px-6 py-3 font-bold text-xs uppercase tracking-widest'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Jika pakai token/session hapus di sini
+        // localStorage.clear();
+        navigate('/'); // Redirect ke landing page atau login
+      }
+    });
+  };
+
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans overflow-x-hidden">
       
-      {/* 1. OVERLAY UNTUK MOBILE (Layar Gelap saat Sidebar Buka) */}
+      {/* 1. OVERLAY UNTUK MOBILE */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-[#0a1e36]/60 backdrop-blur-sm z-[60] md:hidden transition-opacity duration-300"
@@ -47,7 +75,6 @@ const AdminLayout = ({ children }) => {
             </div>
             <h1 className="text-xl font-black tracking-tight uppercase">SITKA ADMIN</h1>
           </div>
-          {/* Tombol Close (Hanya Muncul di Mobile) */}
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 p-1">
             <X size={24} />
           </button>
@@ -73,10 +100,14 @@ const AdminLayout = ({ children }) => {
           })}
         </nav>
 
+        {/* TOMBOL KELUAR DENGAN FUNGSI SWAL */}
         <div className="p-6 border-t border-white/5">
-          <Link to="/" className="flex items-center gap-4 px-4 py-4 text-red-400 font-bold w-full hover:bg-red-500/10 rounded-2xl transition-all">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-4 px-4 py-4 text-red-400 font-bold w-full hover:bg-red-500/10 rounded-2xl transition-all"
+          >
             <LogOut size={20} /> <span className="text-sm">Keluar</span>
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -86,7 +117,6 @@ const AdminLayout = ({ children }) => {
         {/* HEADER RESPONSIVE */}
         <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50 flex-shrink-0">
           <div className="flex items-center gap-4">
-            {/* Burger Menu Button (Hanya di Mobile) */}
             <button 
               onClick={() => setIsSidebarOpen(true)} 
               className="md:hidden p-2 text-[#0a1e36] bg-slate-50 rounded-xl"
@@ -119,7 +149,7 @@ const AdminLayout = ({ children }) => {
           </div>
         </header>
 
-        {/* AREA KONTEN (Scrollable) */}
+        {/* AREA KONTEN */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
             {children}

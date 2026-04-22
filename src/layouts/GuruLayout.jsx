@@ -4,10 +4,12 @@ import {
   LayoutDashboard, FileEdit, ClipboardCheck, 
   Image as ImageIcon, MessageSquare, LogOut, Menu, Bell, X, BarChart3
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 const GuruLayout = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   // State untuk mengontrol sidebar di tampilan mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -19,6 +21,31 @@ const GuruLayout = ({ children }) => {
     { name: 'Report', icon: BarChart3, path: '/guru/report' },
     { name: 'Chat Ortu', icon: MessageSquare, path: '/guru/chat' },
   ];
+
+  // FUNGSI LOGOUT DENGAN POP-UP UNTUK GURU
+  const handleLogout = () => {
+    Swal.fire({
+      title: 'Konfirmasi Keluar',
+      text: "Apakah yakin ingin keluar dari SITKA?",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#306896', // Menyesuaikan warna tema Guru Layout
+      cancelButtonColor: '#f43f5e',
+      confirmButtonText: 'Ya, Keluar!',
+      cancelButtonText: 'Batal',
+      reverseButtons: true,
+      customClass: {
+        popup: 'rounded-[2.5rem]',
+        confirmButton: 'rounded-xl px-6 py-3 font-bold text-xs uppercase tracking-widest',
+        cancelButton: 'rounded-xl px-6 py-3 font-bold text-xs uppercase tracking-widest'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Proses logout
+        navigate('/'); 
+      }
+    });
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50 relative">
@@ -44,7 +71,6 @@ const GuruLayout = ({ children }) => {
             </div>
             <h1 className="text-2xl font-black text-[#0a1e36] tracking-tight">SITKA</h1>
           </Link>
-          {/* Tombol Close (Hanya muncul di mobile) */}
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400">
             <X size={24} />
           </button>
@@ -58,7 +84,7 @@ const GuruLayout = ({ children }) => {
               <Link
                 key={item.name}
                 to={item.path}
-                onClick={() => setIsSidebarOpen(false)} // Tutup sidebar setelah klik (mobile)
+                onClick={() => setIsSidebarOpen(false)}
                 className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all duration-200 ${
                   isActive 
                   ? 'bg-[#306896] text-white shadow-lg shadow-blue-900/20' 
@@ -72,12 +98,15 @@ const GuruLayout = ({ children }) => {
           })}
         </nav>
 
-        {/* Footer Sidebar */}
+        {/* Footer Sidebar - Ganti Link ke Button */}
         <div className="p-6 border-t border-gray-50">
-          <Link to="/" className="flex items-center gap-4 px-4 py-4 text-red-500 font-bold hover:bg-red-50 w-full rounded-2xl transition-all">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-4 px-4 py-4 text-red-500 font-bold hover:bg-red-50 w-full rounded-2xl transition-all"
+          >
             <LogOut size={22} />
             Keluar
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -86,7 +115,6 @@ const GuruLayout = ({ children }) => {
         {/* HEADER */}
         <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            {/* Tombol Hamburger */}
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 hover:bg-slate-100 rounded-lg md:hidden transition-colors"
@@ -98,14 +126,12 @@ const GuruLayout = ({ children }) => {
             </span>
           </div>
 
-          {/* Profil & Notifikasi */}
           <div className="flex items-center gap-3 md:gap-6">
             <button className="relative text-slate-400 hover:text-slate-600 p-2">
                <Bell size={22} />
                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </button>
             
-            {/* KLIK AREA PROFIL MENUJU SETTINGS */}
             <Link to="/guru/settings" className="flex items-center gap-3 md:gap-4 text-right group transition-all">
               <div className="hidden sm:block">
                 <p className="text-sm font-bold text-[#0a1e36] group-hover:text-[#306896] transition-colors">Ibu Guru Ani</p>
