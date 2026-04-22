@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  LayoutDashboard, Users, TrendingUp, BookOpen, 
-  MessageSquare, LogOut, Menu, Bell, X, Shield 
+  LayoutDashboard, Users, TrendingUp, Database, 
+  Megaphone, LogOut, Menu, Bell, X, Shield 
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -20,8 +20,8 @@ const AdminLayout = ({ children }) => {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
     { name: 'Manajemen User', icon: Users, path: '/admin/users' },
     { name: 'Manajemen Perkembangan', icon: TrendingUp, path: '/admin/perkembangan' },
-    { name: 'Kurikulum', icon: BookOpen, path: '/admin/kurikulum' },
-    { name: 'Chat', icon: MessageSquare, path: '/admin/chat' },
+    { name: 'Manajemen Data', icon: Database, path: '/admin/kurikulum' },
+    { name: 'Informasi', icon: Megaphone, path: '/admin/chat' },
   ];
 
   // FUNGSI LOGOUT DENGAN POP-UP
