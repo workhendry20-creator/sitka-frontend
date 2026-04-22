@@ -1,11 +1,17 @@
 // src/App.jsx
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Outlet } from 'react-router-dom';
 
-// Import Pages & Layouts
+// Import Layouts
+import GuruLayout from './layouts/GuruLayout'; 
+import OrtuLayout from './layouts/OrtuLayout';
+import AdminLayout from './layouts/AdminLayout';
+
+// Pages - Auth
 import Login from './pages/Login';
 import Register from './pages/Register';
-import GuruLayout from './layouts/GuruLayout'; 
+
+// Pages - Guru
 import DashboardGuru from './pages/guru/DashboardGuru';
 import InputNilai from './pages/guru/InputNilai';
 import Absensi from './pages/guru/Absensi';
@@ -14,14 +20,15 @@ import Report from './pages/guru/Report';
 import Chat from './pages/guru/Chat'; 
 import Settings from './pages/guru/Settings';
 
-import OrtuLayout from './layouts/OrtuLayout';
+// Pages - Ortu
 import DashboardOrtu from './pages/ortu/DashboardOrtu';
 import LaporanOrtu from './pages/ortu/Laporan';
+import ProgressOrtu from './pages/ortu/Progress';
 import AktivitasOrtu from './pages/ortu/Aktivitas';
 import ChatOrtu from './pages/ortu/Chat';
 import SettingsOrtu from './pages/ortu/Settings';
 
-import AdminLayout from './layouts/AdminLayout';
+// Pages - Admin
 import DashboardAdmin from './pages/admin/DashboardAdmin';
 import ManajemenUser from "./pages/admin/ManajemenUser";
 import ManajemenPerkembangan from "./pages/admin/ManajemenPerkembangan";
@@ -31,83 +38,39 @@ import ChatAdmin from "./pages/admin/Chat";
 function App() {
   return (
     <Routes>
-      {/* Rute Auth */}
+      {/* --- RUTE AUTH --- */}
       <Route path="/" element={<Login />} />
       <Route path="/register" element={<Register />} />
       
-      {/* Rute Role Guru */}
-      <Route 
-        path="/guru/dashboard" 
-        element={<GuruLayout><DashboardGuru /></GuruLayout>} 
-      />
-      <Route 
-        path="/guru/nilai" 
-        element={<GuruLayout><InputNilai /></GuruLayout>} 
-      />
-      <Route 
-        path="/guru/absensi" 
-        element={<GuruLayout><Absensi /></GuruLayout>} 
-      />
-      <Route 
-        path="/guru/aktivitas" 
-        element={<GuruLayout><Aktivitas /></GuruLayout>} 
-      />
-      <Route 
-        path="/guru/report" 
-        element={<GuruLayout><Report /></GuruLayout>} 
-      />
-      <Route 
-        path="/guru/chat" 
-        element={<GuruLayout><Chat /></GuruLayout>} 
-      />
-      <Route 
-        path="/guru/settings" 
-        element={<GuruLayout><Settings /></GuruLayout>} 
-      />
+      {/* --- RUTE ROLE GURU --- */}
+      <Route path="/guru" element={<GuruLayout><Outlet /></GuruLayout>}>
+        <Route path="dashboard" element={<DashboardGuru />} />
+        <Route path="nilai" element={<InputNilai />} />
+        <Route path="absensi" element={<Absensi />} />
+        <Route path="aktivitas" element={<Aktivitas />} />
+        <Route path="report" element={<Report />} />
+        <Route path="chat" element={<Chat />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
 
-      {/* Rute Role Ortu */}
-      <Route 
-        path="/ortu/dashboard" 
-        element={<OrtuLayout><DashboardOrtu /></OrtuLayout>}
-      />
-      <Route 
-        path="/ortu/laporan" 
-        element={<OrtuLayout><LaporanOrtu /></OrtuLayout>} 
-      />
-      <Route 
-        path="/ortu/aktivitas" 
-        element={<OrtuLayout><AktivitasOrtu /></OrtuLayout>} 
-      />
-      <Route 
-        path="/ortu/chat" 
-        element={<OrtuLayout><ChatOrtu /></OrtuLayout>} 
-      />
-      <Route 
-        path="/ortu/settings" 
-        element={<OrtuLayout><SettingsOrtu /></OrtuLayout>} 
-      />
+      {/* --- RUTE ROLE ORTU (DIPERBAIKI) --- */}
+      <Route path="/ortu" element={<OrtuLayout><Outlet /></OrtuLayout>}>
+        <Route path="dashboard" element={<DashboardOrtu />} />
+        <Route path="laporan" element={<LaporanOrtu />} />
+        <Route path="progress" element={<ProgressOrtu />} />
+        <Route path="aktivitas" element={<AktivitasOrtu />} />
+        <Route path="chat" element={<ChatOrtu />} />
+        <Route path="settings" element={<SettingsOrtu />} />
+      </Route>
 
-      {/* Rute Role Admin (DIPERBAIKI: ManajemenUser sekarang dibungkus AdminLayout) */}
-      <Route 
-        path="/admin/dashboard" 
-        element={<AdminLayout><DashboardAdmin /></AdminLayout>} 
-      />
-      <Route 
-        path="/admin/users" 
-        element={<AdminLayout><ManajemenUser /></AdminLayout>} 
-      />
-      <Route 
-  path="/admin/perkembangan" 
-  element={<AdminLayout><ManajemenPerkembangan /></AdminLayout>} 
-/>
-<Route 
-  path="/admin/kurikulum" 
-  element={<AdminLayout><Kurikulum /></AdminLayout>} 
-/>
-<Route 
-  path="/admin/chat" 
-  element={<AdminLayout><ChatAdmin /></AdminLayout>} 
-/>
+      {/* --- RUTE ROLE ADMIN --- */}
+      <Route path="/admin" element={<AdminLayout><Outlet /></AdminLayout>}>
+        <Route path="dashboard" element={<DashboardAdmin />} />
+        <Route path="users" element={<ManajemenUser />} />
+        <Route path="perkembangan" element={<ManajemenPerkembangan />} />
+        <Route path="kurikulum" element={<Kurikulum />} />
+        <Route path="chat" element={<ChatAdmin />} />
+      </Route>
     </Routes>
   );
 }

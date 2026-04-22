@@ -1,9 +1,15 @@
 // src/layouts/OrtuLayout.jsx
 import React, { useState } from 'react';
-// Ganti yang tadinya "lucide-center" menjadi "lucide-react"
 import { 
-  LayoutDashboard, ClipboardList, Image as ImageIcon, 
-  MessageSquare, LogOut, Menu, Bell, X 
+  LayoutDashboard, 
+  ClipboardList, 
+  Image as ImageIcon, 
+  MessageSquare, 
+  LogOut, 
+  Menu, 
+  Bell, 
+  X, 
+  TrendingUp // <--- INI BIANG KEROKNYA TADI, PASTIKAN ADA
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -16,39 +22,36 @@ const OrtuLayout = ({ children }) => {
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/ortu/dashboard' },
     { name: 'Laporan', icon: ClipboardList, path: '/ortu/laporan' },
+    { name: 'Progress', icon: TrendingUp, path: '/ortu/progress' },
     { name: 'Aktivitas', icon: ImageIcon, path: '/ortu/aktivitas' },
     { name: 'Chat Guru', icon: MessageSquare, path: '/ortu/chat' },
   ];
 
-  // FUNGSI LOGOUT KHUSUS ORANG TUA
   const handleLogout = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
-      text: "Apakah Bunda yakin ingin keluar dari SITKA?",
+      text: "Apakah Bunda yakin ingin keluar?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#306896',
       cancelButtonColor: '#f43f5e',
       confirmButtonText: 'Ya, Keluar!',
       cancelButtonText: 'Batal',
-      reverseButtons: true,
-      customClass: {
-        popup: 'rounded-[2.5rem]',
-        confirmButton: 'rounded-xl px-6 py-3 font-bold text-xs uppercase tracking-widest',
-        cancelButton: 'rounded-xl px-6 py-3 font-bold text-xs uppercase tracking-widest'
-      }
+      reverseButtons: true
     }).then((result) => {
       if (result.isConfirmed) {
-        // Hapus session/token jika diperlukan
-        navigate('/'); 
+        navigate('/');
       }
     });
   };
 
+  // Mencari nama menu aktif untuk header
+  const activeMenu = menuItems.find(item => location.pathname.includes(item.path))?.name || 'Dashboard';
+
   return (
     <div className="flex min-h-screen bg-slate-50 relative">
       
-      {/* --- OVERLAY UNTUK MOBILE --- */}
+      {/* OVERLAY MOBILE */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
@@ -56,12 +59,11 @@ const OrtuLayout = ({ children }) => {
         ></div>
       )}
 
-      {/* --- SIDEBAR --- */}
+      {/* SIDEBAR */}
       <aside className={`
         fixed md:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
-        {/* Logo Area */}
         <div className="p-8 flex items-center justify-between">
           <Link to="/ortu/dashboard" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#306896] rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
@@ -74,10 +76,9 @@ const OrtuLayout = ({ children }) => {
           </button>
         </div>
 
-        {/* Menu Navigation */}
         <nav className="flex-1 px-4 space-y-2">
           {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = location.pathname.includes(item.path);
             return (
               <Link
                 key={item.name}
@@ -96,7 +97,6 @@ const OrtuLayout = ({ children }) => {
           })}
         </nav>
 
-        {/* Footer Sidebar - Ganti Link ke Button */}
         <div className="p-6 border-t border-gray-50">
           <button 
             onClick={handleLogout}
@@ -108,9 +108,8 @@ const OrtuLayout = ({ children }) => {
         </div>
       </aside>
 
-      {/* --- MAIN CONTENT AREA --- */}
+      {/* MAIN CONTENT */}
       <main className="flex-1 flex flex-col min-w-0">
-        {/* HEADER */}
         <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-8 sticky top-0 z-30">
           <div className="flex items-center gap-4">
             <button 
@@ -120,7 +119,7 @@ const OrtuLayout = ({ children }) => {
               <Menu className="text-[#0a1e36]" size={24} />
             </button>
             <span className="text-[10px] md:text-xs font-black text-slate-300 tracking-[0.3em] uppercase hidden sm:block">
-              Parent Portal / {menuItems.find(i => i.path === location.pathname)?.name || 'Dashboard'}
+              Parent Portal / {activeMenu}
             </span>
           </div>
 
@@ -142,7 +141,6 @@ const OrtuLayout = ({ children }) => {
           </div>
         </header>
 
-        {/* PAGE CONTENT */}
         <div className="p-4 md:p-8">
           {children}
         </div>
