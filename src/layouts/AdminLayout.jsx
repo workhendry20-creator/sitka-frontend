@@ -1,14 +1,14 @@
+// src/layouts/AdminLayout.jsx
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, TrendingUp, Database, 
   Megaphone, LogOut, Menu, Bell, X, Shield 
 } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
-const AdminLayout = ({ children }) => {
+const AdminLayout = ({ children, onLogout, user }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Otomatis tutup sidebar saat pindah halaman di mobile
@@ -24,14 +24,14 @@ const AdminLayout = ({ children }) => {
     { name: 'Informasi', icon: Megaphone, path: '/admin/chat' },
   ];
 
-  // FUNGSI LOGOUT DENGAN POP-UP
-  const handleLogout = () => {
+  // FUNGSI LOGOUT DENGAN POP-UP PREMIUM (SINKRON KE PUSAT)
+  const handleLogoutClick = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
-      text: "Apakah yakin ingin keluar dari SITKA?",
+      text: "Apakah Senior yakin ingin keluar dari sistem SITKA?",
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#4f46e5',
+      confirmButtonColor: '#306896',
       cancelButtonColor: '#f43f5e',
       confirmButtonText: 'Ya, Keluar!',
       cancelButtonText: 'Batal',
@@ -43,9 +43,8 @@ const AdminLayout = ({ children }) => {
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        // Jika pakai token/session hapus di sini
-        // localStorage.clear();
-        navigate('/'); // Redirect ke landing page atau login
+        // Eksekusi fungsi logout pusat dari App.jsx untuk clear session & redirect total!
+        onLogout(); 
       }
     });
   };
@@ -70,7 +69,7 @@ const AdminLayout = ({ children }) => {
       `}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <div className="w-10 h-10 bg-[#306896] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
               <Shield size={24} className="text-white" />
             </div>
             <h1 className="text-xl font-black tracking-tight uppercase">SITKA ADMIN</h1>
@@ -89,7 +88,7 @@ const AdminLayout = ({ children }) => {
                 to={item.path} 
                 className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all duration-200 ${
                   isActive 
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' 
+                    ? 'bg-[#306896] text-white shadow-lg shadow-blue-900/40' 
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
@@ -103,7 +102,7 @@ const AdminLayout = ({ children }) => {
         {/* TOMBOL KELUAR DENGAN FUNGSI SWAL */}
         <div className="p-6 border-t border-white/5">
           <button 
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             className="flex items-center gap-4 px-4 py-4 text-red-400 font-bold w-full hover:bg-red-500/10 rounded-2xl transition-all"
           >
             <LogOut size={20} /> <span className="text-sm">Keluar</span>
@@ -134,16 +133,17 @@ const AdminLayout = ({ children }) => {
           <div className="flex items-center gap-3 md:gap-6">
             <button className="relative text-slate-400 p-2 hover:bg-slate-50 rounded-xl transition-all">
               <Bell size={20} />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-indigo-500 rounded-full border-2 border-white"></span>
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#306896] rounded-full border-2 border-white"></span>
             </button>
             
             <div className="flex items-center gap-3 group cursor-pointer">
               <div className="hidden sm:block text-right">
-                <p className="text-xs font-bold text-[#0a1e36]">Super Admin</p>
-                <p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest">Root</p>
+                {/* Otomatis mengambil nama Admin yang sedang login */}
+                <p className="text-xs font-bold text-[#0a1e36]">{user?.nama || 'Super Admin'}</p>
+                <p className="text-[8px] font-black text-[#306896] uppercase tracking-widest">{user?.role || 'Root'}</p>
               </div>
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-100 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-indigo-600 border-2 border-white shadow-sm transition-transform active:scale-95">
-                A
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-[#306896] border-2 border-white shadow-sm transition-transform active:scale-95">
+                {user?.nama ? user.nama.charAt(0).toUpperCase() : 'A'}
               </div>
             </div>
           </div>

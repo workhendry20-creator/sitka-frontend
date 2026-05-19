@@ -2,27 +2,92 @@
 import React, { useState } from 'react';
 import { Mail, Lock, GraduationCap, Monitor, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+// Impor koneksi Supabase Cloud kita
+import { supabase } from '../utils/supabaseClient';
 
-const Login = () => {
+const Login = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
   
   // State management
   const [selectedRole, setSelectedRole] = useState('ADMIN');
   const [idPengguna, setIdPengguna] = useState('');
   const [kataSandi, setKataSandi] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const roles = ['ADMIN', 'GURU', 'ORTU'];
 
-  const handleLogin = (e) => {
+  // --- LOGIKA VERIFIKASI LOGIN SUPABASE ---
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
     
-    // Logika Navigasi Berdasarkan Role
-    if (selectedRole === 'GURU') {
-      navigate('/guru/dashboard');
-    } else if (selectedRole === 'ORTU') {
-      navigate('/ortu/dashboard');
-    } else if (selectedRole === 'ADMIN') {
-      navigate('/admin/dashboard');
+    try {
+      const lowerRole = selectedRole.toLowerCase();
+
+      // 1. PENANGANAN LOGIN KHUSUS ADMIN (Bypass Sementara jika data admin belum di DB)
+      if (selectedRole === 'ADMIN') {
+        if (idPengguna === 'admin' && kataSandi === 'admin123') {
+          const adminSession = { nama: 'Administrator SITKA', role: 'admin' };
+          localStorage.setItem('user_session', JSON.stringify(adminSession));
+          onLoginSuccess(adminSession);
+          navigate('/admin/dashboard');
+          return;
+        } else {
+          // Coba cari di database jika ada tabel admin khusus nantinya
+          const { data: adminData, error: adminErr } = await supabase
+            .from('users')
+            .select('*')
+            .eq('role', 'admin')
+            .eq('nama', idPengguna)
+            .eq('password', kataSandi)
+            .single();
+
+          if (adminErr || !adminData) throw new Error('Kredensial Admin tidak valid, Senior!');
+          
+          localStorage.setItem('user_session', JSON.stringify(adminData));
+          onLoginSuccess(adminData);
+          navigate('/admin/dashboard');
+          return;
+        }
+      }
+
+      // 2. LOGIKA VALIDASI UNTUK GURU & ORANG TUA
+      let query = supabase.from('users').select('*').eq('role', lowerRole);
+
+      if (selectedRole === 'GURU') {
+        // Cari baris data berdasarkan NIP dan Password
+        query = query.eq('nip', idPengguna).eq('password', kataSandi);
+      } else if (selectedRole === 'ORTU') {
+        // Cari baris data berdasarkan NISN dan Password
+        query = query.eq('nisn', idPengguna).eq('password', kataSandi);
+      }
+
+      const { data: userData, error } = await query.maybeSingle();
+
+      if (error) throw error;
+
+      // 3. JIKA AKUN TIDAK DITEMUKAN
+      if (!userData) {
+        throw new Error(`${selectedRole} dengan ID atau Kata Sandi tersebut tidak ditemukan di Cloud!`);
+      }
+
+      // 4. JIKA SUKSES TEMBUS LOGIN
+      // Simpan session lengkap di storage lokal browser biar kalau direfresh ga logout otomatis
+      localStorage.setItem('user_session', JSON.stringify(userData));
+      
+      // Kirim data user ke state pusat di App.jsx
+      onLoginSuccess(userData);
+
+      // Lempar user ke Dashboard masing-masing sesuai role
+      alert(`✨ Selamat Datang, ${userData.nama}!`);
+      
+      // Mengarahkan ke route yang sesuai dengan arsitektur web Senior
+      navigate(`/${lowerRole === 'ortu' ? 'ortu' : lowerRole}/dashboard`);
+
+    } catch (error) {
+      alert(`🔴 LOGIN GAGAL: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -103,7 +168,7 @@ const Login = () => {
                 required
                 value={idPengguna}
                 onChange={(e) => setIdPengguna(e.target.value)}
-                placeholder="ID Pengguna"
+                placeholder={selectedRole === 'GURU' ? "Nomor Induk Pegawai (NIP)" : selectedRole === 'ORTU' ? "NISN Siswa" : "ID Pengguna Admin"}
                 className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-2xl text-md outline-none focus:border-[#306896] focus:ring-4 focus:ring-blue-50 transition-all shadow-sm"
               />
             </div>
@@ -125,14 +190,15 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full bg-[#306896] hover:bg-[#25547a] text-white font-bold py-4 rounded-2xl text-lg shadow-lg transition-all active:scale-[0.98]"
+              disabled={loading}
+              className="w-full bg-[#306896] hover:bg-[#25547a] text-white font-bold py-4 rounded-2xl text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              Masuk Sekarang
+              {loading ? 'Memvalidasi Akun...' : 'Masuk Sekarang'}
             </button>
           </form>
 
           <div className="mt-12 text-center">
-            <p className="text-[11px] font-bold text-slate-400 tracking-widest uppercase">
+            <p className="text-slate-400 text-xs font-bold tracking-wider uppercase">
               BELUM PUNYA AKUN?{' '}
               <Link to="/register" className="text-[#306896] hover:underline ml-1 font-black transition-all">
                 DAFTAR DISINI

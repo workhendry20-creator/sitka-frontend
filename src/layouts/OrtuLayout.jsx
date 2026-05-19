@@ -9,14 +9,13 @@ import {
   Menu, 
   Bell, 
   X, 
-  TrendingUp // <--- INI BIANG KEROKNYA TADI, PASTIKAN ADA
+  TrendingUp 
 } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
-const OrtuLayout = ({ children }) => {
+const OrtuLayout = ({ children, onLogout, user }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const menuItems = [
@@ -27,20 +26,27 @@ const OrtuLayout = ({ children }) => {
     { name: 'Chat Guru', icon: MessageSquare, path: '/ortu/chat' },
   ];
 
+  // FUNGSI LOGOUT PREMIUM - SINKRON KE PUSAT APP.JSX
   const handleLogout = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
-      text: "Apakah Bunda yakin ingin keluar?",
+      text: "Apakah Bunda/Ayah yakin ingin keluar dari SITKA?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#306896',
       cancelButtonColor: '#f43f5e',
       confirmButtonText: 'Ya, Keluar!',
       cancelButtonText: 'Batal',
-      reverseButtons: true
+      reverseButtons: true,
+      customClass: {
+        popup: 'rounded-[2.5rem]',
+        confirmButton: 'rounded-xl px-6 py-3 font-bold text-xs uppercase tracking-widest',
+        cancelButton: 'rounded-xl px-6 py-3 font-bold text-xs uppercase tracking-widest'
+      }
     }).then((result) => {
       if (result.isConfirmed) {
-        navigate('/');
+        // Eksekusi fungsi logout pusat dari App.jsx
+        onLogout();
       }
     });
   };
@@ -130,12 +136,15 @@ const OrtuLayout = ({ children }) => {
             </button>
             
             <Link to="/ortu/settings" className="flex items-center gap-3 md:gap-4 text-right group transition-all">
+              {/* 🔥 SEKARANG NAMA ORANG TUA SINKRON OTOMATIS DARI SUPABASE */}
               <div className="hidden sm:block">
-                <p className="text-sm font-bold text-[#0a1e36] group-hover:text-[#306896] transition-colors">Mama Aditya</p>
+                <p className="text-sm font-bold text-[#0a1e36] group-hover:text-[#306896] transition-colors">
+                  {user?.nama || 'Wali Murid'}
+                </p>
                 <p className="text-[9px] font-black text-orange-600 tracking-widest uppercase">Orang Tua Murid</p>
               </div>
               <div className="w-10 h-10 md:w-12 md:h-12 bg-orange-100 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-orange-600 border-2 border-white shadow-sm group-hover:scale-105 group-hover:shadow-md transition-all">
-                M
+                {user?.nama ? user.nama.charAt(0).toUpperCase() : 'M'}
               </div>
             </Link>
           </div>

@@ -1,15 +1,13 @@
 // src/pages/Register.jsx
 import React, { useState } from 'react';
-// Impor icon yang dibutuhkan sesuai referensi
-import { User, Fingerprint, KeyRound, Hash, Lock, ChevronLeft } from 'lucide-react';
-// Impor Link untuk navigasi tanpa reload
+import { User, Fingerprint, KeyRound, Hash, Lock, ChevronLeft, Baby, School } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../utils/supabaseClient';
 
-// Komponen Input Reusable dipindah ke luar agar tidak kehilangan fokus saat mengetik
+// Komponen Input Reusable
 const InputField = ({ icon: Icon, placeholder, name, type = "text", value, onChange }) => (
   <div className="relative">
     <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-      {/* Gunakan warna abu-abu samar sesuai referensi */}
       <Icon className="h-5 w-5 text-slate-400" strokeWidth={1.5} />
     </div>
     <input
@@ -18,7 +16,6 @@ const InputField = ({ icon: Icon, placeholder, name, type = "text", value, onCha
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      // Style input disamakan dengan Login: Rounded besar, border samar
       className="w-full pl-16 pr-6 py-4 border border-gray-100 bg-slate-50 rounded-2xl text-lg placeholder:text-slate-400 focus:border-[#306896] focus:ring-1 focus:ring-[#306896] outline-none transition"
       required
     />
@@ -26,38 +23,92 @@ const InputField = ({ icon: Icon, placeholder, name, type = "text", value, onCha
 );
 
 const Register = () => {
-  // State untuk melacak role yang dipilih (default: GURU sesuai referensi image 1)
   const [selectedRole, setSelectedRole] = useState('GURU');
-  
-  // State untuk data form
+  const [loading, setLoading] = useState(false);
+
+  // State manajemen form terpusat
   const [formData, setFormData] = useState({
     namaLengkap: '',
     nip: '',
     token: '',
     nisn: '',
+    namaAnak: '',
+    kelompok: '',
     password: '',
   });
 
-  // Handler untuk perubahan input
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    // Logika integrasi backend registrasi di sini
-    console.log(`Mendaftar sebagai ${selectedRole}:`, formData);
+    setLoading(true);
+
+    try {
+      // 1. Siapkan payload data dasar
+      let payload = {
+        nama: formData.namaLengkap,
+        password: formData.password,
+        role: selectedRole.toLowerCase() 
+      };
+
+      // 2. Pemilahan Input Berdasarkan Kategori Akun
+      if (selectedRole === 'GURU') {
+        if (!formData.nip) throw new Error('NIP wajib diisi, Senior!');
+        if (!formData.token) throw new Error('Aktivasi Token wajib diisi, Senior!');
+        
+        payload.nip = formData.nip;
+        payload.token = formData.token;
+        payload.nisn = null; 
+        payload.nama_anak = null;
+        payload.kelompok = null;
+      } else {
+        if (!formData.nisn) throw new Error('NISN wajib diisi!');
+        if (!formData.namaAnak) throw new Error('Nama Anak wajib diisi!');
+        if (!formData.kelompok) throw new Error('Kelompok Belajar wajib diisi!');
+        
+        payload.nisn = formData.nisn;
+        payload.nama_anak = formData.namaAnak;
+        payload.kelompok = formData.kelompok;
+        payload.nip = null;   
+        payload.token = null; 
+      }
+
+      // 3. Tembak data langsung ke tabel 'users' di Cloud Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .insert([payload]);
+
+      if (error) throw error;
+
+      // 4. Notifikasi Berhasil Premium
+      alert(`✨ Barakallah, Registrasi Berhasil!\n\nAkun ${selectedRole === 'GURU' ? 'Guru' : 'Orang Tua'} atas nama "${formData.namaLengkap}" kini telah aktif dan terdaftar dengan aman di dalam sistem SITKA Cloud. Silakan kembali ke halaman login untuk masuk ke dashboard, Senior! 🫡🚀`);
+      
+      // Reset isian formulir
+      setFormData({
+        namaLengkap: '',
+        nip: '',
+        token: '',
+        nisn: '',
+        namaAnak: '',
+        kelompok: '',
+        password: '',
+      });
+
+    } catch (error) {
+      alert(`🔴 INTEGRASI GAGAL: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    // Container utama: Web Centering, Background Light
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      
-      {/* Card Register: Lebar max-w-2xl untuk tampilan Web agar tidak terlalu sempit */}
       <div className="bg-white p-8 md:p-14 rounded-[3rem] shadow-xl w-full max-w-2xl border border-gray-100 relative overflow-hidden">
         
-        {/* Tombol Kembali ke Login - Atas Kiri */}
+        {/* Tombol Kembali */}
         <Link 
           to="/" 
           className="absolute top-8 left-8 flex items-center gap-2 text-slate-400 hover:text-[#306896] transition font-bold text-xs tracking-widest uppercase"
@@ -66,7 +117,7 @@ const Register = () => {
           KEMBALI KE LOGIN
         </Link>
 
-        {/* Header Bagian: Jarak disesuaikan karena ada tombol kembali */}
+        {/* Header Title */}
         <div className="text-center mt-12 mb-12">
           <h1 className="text-4xl md:text-5xl font-extrabold text-[#0a1e36] tracking-tight mb-3">
             Daftar Akun
@@ -78,32 +129,24 @@ const Register = () => {
 
         <form onSubmit={handleRegister} className="space-y-8">
           
-          {/* Bagian Pilih Peran - Desain Tabbed seperti referensi */}
+          {/* Tab Selector Peran */}
           <div className="bg-slate-50 p-2 rounded-full border border-gray-100 grid grid-cols-2 gap-2 shadow-inner">
-            {/* Tombol Sebagai Guru */}
             <button
               type="button"
               onClick={() => setSelectedRole('GURU')}
               className={`py-3 px-5 rounded-full text-sm font-bold tracking-wider transition-all duration-300 flex items-center justify-center gap-2
-                ${selectedRole === 'GURU' 
-                  ? 'bg-white text-[#306896] shadow-md' // Aktif: Putih menonjol
-                  : 'text-slate-400 hover:text-gray-800' // Tidak Aktif
-                }
+                ${selectedRole === 'GURU' ? 'bg-white text-[#306896] shadow-md' : 'text-slate-400 hover:text-gray-800'}
               `}
             >
               <Fingerprint className={`h-4 w-4 ${selectedRole === 'GURU' ? 'opacity-100' : 'opacity-50'}`} />
               SEBAGAI GURU
             </button>
             
-            {/* Tombol Sebagai Orang Tua */}
             <button
               type="button"
               onClick={() => setSelectedRole('ORTU')}
               className={`py-3 px-5 rounded-full text-sm font-bold tracking-wider transition-all duration-300 flex items-center justify-center gap-2
-                ${selectedRole === 'ORTU' 
-                  ? 'bg-white text-[#306896] shadow-md' 
-                  : 'text-slate-400 hover:text-gray-800'
-                }
+                ${selectedRole === 'ORTU' ? 'bg-white text-[#306896] shadow-md' : 'text-slate-400 hover:text-gray-800'}
               `}
             >
               <User className={`h-4 w-4 ${selectedRole === 'ORTU' ? 'opacity-100' : 'opacity-50'}`} />
@@ -111,20 +154,17 @@ const Register = () => {
             </button>
           </div>
 
-          {/* Bagian Input Form - Dinamis berdasarkan Peran */}
+          {/* Kolom Form Input */}
           <div className="space-y-6">
-            {/* Input Umum: Nama Lengkap */}
             <InputField 
               icon={User} 
               name="namaLengkap"
               value={formData.namaLengkap}
               onChange={handleInputChange}
-              placeholder="Nama Lengkap" 
+              placeholder={selectedRole === 'GURU' ? "Nama Lengkap Guru" : "Nama Lengkap Wali / Orang Tua"} 
             />
 
-            {/* LOGIKA DINAMIS: Cek Role */}
             {selectedRole === 'GURU' ? (
-              // Tampilan khusus Guru
               <>
                 <InputField 
                   icon={Fingerprint} 
@@ -142,7 +182,6 @@ const Register = () => {
                 />
               </>
             ) : (
-              // Tampilan khusus Orang Tua
               <>
                 <InputField 
                   icon={Hash} 
@@ -151,24 +190,57 @@ const Register = () => {
                   onChange={handleInputChange}
                   placeholder="NISN Siswa" 
                 />
+                
+                {/* INPUT KHUSUS ORTU: NAMA ANAK */}
                 <InputField 
-                  icon={Lock} 
-                  name="password"
-                  value={formData.password}
+                  icon={Baby} 
+                  name="namaAnak"
+                  value={formData.namaAnak}
                   onChange={handleInputChange}
-                  type="password"
-                  placeholder="Password" 
+                  placeholder="Nama Lengkap Anak" 
                 />
+                
+                {/* INPUT DROPDOWN KHUSUS ORTU: HANYA DUA PILIHAN (A & B) */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+                    <School className="h-5 w-5 text-slate-400" strokeWidth={1.5} />
+                  </div>
+                  <select
+                    name="kelompok"
+                    value={formData.kelompok}
+                    onChange={handleInputChange}
+                    className="w-full pl-16 pr-12 py-4 border border-gray-100 bg-slate-50 rounded-2xl text-lg text-slate-700 outline-none focus:border-[#306896] focus:ring-1 focus:ring-[#306896] transition appearance-none cursor-pointer font-medium"
+                    required
+                  >
+                    <option value="" disabled className="text-slate-400">Pilih Kelompok Belajar Anak</option>
+                    <option value="Kelompok A">Kelompok A</option>
+                    <option value="Kelompok B">Kelompok B</option>
+                  </select>
+                  {/* Panah Custom Estetik */}
+                  <div className="absolute inset-y-0 right-0 pr-6 flex items-center pointer-events-none text-slate-400 text-xs">
+                    ▼
+                  </div>
+                </div>
               </>
             )}
+
+            <InputField 
+              icon={Lock} 
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              type="password"
+              placeholder="Password Baru" 
+            />
           </div>
 
-          {/* Tombol Daftar - Biru Solid seperti Login */}
+          {/* Tombol Eksekusi */}
           <button
             type="submit"
-            className="w-full bg-[#306896] hover:bg-[#25547a] text-white font-bold py-4 px-6 rounded-2xl text-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] transform"
+            disabled={loading}
+            className="w-full bg-[#306896] hover:bg-[#25547a] text-white font-bold py-4 px-6 rounded-2xl text-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-[0.98] transform disabled:opacity-50"
           >
-            Daftar Sekarang
+            {loading ? 'Menyimpan ke Cloud...' : 'Daftar Sekarang'}
           </button>
         </form>
 

@@ -4,12 +4,11 @@ import {
   LayoutDashboard, FileEdit, ClipboardCheck, 
   Image as ImageIcon, MessageSquare, LogOut, Menu, Bell, X, BarChart3
 } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 
-const GuruLayout = ({ children }) => {
+const GuruLayout = ({ children, onLogout, user }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   // State untuk mengontrol sidebar di tampilan mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -22,11 +21,11 @@ const GuruLayout = ({ children }) => {
     { name: 'Chat Ortu', icon: MessageSquare, path: '/guru/chat' },
   ];
 
-  // FUNGSI LOGOUT DENGAN POP-UP UNTUK GURU
+  // FUNGSI LOGOUT PREMIUM - SINKRON KE PUSAT APP.JSX
   const handleLogout = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
-      text: "Apakah yakin ingin keluar dari SITKA?",
+      text: "Apakah Senior yakin ingin keluar dari SITKA?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#306896', // Menyesuaikan warna tema Guru Layout
@@ -41,8 +40,8 @@ const GuruLayout = ({ children }) => {
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        // Proses logout
-        navigate('/'); 
+        // Jalankan pembersihan session & redirect dari pusat
+        onLogout(); 
       }
     });
   };
@@ -98,7 +97,7 @@ const GuruLayout = ({ children }) => {
           })}
         </nav>
 
-        {/* Footer Sidebar - Ganti Link ke Button */}
+        {/* Footer Sidebar - Tombol Keluar */}
         <div className="p-6 border-t border-gray-50">
           <button 
             onClick={handleLogout}
@@ -133,12 +132,17 @@ const GuruLayout = ({ children }) => {
             </button>
             
             <Link to="/guru/settings" className="flex items-center gap-3 md:gap-4 text-right group transition-all">
+              {/* 🔥 SEKARANG NAMA PROFIL SINKRON OTOMATIS DARI SUPABASE */}
               <div className="hidden sm:block">
-                <p className="text-sm font-bold text-[#0a1e36] group-hover:text-[#306896] transition-colors">Ibu Guru Ani</p>
-                <p className="text-[9px] font-black text-[#306896] tracking-widest uppercase">GURU MATEMATIKA</p>
+                <p className="text-sm font-bold text-[#0a1e36] group-hover:text-[#306896] transition-colors">
+                  {user?.nama || 'Pengajar SITKA'}
+                </p>
+                <p className="text-[9px] font-black text-[#306896] tracking-widest uppercase">
+                  {user?.role ? `TENAGA PENDIDIK ${user.role}` : 'GURU PAUD'}
+                </p>
               </div>
               <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-100 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-[#306896] border-2 border-white shadow-sm group-hover:scale-105 group-hover:shadow-md transition-all">
-                G
+                {user?.nama ? user.nama.charAt(0).toUpperCase() : 'G'}
               </div>
             </Link>
           </div>

@@ -1,27 +1,37 @@
-import React, { useState } from 'react';
+// src/pages/ortu/Laporan.jsx
+import React, { useState, useEffect } from 'react';
 import { 
   ClipboardList, Calendar, CheckCircle2, 
-  Clock, AlertCircle, FileText, BarChart3,
-  ChevronRight, Star, TrendingUp, UserCheck,
-  LayoutDashboard
+  Clock, AlertCircle, FileText, 
+  Star, TrendingUp, UserCheck, Baby
 } from 'lucide-react';
 
 const Laporan = () => {
   const [activeTab, setActiveTab] = useState('perkembangan');
   const [filterPeriode, setFilterPeriode] = useState('Harian');
+  const [parentData, setParentData] = useState(null);
 
-  // --- DATA DUMMY (Connect to Teacher's Input) ---
+  // Ambil data session Orang Tua yang login saat halaman dibuka
+  useEffect(() => {
+    const savedSession = localStorage.getItem('user_session');
+    if (savedSession) {
+      setParentData(JSON.parse(savedSession));
+    }
+  }, []);
+
+  // --- MENGAMBIL DATA PROFIL REALTIME DARI REGISTRASI ---
   const dataAnak = {
-    nama: "Aditya Pratama",
-    kelompok: "Kelompok A",
+    nama: parentData?.nama_anak || "Anak Didik SITKA",
+    kelompok: parentData?.kelompok || "Kelompok Belajar",
     stats: { hadir: 18, izin: 1, sakit: 1, alpa: 0 }
   };
 
+  // Data Dummy Laporan Perkembangan (Siap dikoneksikan ke input Guru nanti)
   const laporanPerkembangan = [
-    { id: 1, tanggal: '2026-04-22', tipe: 'Harian', status: 'Bahagia 😊', catatan: 'Aditya hari ini sangat aktif membantu teman merapikan mainan.', guru: 'Ibu Ani' },
-    { id: 2, tanggal: '2026-04-20', tipe: 'Harian', status: 'Istimewa 🌟', catatan: 'Berhasil menghafal doa makan dengan sangat lancar.', guru: 'Ibu Ani' },
-    { id: 3, tanggal: '2026-04-14', tipe: 'Mingguan', status: 'Sangat Baik', catatan: 'Menunjukkan kemajuan besar dalam koordinasi motorik halus (mewarnai).', guru: 'Ibu Ani' },
-    { id: 4, tanggal: '2026-03-30', tipe: 'Quartal', status: 'Melampaui Harapan', catatan: 'Secara keseluruhan Aditya menunjukkan kemandirian yang sangat baik di semester awal ini.', guru: 'Ibu Ani' },
+    { id: 1, tanggal: '2026-04-22', tipe: 'Harian', status: 'Bahagia 😊', catatan: `${dataAnak.nama.split(' ')[0]} hari ini sangat aktif membantu teman merapikan mainan setelah jam istirahat selesai.`, guru: 'Ibu Ani, S.Pd' },
+    { id: 2, tanggal: '2026-04-20', tipe: 'Harian', status: 'Istimewa 🌟', catatan: 'Berhasil menghafal doa makan dan doa belajar dengan sangat lancar dan penuh percaya diri.', guru: 'Ibu Ani, S.Pd' },
+    { id: 3, tanggal: '2026-04-14', tipe: 'Mingguan', status: 'Sangat Baik', catatan: `Menunjukkan kemajuan besar dalam koordinasi motorik halus (mewarnai di dalam garis) dan fokus mendengarkan cerita.`, guru: 'Ibu Ani, S.Pd' },
+    { id: 4, tanggal: '2026-03-30', tipe: 'Quartal', status: 'Melampaui Harapan', catatan: `Secara keseluruhan ${dataAnak.nama.split(' ')[0]} menunjukkan kemandirian dan rasa empati yang sangat baik di triwulan awal ini.`, guru: 'Ibu Ani, S.Pd' },
   ];
 
   const riwayatAbsensi = [
@@ -34,32 +44,32 @@ const Laporan = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       
-      {/* --- 1. HEADER PROFILE ANAK --- */}
+      {/* --- 1. HEADER PROFILE ANAK (DINAMIS SINKRON CLOUD) --- */}
       <div className="bg-[#0a1e36] p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-[2rem] flex items-center justify-center border border-white/20 shadow-xl">
-              <span className="text-3xl font-black text-white">A</span>
+              <Baby size={36} className="text-amber-400" />
             </div>
             <div>
-              <h2 className="text-2xl font-black">{dataAnak.nama}</h2>
+              <h2 className="text-2xl font-black tracking-tight">{dataAnak.nama}</h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-500/20">
                   {dataAnak.kelompok}
                 </span>
                 <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
-                  Aktif
+                  Siswa Aktif
                 </span>
               </div>
             </div>
           </div>
           
           <div className="flex gap-4 w-full md:w-auto">
-            <div className="flex-1 bg-white/5 p-4 rounded-2xl border border-white/5 text-center backdrop-blur-sm">
+            <div className="flex-1 bg-white/5 p-4 rounded-2xl border border-white/5 text-center backdrop-blur-sm min-w-[100px]">
               <p className="text-[10px] font-black uppercase text-indigo-300 mb-1 tracking-tighter">Kehadiran</p>
               <p className="text-xl font-black">{((dataAnak.stats.hadir / 20) * 100).toFixed(0)}%</p>
             </div>
-            <div className="flex-1 bg-white/5 p-4 rounded-2xl border border-white/5 text-center backdrop-blur-sm">
+            <div className="flex-1 bg-white/5 p-4 rounded-2xl border border-white/5 text-center backdrop-blur-sm min-w-[100px]">
               <p className="text-[10px] font-black uppercase text-indigo-300 mb-1 tracking-tighter">Laporan Baru</p>
               <p className="text-xl font-black">2</p>
             </div>
@@ -110,7 +120,7 @@ const Laporan = () => {
             ].map((stats) => (
               <div key={stats.label} className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm border-b-4 border-b-slate-100">
                 <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">{stats.label} {filterPeriode}</p>
-                <p className={`text-lg font-black text-slate-700`}>{stats.val}</p>
+                <p className="text-lg font-black text-slate-700">{stats.val}</p>
               </div>
             ))}
           </div>
@@ -180,20 +190,35 @@ const Laporan = () => {
               { label: 'Total Hadir', val: dataAnak.stats.hadir, color: 'emerald', icon: CheckCircle2, desc: 'Hari efektif' },
               { label: 'Izin / Sakit', val: dataAnak.stats.izin + dataAnak.stats.sakit, color: 'blue', icon: Clock, desc: 'Dengan keterangan' },
               { label: 'Tanpa Berita', val: dataAnak.stats.alpa, color: 'rose', icon: AlertCircle, desc: 'Perlu konfirmasi' },
-            ].map(s => (
-              <div key={s.label} className="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-100 transition-all">
-                <div className="flex items-center gap-4">
-                  <div className={`p-4 bg-${s.color}-50 text-${s.color}-600 rounded-[1.2rem] group-hover:scale-110 transition-transform`}>
-                    <s.icon size={24} />
+            ].map(s => {
+              const IconComponent = s.icon;
+              // Set warna dinamis yang aman dari purging Tailwind CSS
+              const colorClasses = {
+                emerald: 'bg-emerald-50 text-emerald-600',
+                blue: 'bg-blue-50 text-blue-600',
+                rose: 'bg-rose-50 text-rose-600'
+              };
+              const textColors = {
+                emerald: 'text-emerald-600',
+                blue: 'text-blue-600',
+                rose: 'text-rose-600'
+              };
+
+              return (
+                <div key={s.label} className="bg-white p-7 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-indigo-100 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-4 rounded-[1.2rem] group-hover:scale-110 transition-transform ${colorClasses[s.color]}`}>
+                      <IconComponent size={24} />
+                    </div>
+                    <div>
+                      <span className="font-black text-[#0a1e36] text-sm block leading-none mb-1">{s.label}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.desc}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-black text-[#0a1e36] text-sm block leading-none mb-1">{s.label}</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.desc}</span>
-                  </div>
+                  <span className={`text-3xl font-black ${textColors[s.color]}`}>{s.val}</span>
                 </div>
-                <span className={`text-3xl font-black text-${s.color}-600`}>{s.val}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="lg:col-span-2 bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
