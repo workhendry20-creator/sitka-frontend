@@ -5,61 +5,62 @@ import {
   CheckCircle2, Clock, AlertCircle, Layers, ChevronDown 
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { supabase } from '../../utils/supabaseClient';
 
 const ReportGuru = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedKelompok, setSelectedKelompok] = useState("A"); // Default Kelompok A
+  const [selectedKelompok, setSelectedKelompok] = useState("Kelompok A"); 
   const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // --- DATA MASTER SISWA PER KELOMPOK ---
-  const dataSiswa = {
-    A: [
-      { id: 101, namaSiswa: "Aditya Pratama", namaOrtu: "Mama Aditya" },
-      { id: 102, namaSiswa: "Budi Santoso", namaOrtu: "Ayah Budi" },
-      { id: 103, namaSiswa: "Rara Anindya", namaOrtu: "Bunda Rara" },
-    ],
-    B: [
-      { id: 201, namaSiswa: "Siti Aminah", namaOrtu: "Bunda Siti" },
-      { id: 202, namaSiswa: "Farhan Malik", namaOrtu: "Papa Farhan" },
-      { id: 203, namaSiswa: "Dina Lestari", namaOrtu: "Mama Dina" },
-    ]
-  };
-
+  // --- AMBIL DATA PROGRESS SISWA LANGSUNG DARI SUPABASE ---
   useEffect(() => {
-    const rawData = localStorage.getItem('sitka_progress_data');
-    const currentSiswa = dataSiswa[selectedKelompok];
+    fetchProgressSiswa();
+  }, [selectedKelompok]);
 
-    if (rawData) {
-      const parsedData = JSON.parse(rawData);
-      
-      const updatedReports = currentSiswa.map(siswa => {
-        // Simulasi: Kita hubungkan data localStorage ke Aditya (Kelompok A) atau Siti (Kelompok B) 
-        // untuk testing real-time
-        if (siswa.namaSiswa === "Aditya Pratama" || (selectedKelompok === 'B' && siswa.namaSiswa === "Siti Aminah")) {
-          return {
-            ...siswa,
-            status: "Sudah Mengisi",
-            totalSkor: `${parsedData.totalSkor}%`,
-            tanggal: parsedData.tanggal,
-            catatan: parsedData.catatan,
-            detailProgress: parsedData.items
-          };
-        }
-        return { ...siswa, status: "Belum Mengisi", totalSkor: "-", tanggal: "-", detailProgress: [], catatan: "-" };
-      });
-      setReports(updatedReports);
-    } else {
-      setReports(currentSiswa.map(s => ({ ...s, status: "Belum Mengisi", totalSkor: "-", tanggal: "-", detailProgress: [], catatan: "-" })));
+  const fetchProgressSiswa = async () => {
+    setLoading(true);
+    try {
+      // Menarik data siswa (role ortu) berdasarkan filter kelompok yang dipilih guru
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, nama, nama_anak, kelompok')
+        .eq('role', 'ortu')
+        .eq('kelompok', selectedKelompok)
+        .order('nama_anak', { ascending: true });
+
+      if (error) throw error;
+
+      // Map data Supabase ke state laporan. 
+      // Catatan: Karena kita belum membuat integrasi tabel submisi fisik ortu, 
+      // kita set status default ke 'Belum Mengisi' namun data nama anak dan ortu 100% akurat dari database.
+      const mappedReports = data.map(siswa => ({
+        id: siswa.id,
+        namaSiswa: siswa.nama_anak,
+        namaOrtu: siswa.nama, // Kolom 'nama' adalah nama akun Wali/Ortu
+        status: "Belum Mengisi", // Siap dikoneksikan ke tabel progress kelak
+        totalSkor: "-",
+        tanggal: "-",
+        catatan: "-",
+        detailProgress: []
+      }));
+
+      setReports(mappedReports);
+    } catch (err) {
+      console.error("Gagal memuat monitoring progress siswa:", err.message);
+    } finally {
+      setLoading(false);
     }
-  }, [selectedKelompok]); // Reload data saat dropdown kelompok berubah
+  };
 
   const showDetailModal = (siswa) => {
     if (siswa.status === "Belum Mengisi") {
       return Swal.fire({
         title: 'Data Belum Tersedia',
-        text: `Orang tua ${siswa.namaSiswa} belum mengirimkan laporan.`,
+        text: `Orang tua dari ${siswa.namaSiswa} belum mengirimkan formulir laporan berkala via aplikasi.`,
         icon: 'info',
-        confirmButtonColor: '#0a1e36'
+        confirmButtonColor: '#0a1e36',
+        customClass: { popup: 'rounded-[2rem]' }
       });
     }
 
@@ -82,7 +83,7 @@ const ReportGuru = () => {
     `).join('');
 
     Swal.fire({
-      title: `<div class="text-left"><p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Rincian Progress Kelompok ${selectedKelompok}</p><h3 class="text-xl font-black text-[#0a1e36]">${siswa.namaSiswa}</h3></div>`,
+      title: `<div class="text-left"><p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Rincian Progress ${selectedKelompok}</p><h3 class="text-xl font-black text-[#0a1e36]">${siswa.namaSiswa}</h3></div>`,
       html: `<div class="max-h-[60vh] overflow-y-auto pr-2 text-left">
         <div class="bg-indigo-50 p-4 rounded-2xl mb-4 border border-indigo-100">
           <p class="text-[10px] font-black text-indigo-400 uppercase mb-1">Catatan Orang Tua</p>
@@ -97,7 +98,7 @@ const ReportGuru = () => {
   };
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-8 pb-20 text-left">
       {/* HEADER */}
       <div className="bg-[#0a1e36] p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -107,12 +108,12 @@ const ReportGuru = () => {
                <h2 className="text-3xl font-black italic tracking-tight">Monitoring Progress</h2>
             </div>
             <p className="text-indigo-200 text-sm font-medium opacity-80 max-w-lg leading-relaxed">
-              Pantau perkembangan siswa berdasarkan kelompok belajar masing-masing.
+              Pantau rekam jejak perkembangan kompetensi anak didik berdasarkan kelompok belajar masing-masing secara realtime.
             </p>
           </div>
 
           {/* DROPDOWN KELOMPOK */}
-          <div className="relative w-full md:w-48 group">
+          <div className="relative w-full md:w-56 group">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none">
               <Layers size={18} />
             </div>
@@ -121,8 +122,8 @@ const ReportGuru = () => {
               onChange={(e) => setSelectedKelompok(e.target.value)}
               className="w-full pl-12 pr-10 py-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-sm font-black appearance-none cursor-pointer transition-all focus:ring-2 focus:ring-emerald-500 outline-none"
             >
-              <option value="A" className="text-[#0a1e36]">Kelompok A</option>
-              <option value="B" className="text-[#0a1e36]">Kelompok B</option>
+              <option value="Kelompok A" className="text-[#0a1e36]">Kelompok A</option>
+              <option value="Kelompok B" className="text-[#0a1e36]">Kelompok B</option>
             </select>
             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none">
               <ChevronDown size={18} />
@@ -132,64 +133,82 @@ const ReportGuru = () => {
         <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px]"></div>
       </div>
 
-      {/* SEARCH */}
+      {/* SEARCH BAR */}
       <div className="px-2">
         <div className="relative max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input 
             type="text" 
-            placeholder={`Cari siswa di Kelompok ${selectedKelompok}...`}
+            placeholder={`Cari nama anak didik di ${selectedKelompok}...`}
             className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl text-sm font-bold shadow-sm focus:ring-2 focus:ring-indigo-600 transition-all"
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      {/* CARDS LIST */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {reports.filter(d => d.namaSiswa.toLowerCase().includes(searchTerm.toLowerCase())).map((item) => (
-          <div 
-            key={item.id}
-            onClick={() => showDetailModal(item)}
-            className={`p-6 rounded-[2.5rem] border transition-all cursor-pointer group flex items-center justify-between ${
-              item.status === 'Sudah Mengisi' 
-              ? 'bg-white border-slate-100 hover:border-emerald-400 hover:shadow-xl' 
-              : 'bg-slate-50 border-dashed border-slate-200 opacity-60'
-            }`}
-          >
-            <div className="flex items-center gap-5">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner ${
-                item.status === 'Sudah Mengisi' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-400'
-              }`}>
-                {item.status === 'Sudah Mengisi' ? <CheckCircle2 size={28} /> : <User size={28} />}
-              </div>
-              <div>
-                <h4 className="font-black text-[#0a1e36] text-lg group-hover:text-emerald-600 transition-colors">{item.namaSiswa}</h4>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.namaOrtu}</span>
-                  <div className={`px-2 py-0.5 rounded-md text-[8px] font-black bg-slate-100 text-slate-400`}>KELOMPOK {selectedKelompok}</div>
+      {/* CARDS LIST MONITORING */}
+      {loading ? (
+        <div className="text-center py-20 font-bold text-[#0a1e36] animate-pulse">
+          Sinkronisasi berkas progress murid...
+        </div>
+      ) : reports.length === 0 ? (
+        <div className="text-center py-16 text-slate-400 border border-dashed rounded-[2.5rem]">
+          Belum ada anak didik terdaftar di {selectedKelompok} dalam database Cloud.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {reports
+            .filter(d => d.namaSiswa.toLowerCase().includes(searchTerm.toLowerCase()))
+            .map((item) => (
+              <div 
+                key={item.id}
+                onClick={() => showDetailModal(item)}
+                className={`p-6 rounded-[2.5rem] border transition-all cursor-pointer group flex items-center justify-between ${
+                  item.status === 'Sudah Mengisi' 
+                  ? 'bg-white border-slate-100 hover:border-emerald-400 hover:shadow-xl' 
+                  : 'bg-slate-50 border-dashed border-slate-200 opacity-70 hover:opacity-100 hover:bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-5">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner ${
+                    item.status === 'Sudah Mengisi' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-400'
+                  }`}>
+                    {item.status === 'Sudah Mengisi' ? <CheckCircle2 size={28} /> : <User size={28} />}
+                  </div>
+                  <div>
+                    <h4 className="font-black text-[#0a1e36] text-lg group-hover:text-indigo-600 transition-colors">
+                      {item.namaSiswa}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Wali: {item.namaOrtu}
+                      </span>
+                      <div className="px-2 py-0.5 rounded-md text-[8px] font-black bg-slate-100 text-slate-500 uppercase">
+                        {selectedKelompok}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="text-right">
-              {item.status === 'Sudah Mengisi' ? (
-                <div className="flex flex-col items-end gap-1">
-                   <div className="text-emerald-600 font-black text-2xl italic flex items-center gap-1">
-                      {item.totalSkor} <ArrowUpRight size={16}/>
-                   </div>
-                   <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{item.tanggal}</span>
+                <div className="text-right">
+                  {item.status === 'Sudah Mengisi' ? (
+                    <div className="flex flex-col items-end gap-1">
+                       <div className="text-emerald-600 font-black text-2xl italic flex items-center gap-1">
+                          {item.totalSkor} <ArrowUpRight size={16}/>
+                       </div>
+                       <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{item.tanggal}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-end opacity-40 group-hover:opacity-100 transition-opacity">
+                      <Clock size={20} className="text-amber-500" />
+                      <span className="text-[8px] font-black uppercase mt-1 text-slate-400 tracking-tighter">Belum Ada</span>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex flex-col items-end opacity-30">
-                  <Clock size={20} className="text-slate-400" />
-                  <span className="text-[8px] font-black uppercase mt-1 text-slate-400">Menunggu</span>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+              </div>
+            ))}
+        </div>
+      )}
     </div>
   );
 };

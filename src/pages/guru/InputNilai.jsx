@@ -1,10 +1,11 @@
 // src/pages/guru/InputNilai.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ClipboardCheck, Calendar, Users, 
   Save, User, Download, FileText, ChevronDown, BookOpen
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { supabase } from '../../utils/supabaseClient';
 
 const InputNilai = () => {
   // --- STATE UTAMA ---
@@ -13,23 +14,10 @@ const InputNilai = () => {
   const [kelompok, setKelompok] = useState('Kelompok A');
   const [selectedSemester, setSelectedSemester] = useState('1 (Ganjil)');
   const [selectedSiswaId, setSelectedSiswaId] = useState(''); 
+  const [loading, setLoading] = useState(false);
 
-  // Data Master Siswa (Initial State)
-  const initialData = {
-    'Kelompok A': [
-      { id: 1, nama: "Aditya Pratama", emoji: '😊', label: 'Bahagia', catatan: "", nilaiSemester: {}, rekomendasi: "" },
-      { id: 2, nama: "Salsa Bella", emoji: '😊', label: 'Bahagia', catatan: "", nilaiSemester: {}, rekomendasi: "" },
-      { id: 3, nama: "Rizky Fauzan", emoji: '😊', label: 'Bahagia', catatan: "", nilaiSemester: {}, rekomendasi: "" },
-    ],
-    'Kelompok B': [
-      { id: 4, nama: "Budi Junior", emoji: '😊', label: 'Bahagia', catatan: "", nilaiSemester: {}, rekomendasi: "" },
-      { id: 5, nama: "Citra Lestari", emoji: '😊', label: 'Bahagia', catatan: "", nilaiSemester: {}, rekomendasi: "" },
-      { id: 6, nama: "Dedi Irawan", emoji: '😊', label: 'Bahagia', catatan: "", nilaiSemester: {}, rekomendasi: "" },
-    ]
-  };
-
-  // State untuk data yang sedang di-input di form
-  const [anekdotSiswa, setAnekdotSiswa] = useState(initialData['Kelompok A']);
+  // State Dinamis Penampung Anak Didik dari Database Supabase
+  const [anekdotSiswa, setAnekdotSiswa] = useState([]);
   
   // State untuk Rekapitulasi Global
   const [rekapData, setRekapData] = useState([]);
@@ -81,17 +69,53 @@ const InputNilai = () => {
     }
   ];
 
+  // --- EFEK TARIK DATA REALTIME DARI CLOUD ---
+  useEffect(() => {
+    fetchSiswaByKelompok();
+  }, [kelompok, tanggal]); // Setiap kelompok atau tanggal berubah, tarik ulang data ter-update
+
+  const fetchSiswaByKelompok = async () => {
+    setLoading(true);
+    try {
+      // Ambil data users dengan role 'ortu' dan filter berdasarkan Kelompok kelas terpilih
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, nama_anak, kelompok')
+        .eq('role', 'ortu')
+        .eq('kelompok', kelompok)
+        .order('nama_anak', { ascending: true });
+
+      if (error) throw error;
+
+      // Map format agar sesuai struktur penilaian state komponen React Senior
+      const formattedSiswa = data.map(siswa => {
+        // Cari dulu apakah di rekap lokal sudah ada inputan agar tidak hilang saat ganti filter
+        const existingInRekap = rekapData.find(r => r.id === siswa.id && r.kelompok === kelompok && r.tanggal === tanggal);
+        
+        return {
+          id: siswa.id,
+          nama: siswa.nama_anak, // Menampilkan nama anaknya langsung, bukan nama ortunya
+          emoji: existingInRekap ? existingInRekap.emoji : '😊',
+          label: existingInRekap ? existingInRekap.label : 'Bahagia',
+          catatan: existingInRekap ? existingInRekap.catatan : "",
+          nilaiSemester: existingInRekap ? existingInRekap.nilaiSemester : {},
+          rekomendasi: existingInRekap ? existingInRekap.rekomendasi : ""
+        };
+      });
+
+      setAnekdotSiswa(formattedSiswa);
+    } catch (err) {
+      console.error("Gagal menarik data siswa dari Supabase:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // --- HANDLER FUNCTIONS ---
 
   const handleGantiKelompok = (klp) => {
     setKelompok(klp);
     setSelectedSiswaId(''); 
-    const existing = rekapData.filter(s => s.kelompok === klp && s.tanggal === tanggal);
-    if (existing.length > 0) {
-      setAnekdotSiswa(existing);
-    } else {
-      setAnekdotSiswa(initialData[klp]);
-    }
   };
 
   const updateSiswa = (id, field, value, extra = null) => {
@@ -140,7 +164,7 @@ const InputNilai = () => {
     Swal.fire({
       icon: 'success',
       title: 'Tersimpan ke Rekap!',
-      text: `Data ${inputType} berhasil direkam ke tabel rekap.`,
+      text: `Data ${inputType} berhasil direkam ke tabel rekap lokal.`,
       confirmButtonColor: '#4f46e5'
     });
   };
@@ -169,7 +193,7 @@ const InputNilai = () => {
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 text-left">
       
-      {/* --- HEADER SECTION (Tombol Simpan Di Sini Sudah Dihapus) --- */}
+      {/* --- HEADER SECTION --- */}
       <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           
@@ -179,7 +203,7 @@ const InputNilai = () => {
             </div>
             <div>
               <h2 className="text-2xl font-black text-[#0a1e36]">Input Nilai</h2>
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Panel Evaluasi Guru</p>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Panel Evaluasi Guru ({kelompok})</p>
             </div>
           </div>
 
@@ -201,7 +225,7 @@ const InputNilai = () => {
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
             </div>
 
-            {/* Dropdown Siswa */}
+            {/* Dropdown Siswa DINAMIS CLOUD */}
             {inputType === 'Semester' && (
               <div className="relative">
                 <select 
@@ -257,164 +281,178 @@ const InputNilai = () => {
         </div>
       </div>
 
-      {/* --- FORM CONDITION 1: INPUT HARIAN --- */}
-      {inputType === 'Harian' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-6">
-            {anekdotSiswa.map((siswa) => (
-              <div key={siswa.id} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col md:flex-row gap-6 items-start group hover:border-indigo-200 transition-all">
-                <div className="flex items-center gap-4 min-w-[200px]">
-                  <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                    {siswa.nama.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-[#0a1e36]">{siswa.nama}</h4>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{kelompok}</p>
-                  </div>
+      {/* --- REFRESH LOADING INDICATOR --- */}
+      {loading ? (
+        <div className="text-center py-12 font-bold text-indigo-600 animate-pulse">
+           Sedang menarik data anak didik terbaru dari database SITKA...
+        </div>
+      ) : (
+        <>
+          {/* --- FORM CONDITION 1: INPUT HARIAN --- */}
+          {inputType === 'Harian' && (
+            <div className="space-y-6">
+              {anekdotSiswa.length === 0 ? (
+                <div className="bg-white p-12 rounded-[2.5rem] text-center text-slate-400 border border-dashed">
+                  Belum ada data siswa terdaftar di {kelompok} pada database Cloud.
                 </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-6">
+                  {anekdotSiswa.map((siswa) => (
+                    <div key={siswa.id} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col md:flex-row gap-6 items-start group hover:border-indigo-200 transition-all">
+                      <div className="flex items-center gap-4 min-w-[200px]">
+                        <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                          {siswa.nama ? siswa.nama.charAt(0) : 'S'}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-[#0a1e36]">{siswa.nama}</h4>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{kelompok}</p>
+                        </div>
+                      </div>
 
-                {/* Emoji Picker */}
-                <div className="flex gap-2 p-2 bg-slate-50 rounded-[1.5rem]">
-                  {[
-                    { emo: '😊', label: 'Bahagia' },
-                    { emo: '😐', label: 'Tenang' },
-                    { emo: '😢', label: 'Sedih' },
-                    { emo: '🌟', label: 'Istimewa' }
-                  ].map((item) => (
-                    <button
-                      key={item.emo}
-                      type="button"
-                      onClick={() => updateSiswa(siswa.id, 'emoji', item.emo, item.label)}
-                      className={`flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all ${
-                        siswa.emoji === item.emo 
-                        ? 'bg-white shadow-md scale-105 border-b-4 border-indigo-500' 
-                        : 'opacity-40 hover:opacity-100 hover:bg-white/50'
-                      }`}
-                    >
-                      <span className="text-2xl">{item.emo}</span>
-                      <span className={`text-[8px] font-black uppercase mt-1 ${siswa.emoji === item.emo ? 'text-indigo-600' : 'text-slate-500'}`}>
-                        {item.label}
-                      </span>
-                    </button>
+                      {/* Emoji Picker */}
+                      <div className="flex gap-2 p-2 bg-slate-50 rounded-[1.5rem]">
+                        {[
+                          { emo: '😊', label: 'Bahagia' },
+                          { emo: '😐', label: 'Tenang' },
+                          { emo: '😢', label: 'Sedih' },
+                          { emo: '🌟', label: 'Istimewa' }
+                        ].map((item) => (
+                          <button
+                            key={item.emo}
+                            type="button"
+                            onClick={() => updateSiswa(siswa.id, 'emoji', item.emo, item.label)}
+                            className={`flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all ${
+                              siswa.emoji === item.emo 
+                              ? 'bg-white shadow-md scale-105 border-b-4 border-indigo-500' 
+                              : 'opacity-40 hover:opacity-100 hover:bg-white/50'
+                            }`}
+                          >
+                            <span className="text-2xl">{item.emo}</span>
+                            <span className={`text-[8px] font-black uppercase mt-1 ${siswa.emoji === item.emo ? 'text-indigo-600' : 'text-slate-500'}`}>
+                              {item.label}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+
+                      <textarea
+                        placeholder={`Tulis catatan harian untuk ${siswa.nama}...`}
+                        value={siswa.catatan}
+                        onChange={(e) => updateSiswa(siswa.id, 'catatan', e.target.value)}
+                        className="flex-1 w-full p-4 bg-slate-50 border-none rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 min-h-[85px] resize-none"
+                      />
+                    </div>
                   ))}
                 </div>
+              )}
 
-                <textarea
-                  placeholder={`Tulis catatan harian untuk ${siswa.nama}...`}
-                  value={siswa.catatan}
-                  onChange={(e) => updateSiswa(siswa.id, 'catatan', e.target.value)}
-                  className="flex-1 w-full p-4 bg-slate-50 border-none rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 min-h-[85px] resize-none"
-                />
-              </div>
-            ))}
-          </div>
+              <button 
+                onClick={handleSaveToRekap} 
+                disabled={anekdotSiswa.length === 0}
+                className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:bg-slate-300"
+              >
+                <Save size={16} /> Simpan Seluruh Catatan Harian Ke Rekap
+              </button>
+            </div>
+          )}
 
-          {/* BUTTON SUBMIT DI BAWAH (KHUSUS HARIAN) */}
-          <button 
-            onClick={handleSaveToRekap} 
-            className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-          >
-            <Save size={16} /> Simpan Seluruh Catatan Harian Ke Rekap
-          </button>
-        </div>
-      )}
-
-      {/* --- FORM CONDITION 2: INPUT SEMESTER --- */}
-      {inputType === 'Semester' && (
-        selectedSiswaId ? (
-          <div className="space-y-6">
-            <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-md space-y-6">
-              
-              {/* Identitas Siswa */}
-              <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
-                <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-lg shadow-md shadow-indigo-100">
-                  {currentSelectedSiswa?.nama.charAt(0)}
-                </div>
-                <div>
-                  <h3 className="text-xl font-black text-[#0a1e36]">{currentSelectedSiswa?.nama}</h3>
-                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
-                    Lembar Kuesioner Rapot Capaian {selectedSemester} ({kelompok})
-                  </p>
-                </div>
-              </div>
-
-              {/* Render Kategori */}
+          {/* --- FORM CONDITION 2: INPUT SEMESTER --- */}
+          {inputType === 'Semester' && (
+            selectedSiswaId ? (
               <div className="space-y-6">
-                {parameterAkademik.map((kat, kIdx) => (
-                  <div key={kIdx} className="border border-slate-100 rounded-2xl overflow-hidden shadow-inner">
-                    <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
-                      <BookOpen size={16} className="text-indigo-600" />
-                      <span className="text-[10px] font-black text-[#0a1e36] tracking-wider uppercase">{kat.kategori}</span>
+                <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-md space-y-6">
+                  
+                  {/* Identitas Siswa */}
+                  <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
+                    <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-lg shadow-md shadow-indigo-100">
+                      {currentSelectedSiswa?.nama ? currentSelectedSiswa.nama.charAt(0) : 'S'}
                     </div>
-
-                    <div className="divide-y divide-slate-50">
-                      {kat.indikator.map((ind) => (
-                        <div key={ind.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <p className="text-xs font-bold text-slate-600 max-w-xl">{ind.teks}</p>
-                          
-                          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl self-end sm:self-center">
-                            {[
-                              { key: 'BM', name: 'Belum Muncul' },
-                              { key: 'MM', name: 'Mulai Muncul' },
-                              { key: 'BSH', name: 'Sesuai Harapan' },
-                              { key: 'BSB', name: 'Sangat Baik' }
-                            ].map((skala) => (
-                              <button
-                                key={skala.key}
-                                type="button"
-                                title={skala.name}
-                                onClick={() => updateSkorSemesterSiswa(currentSelectedSiswa.id, ind.id, skala.key)}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
-                                  currentSelectedSiswa?.nilaiSemester?.[ind.id] === skala.key
-                                    ? 'bg-[#0a1e36] text-white shadow-sm'
-                                    : 'bg-white text-slate-400 hover:text-slate-600'
-                                }`}
-                              >
-                                {skala.key}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
+                    <div>
+                      <h3 className="text-xl font-black text-[#0a1e36]">{currentSelectedSiswa?.nama}</h3>
+                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+                        Lembar Kuesioner Rapot Capaian {selectedSemester} ({kelompok})
+                      </p>
                     </div>
                   </div>
-                ))}
+
+                  {/* Render Kategori */}
+                  <div className="space-y-6">
+                    {parameterAkademik.map((kat, kIdx) => (
+                      <div key={kIdx} className="border border-slate-100 rounded-2xl overflow-hidden shadow-inner">
+                        <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
+                          <BookOpen size={16} className="text-indigo-600" />
+                          <span className="text-[10px] font-black text-[#0a1e36] tracking-wider uppercase">{kat.kategori}</span>
+                        </div>
+
+                        <div className="divide-y divide-slate-50">
+                          {kat.indikator.map((ind) => (
+                            <div key={ind.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <p className="text-xs font-bold text-slate-600 max-w-xl">{ind.teks}</p>
+                              
+                              <div className="flex gap-1 bg-slate-100 p-1 rounded-xl self-end sm:self-center">
+                                {[
+                                  { key: 'BM', name: 'Belum Muncul' },
+                                  { key: 'MM', name: 'Mulai Muncul' },
+                                  { key: 'BSH', name: 'Sesuai Harapan' },
+                                  { key: 'BSB', name: 'Sangat Baik' }
+                                ].map((skala) => (
+                                  <button
+                                    key={skala.key}
+                                    type="button"
+                                    title={skala.name}
+                                    onClick={() => updateSkorSemesterSiswa(currentSelectedSiswa.id, ind.id, skala.key)}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
+                                      currentSelectedSiswa?.nilaiSemester?.[ind.id] === skala.key
+                                        ? 'bg-[#0a1e36] text-white shadow-sm'
+                                        : 'bg-white text-slate-400 hover:text-slate-600'
+                                    }`}
+                                  >
+                                    {skala.key}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Catatan Rekomendasi */}
+                  <div className="space-y-2 pt-2">
+                    <label className="text-[10px] font-black text-[#0a1e36] uppercase tracking-wider block">
+                      Rekomendasi Pendidik / Catatan Akhir Semester untuk {currentSelectedSiswa?.nama}
+                    </label>
+                    <textarea 
+                      placeholder="Alhamdulillah ananda berkembang sangat baik dalam nilai agama & moral. Ananda mulai menunjukkan kemandirian..."
+                      value={currentSelectedSiswa?.rekomendasi || ""}
+                      onChange={(e) => updateSiswa(currentSelectedSiswa.id, 'rekomendasi', e.target.value)}
+                      className="w-full p-4 bg-slate-50 border-none rounded-2xl text-xs font-medium italic outline-none focus:ring-2 focus:ring-indigo-500 min-h-[90px]"
+                    />
+                  </div>
+
+                </div>
+
+                <button 
+                  onClick={handleSaveToRekap} 
+                  className="w-full py-5 bg-emerald-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <Save size={16} /> Simpan Rapot Semester {currentSelectedSiswa?.nama} Ke Rekap
+                </button>
               </div>
-
-              {/* Catatan Rekomendasi */}
-              <div className="space-y-2 pt-2">
-                <label className="text-[10px] font-black text-[#0a1e36] uppercase tracking-wider block">
-                  Rekomendasi Pendidik / Catatan Akhir Semester untuk {currentSelectedSiswa?.nama}
-                </label>
-                <textarea 
-                  placeholder="Alhamdulillah ananda berkembang sangat baik dalam nilai agama & moral. Ananda mulai menunjukkan kemandirian..."
-                  value={currentSelectedSiswa?.rekomendasi || ""}
-                  onChange={(e) => updateSiswa(currentSelectedSiswa.id, 'rekomendasi', e.target.value)}
-                  className="w-full p-4 bg-slate-50 border-none rounded-2xl text-xs font-medium italic outline-none focus:ring-2 focus:ring-indigo-500 min-h-[90px]"
-                />
+            ) : (
+              <div className="bg-white p-16 rounded-[3rem] text-center border border-dashed border-slate-200">
+                 <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <User size={28} />
+                 </div>
+                 <h4 className="text-base font-black text-[#0a1e36] uppercase tracking-wider">Lembar Evaluasi Semester</h4>
+                 <p className="text-slate-400 text-xs mt-1 max-w-sm mx-auto">
+                    Silakan klik tombol <span className="text-indigo-600 font-bold">"-- Pilih Anak Didik --"</span> di barisan menu atas untuk membuka berkas kuesioner rapot fisik PAUD.
+                  </p>
               </div>
-
-            </div>
-
-            {/* BUTTON SUBMIT DI BAWAH REKOMENDASI (Sesuai update yang Senior minta) */}
-            <button 
-              onClick={handleSaveToRekap} 
-              className="w-full py-5 bg-emerald-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              <Save size={16} /> Simpan Rapot Semester {currentSelectedSiswa?.nama} Ke Rekap
-            </button>
-          </div>
-        ) : (
-          <div className="bg-white p-16 rounded-[3rem] text-center border border-dashed border-slate-200">
-             <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <User size={28} />
-             </div>
-             <h4 className="text-base font-black text-[#0a1e36] uppercase tracking-wider">Lembar Evaluasi Semester</h4>
-             <p className="text-slate-400 text-xs mt-1 max-w-sm mx-auto">
-                Silakan klik tombol <span className="text-indigo-600 font-bold">"-- Pilih Anak Didik --"</span> di barisan menu atas untuk membuka berkas kuesioner rapot fisik PAUD.
-              </p>
-          </div>
-        )
+            )
+          )}
+        </>
       )}
 
       {/* --- CONDITION 3: FALLBACK MINGGUAN & QUARTAL --- */}
