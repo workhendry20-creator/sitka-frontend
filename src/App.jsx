@@ -18,7 +18,7 @@ import Absensi from './pages/guru/Absensi';
 import Aktivitas from './pages/guru/Aktivitas';
 import Report from './pages/guru/Report';
 import Chat from './pages/guru/Chat'; 
-import Settings from './pages/guru/Settings';
+import SettingsGuru from './pages/guru/Settings';
 
 // Pages - Ortu
 import DashboardOrtu from './pages/ortu/DashboardOrtu';
@@ -34,6 +34,7 @@ import ManajemenUser from "./pages/admin/ManajemenUser";
 import ManajemenPerkembangan from "./pages/admin/ManajemenPerkembangan";
 import Kurikulum from "./pages/admin/Kurikulum";
 import ChatAdmin from "./pages/admin/Chat";
+import SettingsAdmin from './pages/admin/Settings'; 
 
 function App() {
   const [userSession, setUserSession] = useState(null);
@@ -105,7 +106,7 @@ function App() {
         <Route path="aktivitas" element={<Aktivitas />} />
         <Route path="report" element={<Report />} />
         <Route path="chat" element={<Chat />} />
-        <Route path="settings" element={<Settings />} />
+        <Route path="settings" element={<SettingsGuru />} />
       </Route>
 
       {/* --- RUTE ROLE ORTU (TERPROTEKSI) --- */}
@@ -139,6 +140,7 @@ function App() {
         <Route path="perkembangan" element={<ManajemenPerkembangan />} />
         <Route path="kurikulum" element={<Kurikulum />} />
         <Route path="chat" element={<ChatAdmin />} />
+        <Route path="settings" element={<SettingsAdmin />} />
       </Route>
 
       {/* Rute Nyasar: Jika mengetik URL asal, otomatis dilempar balik */}

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Users, TrendingUp, Database, 
-  Megaphone, LogOut, Menu, Bell, X, Shield 
+  Megaphone, LogOut, Menu, Bell, X, Shield, Settings
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -24,7 +24,7 @@ const AdminLayout = ({ children, onLogout, user }) => {
     { name: 'Informasi', icon: Megaphone, path: '/admin/chat' },
   ];
 
-  // FUNGSI LOGOUT DENGAN POP-UP PREMIUM (SINKRON KE PUSAT)
+  // FUNGSI LOGOUT DENGAN POP-UP PREMIUM
   const handleLogoutClick = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
@@ -43,14 +43,13 @@ const AdminLayout = ({ children, onLogout, user }) => {
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        // Eksekusi fungsi logout pusat dari App.jsx untuk clear session & redirect total!
         onLogout(); 
       }
     });
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans overflow-x-hidden">
+    <div className="flex min-h-screen bg-slate-50 font-sans overflow-x-hidden select-none">
       
       {/* 1. OVERLAY UNTUK MOBILE */}
       {isSidebarOpen && (
@@ -99,7 +98,7 @@ const AdminLayout = ({ children, onLogout, user }) => {
           })}
         </nav>
 
-        {/* TOMBOL KELUAR DENGAN FUNGSI SWAL */}
+        {/* TOMBOL KELUAR */}
         <div className="p-6 border-t border-white/5">
           <button 
             onClick={handleLogoutClick}
@@ -130,22 +129,34 @@ const AdminLayout = ({ children, onLogout, user }) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 md:gap-6">
+          <div className="flex items-center gap-3 md:gap-4">
+            {/* Notifikasi Lonceng */}
             <button className="relative text-slate-400 p-2 hover:bg-slate-50 rounded-xl transition-all">
-              <Bell size={20} />
+              <Bell size={22} />
               <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#306896] rounded-full border-2 border-white"></span>
             </button>
             
-            <div className="flex items-center gap-3 group cursor-pointer">
-              <div className="hidden sm:block text-right">
-                {/* Otomatis mengambil nama Admin yang sedang login */}
-                <p className="text-xs font-bold text-[#0a1e36]">{user?.nama || 'Super Admin'}</p>
-                <p className="text-[8px] font-black text-[#306896] uppercase tracking-widest">{user?.role || 'Root'}</p>
+            {/* 🎯 KARTU PROFIL PREMIUM ADAPTIF SCREENSHOT */}
+            <Link 
+              to="/admin/settings" 
+              className="flex items-center gap-4 bg-slate-50/70 hover:bg-slate-100/80 px-6 py-2.5 rounded-[2rem] transition-all duration-300 group active:scale-95 border border-transparent hover:border-slate-200/60 shadow-sm"
+            >
+              <div className="text-right select-none">
+                {/* Menampilkan Nama Lengkap Admin */}
+                <p className="text-base font-black text-[#0a1e36] tracking-tight leading-tight group-hover:text-[#306896] transition-colors">
+                  {user?.nama || 'Administrator SITKA'}
+                </p>
+                {/* Menampilkan Sub-text Role Admin */}
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 font-mono">
+                  {user?.role || 'ADMIN'}
+                </p>
               </div>
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-[#306896] border-2 border-white shadow-sm transition-transform active:scale-95">
+              
+              {/* Box Inisial Huruf Sisi Kanan */}
+              <div className="w-12 h-12 bg-indigo-50/80 group-hover:bg-[#306896] text-[#0a1e36] group-hover:text-white rounded-2xl flex items-center justify-center font-black text-lg border-2 border-white shadow-sm transition-all duration-300 group-hover:scale-105">
                 {user?.nama ? user.nama.charAt(0).toUpperCase() : 'A'}
               </div>
-            </div>
+            </Link>
           </div>
         </header>
 

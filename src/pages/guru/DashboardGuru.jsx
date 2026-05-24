@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Download, Users, BookOpen, Clock, Megaphone, Bell } from 'lucide-react';
+import { supabase } from '../../utils/supabaseClient';
 
 const data = [
   { name: 'Minggu 1', nilai: 70 },
@@ -11,17 +12,45 @@ const data = [
 ];
 
 const DashboardGuru = () => {
-  // State untuk informasi realtime dari Admin
+  // State untuk menampung data pengumuman asli dari Supabase cloud
   const [announcements, setAnnouncements] = useState([]);
+  const [loadingBroadcast, setLoadingBroadcast] = useState(true);
 
+  // --- AMBIL DATA PENGUMUMAN REAL-TIME DARI DATABASE ---
   useEffect(() => {
-    // Ambil data pengumuman yang dikirim Admin melalui localStorage
-    const savedInfo = JSON.parse(localStorage.getItem('sitka_announcements') || '[]');
-    setAnnouncements(savedInfo);
+    fetchCloudAnnouncements();
   }, []);
 
+  const fetchCloudAnnouncements = async () => {
+    setLoadingBroadcast(true);
+    try {
+      const { data: cloudData, error } = await supabase
+        .from('pengumuman')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAnnouncements(cloudData || []);
+    } catch (err) {
+      console.error("Gagal sinkronisasi pengumuman di dashboard guru:", err.message);
+    } finally {
+      setLoadingBroadcast(false);
+    }
+  };
+
+  // Helper pemformatan tanggal lokalisasi Indonesia agar serasi dengan sistem admin
+  const formatIndoDate = (isoString) => {
+    if (!isoString) return '-';
+    return new Date(isoString).toLocaleString('id-ID', { 
+      day: 'numeric', 
+      month: 'short', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-8 animate-in fade-in duration-700 text-left">
       
       {/* Welcome Message */}
       <div className="bg-gradient-to-r from-[#306896] to-[#4682b4] p-8 rounded-[3rem] text-white shadow-xl relative overflow-hidden">
@@ -32,12 +61,12 @@ const DashboardGuru = () => {
         <BookOpen className="absolute right-[-20px] bottom-[-20px] w-64 h-64 opacity-10 rotate-12" />
       </div>
 
-      {/* --- INFO BROADCAST DARI ADMIN --- */}
-      {announcements.length > 0 && (
+      {/* --- INFO BROADCAST DARI ADMIN (REALTIME CLOUD) --- */}
+      {!loadingBroadcast && announcements.length > 0 && (
         <div className="bg-white p-2 rounded-[2.5rem] border-2 border-orange-500 shadow-xl shadow-orange-100 overflow-hidden">
           <div className="bg-orange-500 p-6 rounded-[2.2rem] text-white flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="bg-white/20 p-3 rounded-2xl">
+              <div className="bg-white/20 p-3 rounded-2xl shrink-0">
                 <Megaphone size={28} className="animate-bounce" />
               </div>
               <div>
@@ -45,9 +74,11 @@ const DashboardGuru = () => {
                 <h3 className="text-xl font-black italic">{announcements[0].title}</h3>
               </div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm px-6 py-3 rounded-2xl border border-white/20 max-w-md">
+            <div className="bg-white/10 backdrop-blur-sm px-6 py-3 rounded-2xl border border-white/20 w-full md:max-w-md">
               <p className="text-sm font-bold italic leading-relaxed">"{announcements[0].content}"</p>
-              <p className="text-[9px] font-black mt-2 text-right opacity-60 uppercase">{announcements[0].date}</p>
+              <p className="text-[9px] font-black mt-2 text-right opacity-60 uppercase">
+                {formatIndoDate(announcements[0].created_at)}
+              </p>
             </div>
           </div>
         </div>

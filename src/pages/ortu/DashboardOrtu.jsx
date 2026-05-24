@@ -2,18 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Star, Calendar, BookOpen, Megaphone, School, Baby } from 'lucide-react';
+import { supabase } from '../../utils/supabaseClient';
 
 const DashboardOrtu = () => {
-  // State untuk menampung pengumuman dari Admin
+  // State untuk menampung pengumuman asli dari Supabase cloud
   const [announcements, setAnnouncements] = useState([]);
+  const [loadingBroadcast, setLoadingBroadcast] = useState(true);
+  
   // State untuk menampung data user login secara realtime
   const [parentData, setParentData] = useState(null);
 
-  // Ambil data dari localStorage saat dashboard dibuka
   useEffect(() => {
-    // 1. Ambil info pengumuman admin
-    const savedInfo = JSON.parse(localStorage.getItem('sitka_announcements') || '[]');
-    setAnnouncements(savedInfo);
+    // 1. Ambil info pengumuman admin dari cloud
+    fetchCloudAnnouncements();
 
     // 2. Ambil session user login untuk baca nama, nama_anak, dan kelompok
     const savedSession = localStorage.getItem('user_session');
@@ -21,6 +22,34 @@ const DashboardOrtu = () => {
       setParentData(JSON.parse(savedSession));
     }
   }, []);
+
+  const fetchCloudAnnouncements = async () => {
+    setLoadingBroadcast(true);
+    try {
+      const { data: cloudData, error } = await supabase
+        .from('pengumuman')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAnnouncements(cloudData || []);
+    } catch (err) {
+      console.error("Gagal sinkronisasi pengumuman di dashboard ortu:", err.message);
+    } finally {
+      setLoadingBroadcast(false);
+    }
+  };
+
+  // Helper pemformatan tanggal lokalisasi Indonesia agar serasi dengan sistem admin & guru
+  const formatIndoDate = (isoString) => {
+    if (!isoString) return '-';
+    return new Date(isoString).toLocaleString('id-ID', { 
+      day: 'numeric', 
+      month: 'short', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
 
   const radarData = [
     { subject: 'Fisik', A: 85 }, { subject: 'Kognitif', A: 90 },
@@ -36,7 +65,7 @@ const DashboardOrtu = () => {
   const namaPanggilanAnak = parentData?.nama_anak ? parentData.nama_anak.split(' ')[0] : 'Anak';
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-8 animate-in fade-in duration-700 text-left">
       
       {/* Welcome Card - Dinamis Mengikuti Data Input Registrasi */}
       <div className="bg-[#0a1e36] p-8 md:p-10 rounded-[3rem] text-white relative overflow-hidden shadow-xl">
@@ -69,8 +98,8 @@ const DashboardOrtu = () => {
         <div className="absolute right-[-20px] top-[-20px] w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
       </div>
 
-      {/* --- SECTION INFO DARI ADMIN (REALTIME) --- */}
-      {announcements.length > 0 ? (
+      {/* --- SECTION INFO DARI ADMIN (REALTIME CLOUD) --- */}
+      {!loadingBroadcast && announcements.length > 0 ? (
         <div className="bg-gradient-to-br from-orange-500 to-rose-500 p-8 rounded-[3rem] text-white shadow-xl relative overflow-hidden">
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-6">
@@ -82,7 +111,9 @@ const DashboardOrtu = () => {
                 <div key={info.id} className="bg-white/10 backdrop-blur-md p-6 rounded-[2rem] border border-white/20 shadow-inner">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-2">
                     <h4 className="font-black text-2xl tracking-tight">📢 {info.title}</h4>
-                    <span className="text-[10px] font-black bg-white/20 px-4 py-1.5 rounded-full uppercase tracking-[0.2em]">{info.date}</span>
+                    <span className="text-[10px] font-black bg-white/20 px-4 py-1.5 rounded-full uppercase tracking-[0.2em]">
+                      {formatIndoDate(info.created_at)}
+                    </span>
                   </div>
                   <p className="text-orange-50 font-medium leading-relaxed italic text-lg opacity-90">
                     "{info.content}"
@@ -95,9 +126,11 @@ const DashboardOrtu = () => {
           <div className="absolute -top-10 -left-10 w-40 h-40 bg-orange-400/20 rounded-full blur-2xl"></div>
         </div>
       ) : (
-        <div className="bg-slate-100 p-8 rounded-[3rem] border-2 border-dashed border-slate-200 text-center">
-          <p className="text-slate-400 font-bold italic">Belum ada informasi baru dari sekolah hari ini.</p>
-        </div>
+        !loadingBroadcast && (
+          <div className="bg-slate-100 p-8 rounded-[3rem] border-2 border-dashed border-slate-200 text-center">
+            <p className="text-slate-400 font-bold italic">Belum ada informasi baru dari sekolah hari ini.</p>
+          </div>
+        )
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -136,7 +169,6 @@ const DashboardOrtu = () => {
               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                 <PolarGrid stroke="#e2e8f0" />
                 <PolarAngleAxis dataKey="subject" tick={{fill: '#64748b', fontSize: 12, fontWeight: 'bold'}} />
-                {/* Radar Otomatis Berlabel Nama Anak Realtime */}
                 <Radar name={namaPanggilanAnak} dataKey="A" stroke="#306896" fill="#306896" fillOpacity={0.6} />
               </RadarChart>
             </ResponsiveContainer>
