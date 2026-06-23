@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
+import { dapatkanRekomendasiAI } from '../../utils/naiveBayes'; // 👈 Tambahkan ini, Senior
 
 const InputNilai = () => {
   // --- STATE UTAMA ---
@@ -21,54 +22,407 @@ const InputNilai = () => {
   
   // State untuk Rekapitulasi Global
   const [rekapData, setRekapData] = useState([]);
+  
 
-  // --- PARAMETER PENILAIAN AKADEMIK ASLI DARI DOKUMEN PAUD PDF ---
-  const parameterAkademik = [
-    {
-      kategori: "I. NILAI-NILAI AGAMA DAN MORAL",
-      indikator: [
-        { id: "nam_1", teks: "Dapat menyebutkan paling sedikit 5 sifat-sifat asmaul husna/nama Allah" },
-        { id: "nam_2", teks: "Dapat meniru gerakan ibadah/wudhu dengan benar" },
-        { id: "nam_3", teks: "Dapat berdo'a sebelum dan sesudah melakukan sesuatu" },
-        { id: "nam_4", teks: "Dapat membedakan perilaku baik dan buruk" },
-        { id: "nam_5", teks: "Terbiasa mengucapkan salam dan membalas salam" }
-      ]
-    },
-    {
-      kategori: "II. MOTORIK",
-      indikator: [
-        { id: "mot_1", teks: "Motorik Kasar: Meniru gerakan binatang, pohon tertiup angin, dll" },
-        { id: "mot_2", teks: "Motorik Kasar: Melompat, meloncat, dan berlari terkoordinasi" },
-        { id: "mot_3", teks: "Motorik Halus: Membuat garis vertikal, horizontal, lengkung, dan lingkaran" },
-        { id: "mot_4", teks: "Motorik Halus: Menjiplak bentuk dan menggunakan media kreatif" }
-      ]
-    },
-    {
-      kategori: "III. KOGNITIF",
-      indikator: [
-        { id: "kog_1", teks: "Pengetahuan Umum: Menyebutkan benda dan fungsinya sehari-hari" },
-        { id: "kog_2", teks: "Ukuran & Warna: Mengklasifikasikan benda berdasarkan bentuk/warna" },
-        { id: "kog_3", teks: "Bilangan: Membilang dan mengenal lambang bilangan 1 sampai 10" }
-      ]
-    },
-    {
-      kategori: "IV. BAHASA",
-      indikator: [
-        { id: "bah_1", teks: "Menerima Bahasa: Menyimak perkataan orang lain & mengerti perintah" },
-        { id: "bah_2", teks: "Mengungkapkan: Menjawab pertanyaan sederhana & bercerita" },
-        { id: "bah_3", teks: "Keaksaraan: Meniru huruf dan membuat coretan bermakna" }
-      ]
-    },
-    {
-      kategori: "V. SOSIAL EMOSIONAL",
-      indikator: [
-        { id: "se_1", teks: "Menunjukkan sikap mandiri dalam memilih kegiatan" },
-        { id: "se_2", teks: "Mau berbagi, menolong, dan membantu teman" },
-        { id: "se_3", teks: "Menaati peraturan yang berlaku dalam permainan" }
-      ]
-    }
-  ];
+  // --- PARAMETER ADAPTIF: BERDASARKAN RENTANG USIA ANAK (DOKUMEN PAUD RESMI) ---
+  const parameterAkademikBerdasarkanUsia = {
+    "2-3 Tahun": [
+      {
+        kategori: "I. MORAL DAN NILAI-NILAI AGAMA",
+        indikator: [
+          { id: "nam_23_1", teks: "Dapat meniru gerakan berdo'a" },
+          { id: "nam_23_2", teks: "Dapat meniru do'a-do'a pendek (Minimal 3 do'a pendek)" },
+          { id: "nam_23_3", teks: "Memahami kapan mengucapkan salam, terima kasih, minta ma'af, dll." }
+        ]
+      },
+      {
+        kategori: "II. MOTORIK (A. Motorik Kasar)",
+        indikator: [
+          { id: "mot_23_1", teks: "Berjalan sambil berjinjit" },
+          { id: "mot_23_2", teks: "Melompat ke depan dan ke belakang dengan 2 kaki" },
+          { id: "mot_23_3", teks: "Melempar dan menangkap bola" },
+          { id: "mot_23_4", teks: "Menari mengikuti irama" },
+          { id: "mot_23_5", teks: "Naik turun tangga dengan berpegangan" }
+        ]
+      },
+      {
+        kategori: "II. MOTORIK (B. Motorik Halus)",
+        indikator: [
+          { id: "mot_23_6", teks: "Meremas kertas atau kain dengan menggerakkan 5 jari" },
+          { id: "mot_23_7", teks: "Melipat kertas walaupun belum rapi/belum lurus" },
+          { id: "mot_23_8", teks: "Menggunting kertas sembarang (tanpa pola)" },
+          { id: "mot_23_9", teks: "Koordinasi jari tangan, dapat memegang benda pipih seperti sikat gigi, sendok, dll." }
+        ]
+      },
+      {
+        kategori: "III. KOGNITIF (A. Pengetahuan Umum)",
+        indikator: [
+          { id: "kog_23_1", teks: "Menyebut bagian-bagian suatu gambar seperti bagian pada gambar wajah, mobil, binatang, dll." },
+          { id: "kog_23_2", teks: "Dapat menyebutkan minimal 5 bagian tubuh" }
+        ]
+      },
+      {
+        kategori: "III. KOGNITIF (B. Konsep Ukuran, Bentuk dan Pola)",
+        indikator: [
+          { id: "kog_23_3", teks: "Dapat membedakan konsep ukuran (besar-kecil, panjang-pendek)" },
+          { id: "kog_23_4", teks: "Dapat menyebutkan/menunjukkan 3 macam bentuk (lingkaran, segitiga, bujur sangkar)" },
+          { id: "kog_23_5", teks: "Mengenal pola" }
+        ]
+      },
+      {
+        kategori: "IV. BAHASA (A. Menerima Bahasa)",
+        indikator: [
+          { id: "bah_23_1", teks: "Hafal beberapa lagu anak sederhana" },
+          { id: "bah_23_2", teks: "Memahami cerita sederhana" },
+          { id: "bah_23_3", teks: "Memahami perintah sederhana" }
+        ]
+      },
+      {
+        kategori: "IV. BAHASA (B. Mengungkapkan Bahasa)",
+        indikator: [
+          { id: "bah_23_4", teks: "Dapat menggunakan kata tanya dengan tepat (apa, siapa, di mana, bagaimana, mengapa)" }
+        ]
+      },
+      {
+        kategori: "V. SOSIAL EMOSIONAL",
+        indikator: [
+          { id: "se_23_1", teks: "Menyatakan keinginan ketika ingin BAK dan BAB" },
+          { id: "se_23_2", teks: "Memahami hak orang lain (dapat antre, menunggu giliran, dll.)" },
+          { id: "se_23_3", teks: "Mau berbagi, membantu orang lain, bekerja sama" },
+          { id: "se_23_4", teks: "Dapat menyatakan perasaan terhadap anak lain (suka dengan teman karena baik hati atau tidak suka karena nakal)" },
+          { id: "se_23_5", teks: "Dapat berbagi peran dalam suatu permainan (menjadi dokter, perawat, pasien, penjaga toko, pembeli, dll.)" }
+        ]
+      }
+    ],
+    "3-4 Tahun": [
+      {
+        kategori: "I. MORAL DAN NILAI-NILAI AGAMA",
+        indikator: [
+          { id: "nam_34_1", teks: "Dapat membedakan baik dan buruk" },
+          { id: "nam_34_2", teks: "Menyayangi ciptaan Allah" }
+        ]
+      },
+      {
+        kategori: "II. MOTORIK (A. Motorik Kasar)",
+        indikator: [
+          { id: "mot_34_1", teks: "Berlari sambil membawa benda ringan" },
+          { id: "mot_34_2", teks: "Naik turun tangga dengan kaki bergantian" },
+          { id: "mot_34_3", teks: "Meniti di atas papan titian yang cukup lebar" },
+          { id: "mot_34_4", teks: "Melompat turun dari ketinggian kurang lebih 20 cm" },
+          { id: "mot_34_5", teks: "Meniru gerakan senam sederhana" }
+        ]
+      },
+      {
+        kategori: "II. MOTORIK (B. Motorik Halus)",
+        indikator: [
+          { id: "mot_34_6", teks: "Menuang air, pasir atau biji-bijian ke tempat penampungan (mangkuk, ember, dll.)" },
+          { id: "mot_34_7", teks: "Memasukkan benda kecil ke dalam botol (potongan lidi, kerikil, biji-bijian)" },
+          { id: "mot_34_8", teks: "Meronce manik-manik yang tidak terlalu kecil dengan benang yang agak kaku" },
+          { id: "mot_34_9", teks: "Menggunting kertas mengikuti pola garis lurus" }
+        ]
+      },
+      {
+        kategori: "III. KOGNITIF (A. Pengetahuan Umum)",
+        indikator: [
+          { id: "kog_34_1", teks: "Menemukan bagian yang hilang dari gambar" },
+          { id: "kog_34_2", teks: "Menyebut berbagai makanan dan rasanya" },
+          { id: "kog_34_3", teks: "Dapat membedakan dua hal dari jenis yang sama (misalnya perbedaan antara ayam dan kucing, antara rambutan dan pisang)" }
+        ]
+      },
+      {
+        kategori: "III. KOGNITIF (B. Konsep Ukuran, Bentuk dan Pola)",
+        indikator: [
+          { id: "kog_34_4", teks: "Dapat mengurutkan benda dari benda yang paling kecil hingga benda yang paling besar atau sebaliknya" },
+          { id: "kog_34_5", teks: "Dapat mengikuti pola tepuk tangan" },
+          { id: "kog_34_6", teks: "Dapat membedakan konsep banyak dan sedikit" }
+        ]
+      },
+      {
+        kategori: "IV. BAHASA (A. Menerima Bahasa)",
+        indikator: [
+          { id: "bah_34_1", teks: "Pura-pura membaca cerita bergambar dalam buku dengan kata-kata sendiri" },
+          { id: "bah_34_2", teks: "Memahami 2 perintah yang diberikan" }
+        ]
+      },
+      {
+        kategori: "IV. BAHASA (B. Mengungkapkan Bahasa)",
+        indikator: [
+          { id: "bah_34_3", teks: "Menyatakan keinginan dengan kalimat sederhana" },
+          { id: "bah_34_4", teks: "Menceritakan pengalaman yang dialami dengan cerita sederhana" }
+        ]
+      },
+      {
+        kategori: "V. SOSIAL EMOSIONAL",
+        indikator: [
+          { id: "se_34_1", teks: "Buang air kecil tanpa bantuan" },
+          { id: "se_34_2", teks: "Sabar menunggu giliran" },
+          { id: "se_34_3", teks: "Menunjukkan sikap toleran sehingga dapat bekerja dalam kelompok" },
+          { id: "se_34_4", teks: "Menghargai orang lain" },
+          { id: "se_34_5", teks: "Bereaksi terhadap hal yang dianggap tidak benar (marah bila diganggu atau diperlakukan berbeda)" },
+          { id: "se_34_6", teks: "Menunjukkan ekspresi menyesal ketika melakukan kesalahan" }
+        ]
+      }
+    ],
+    "4-5 Tahun": [
+      {
+        kategori: "I. MORAL DAN NILAI-NILAI AGAMA",
+        indikator: [
+          { id: "nam_45_1", teks: "Dapat menyebutkan nama Allah dan paling sedikit 5 sifat-sifat asmaul husna-Nya" },
+          { id: "nam_45_2", teks: "Dapat meniru gerakan ibadah (sholat, wudhu bagi kaum muslimin)" },
+          { id: "nam_45_3", teks: "Dapat berdo'a sebelum dan sesudah melakukan sesuatu (Do'a sebelum belajar, sesudah belajar, sebelum makan, sesudah makan, sebelum tidur, sesudah tidur)" },
+          { id: "nam_45_4", teks: "Dapat membedakan perilaku baik dan buruk" },
+          { id: "nam_45_5", teks: "Dapat membiasakan diri berperilaku baik" },
+          { id: "nam_45_6", teks: "Terbiasa mengucapkan salam dan membalas salam" }
+        ]
+      },
+      {
+        kategori: "II. MOTORIK (A. Motorik Kasar)",
+        indikator: [
+          { id: "mot_45_1", teks: "Dapat meniru gerakan (misalnya gerakan binatang, pohon tertiup angin, pesawat terbang, dll.)" },
+          { id: "mot_45_2", teks: "Dapat melakukan gerakan menggantung (bergelayut)" },
+          { id: "mot_45_3", teks: "Dapat melakukan gerakan melompat, meloncat, dan berlari secara terkoordinasi" },
+          { id: "mot_45_4", teks: "Dapat melempar sesuatu secara terarah" },
+          { id: "mot_45_5", teks: "Dapat menangkap sesuatu secara tepat" },
+          { id: "mot_45_6", teks: "Dapat melakukan gerakan antisipasi" },
+          { id: "mot_45_7", teks: "Dapat menendang sesuatu secara terarah" },
+          { id: "mot_45_8", teks: "Dapat memanfaatkan alat permainan di luar kelas" }
+        ]
+      },
+      {
+        kategori: "II. MOTORIK (B. Motorik Halus)",
+        indikator: [
+          { id: "mot_45_9", teks: "Dapat membuat garis vertikal, horizontal, lengkung kiri, lengkung kanan, miring kiri, miring kanan dan lingkaran" },
+          { id: "mot_45_10", teks: "Menjiplak bentuk" },
+          { id: "mot_45_11", teks: "Mengoordinasikan mata dan tangan untuk melakukan gerakan yang rumit" },
+          { id: "mot_45_12", teks: "Melakukan gerakan manipulatif untuk menghasilkan suatu bentuk dengan menggunakan media" },
+          { id: "mot_45_13", teks: "Mengekspresikan diri dengan karya seni dengan berbagai media" }
+        ]
+      },
+      {
+        kategori: "II. MOTORIK (C. Kesehatan Fisik)",
+        indikator: [
+          { id: "mot_45_14", teks: "Memiliki kesesuaian antara usia dengan berat badan" },
+          { id: "mot_45_15", teks: "Memiliki kesesuaian antara usia dengan tinggi badan" },
+          { id: "mot_45_16", teks: "Memiliki kesesuaian antara tinggi dengan berat badan" }
+        ]
+      },
+      {
+        kategori: "III. KOGNITIF (A. Pengetahuan Umum)",
+        indikator: [
+          { id: "kog_45_1", teks: "Menyebutkan benda dan fungsinya (mis: pisau untuk memotong, pensil untuk menulis, dll.)" },
+          { id: "kog_45_2", teks: "Menggunakan benda-benda sebagai permainan simbolik (sapu ijuk sebagai gitar, kursi sebagai mobil, dll.)" },
+          { id: "kog_45_3", teks: "Menyebutkan sebab akibat terkait dengan dirinya" },
+          { id: "kog_45_4", teks: "Menunjukkan, menyebutkan konsep sederhana dalam kehidupan sehari-hari (gerimis, hujan, gelap, terang, temaram)" },
+          { id: "kog_45_5", teks: "Mengekspresikan sesuai dengan idenya sendiri" }
+        ]
+      },
+      {
+        kategori: "III. KOGNITIF (B. Konsep Ukuran, Bentuk, Warna dan Pola)",
+        indikator: [
+          { id: "kog_45_6", teks: "Mengklasifikasikan benda berdasarkan bentuk, warna atau ukuran" },
+          { id: "kog_45_7", teks: "Mengklasifikasikan benda ke dalam kelompok yang sama atau sejenis atau kelompok yang berpasangan dengan 2 variasi" },
+          { id: "kog_45_8", teks: "Mengenal pola AB-AB dan ABC-ABC" },
+          { id: "kog_45_9", teks: "Mengurutkan benda berdasarkan 5 seriasi ukuran atau warna" }
+        ]
+      },
+      {
+        kategori: "III. KOGNITIF (C. Konsep Bilangan, Lambang Bilangan dan Huruf)",
+        indikator: [
+          { id: "kog_45_10", teks: "Menunjukkan/menyebutkan konsep banyak dan sedikit" },
+          { id: "kog_45_11", teks: "Membilang benda 1 sampai 10" },
+          { id: "kog_45_12", teks: "Mengenal konsep bilangan" },
+          { id: "kog_45_13", teks: "Mengenal lambang bilangan" },
+          { id: "kog_45_14", teks: "Mengenal lambang huruf" }
+        ]
+      },
+      {
+        kategori: "IV. BAHASA (A. Menerima Bahasa)",
+        indikator: [
+          { id: "bah_45_1", teks: "Menyimak/mendengarkan perkataan orang lain" },
+          { id: "bah_45_2", teks: "Mengerti 2 perintah yang diberikan bersamaan" },
+          { id: "bah_45_3", teks: "Memahami cerita yang dibacakan" },
+          { id: "bah_45_4", teks: "Mengenal perbendaharaan kata tentang sifat (baik, berani, dll.)" }
+        ]
+      },
+      {
+        kategori: "IV. BAHASA (B. Mengungkapkan Bahasa)",
+        indikator: [
+          { id: "bah_45_5", teks: "Mengulang kalimat sederhana" },
+          { id: "bah_45_6", teks: "Menjawab pertanyaan sederhana" },
+          { id: "bah_45_7", teks: "Mengungkapkan perasaan dengan kata sifat (baik, senang, nakal, pelit, jelek, berani, dll.)" },
+          { id: "bah_45_8", teks: "Menyebutkan kata-kata yang dikenal" },
+          { id: "bah_45_9", teks: "Menyampaikan pendapat kepada orang lain" },
+          { id: "bah_45_10", teks: "Menyatakan alasan terhadap sesuatu yang diinginkan atau yang tidak diinginkan (menyatakan kesetujuan atau ketidaksetujuan)" },
+          { id: "bah_45_11", teks: "Menceritakan kembali dongeng yang pernah didengar" }
+        ]
+      },
+      {
+        kategori: "IV. BAHASA (C. Keaksaraan)",
+        indikator: [
+          { id: "bah_45_12", teks: "Menunjukkan/menyebutkan simbol-simbol" },
+          { id: "bah_45_13", teks: "Meniru/menyebutkan suara-suara hewan, benda, dll." },
+          { id: "bah_45_14", teks: "Membuat coretan bermakna" },
+          { id: "bah_45_15", teks: "Meniru huruf" }
+        ]
+      },
+      {
+        kategori: "V. SOSIAL EMOSIONAL",
+        indikator: [
+          { id: "se_45_1", teks: "Menunjukkan sikap mandiri dalam memilih kegiatan" },
+          { id: "se_45_2", teks: "Mau berbagi, menolong dan membantu teman" },
+          { id: "se_45_3", teks: "Menunjukkan antusiasme dalam bermain secara kompetitif dan positif" },
+          { id: "se_45_4", teks: "Mengendalikan perasaan" },
+          { id: "se_45_5", teks: "Menaati peraturan yang berlaku dalam permainan" },
+          { id: "se_45_6", teks: "Menunjukkan rasa percaya diri" },
+          { id: "se_45_7", teks: "Menjaga diri sendiri dan lingkungannya" },
+          { id: "se_45_8", teks: "Menghargai orang lain" }
+        ]
+      }
+    ],
+    "5-6 Tahun": [
+      {
+        kategori: "I. MORAL DAN NILAI-NILAI AGAMA",
+        indikator: [
+          { id: "nam_56_1", teks: "Mengenal agama yang dianut: Menyebutkan sifat Allah paling sedikit 10 asmaul husna dengan artinya" },
+          { id: "nam_56_2", teks: "Mengenal agama yang dianut: Menyebutkan paling sedikit 10 nama malaikat dengan tugasnya" },
+          { id: "nam_56_3", teks: "Mengenal agama yang dianut: Menyebutkan paling sedikit 5 nama Nabi dan Rasul" },
+          { id: "nam_56_4", teks: "Mengenal agama yang dianut: Menyebutkan sifat-sifat Nabi dan Rasul" },
+          { id: "nam_56_5", teks: "Mengenal agama yang dianut: Dapat melakukan gerakan wudhu dengan urutan yang benar" },
+          { id: "nam_56_6", teks: "Mengenal agama yang dianut: Dapat melakukan gerakan sholat dengan urutan yang benar" },
+          { id: "nam_56_7", teks: "Mengenal agama yang dianut: Hafal surat Al-Fatihah" },
+          { id: "nam_56_8", teks: "Mengenal agama yang dianut: Hafal surat Al-Ikhlas, Al-Ashr dan Al-Kautsar" },
+          { id: "nam_56_9", teks: "Mengenal agama yang dianut: Hafal minimal 3 hadits pendek" },
+          { id: "nam_56_10", teks: "Membiasakan diri beribadah" },
+          { id: "nam_56_11", teks: "Memahami perilaku mulia (jujur, penolong, sopan, hormat, dll.)" },
+          { id: "nam_56_12", teks: "Membedakan perilaku baik dan buruk" },
+          { id: "nam_56_13", teks: "Mengenal hari besar agama (Idulfitri, Iduladha)" },
+          { id: "nam_56_14", teks: "Menghormati agama orang lain" }
+        ]
+      },
+      {
+        kategori: "II. MOTORIK (A. Motorik Kasar)",
+        indikator: [
+          { id: "mot_56_1", teks: "Melakukan gerakan tubuh secara terkoordinasi untuk melatih kelenturan, keseimbangan dan kelincahan" },
+          { id: "mot_56_2", teks: "Melakukan koordinasi gerakan kaki-tangan-kepala dalam menirukan tarian atau senam" },
+          { id: "mot_56_3", teks: "Melakukan permainan fisik dengan aturan" },
+          { id: "mot_56_4", teks: "Terampil menggunakan tangan kanan dan kiri" },
+          { id: "mot_56_5", teks: "Melakukan kegiatan kebersihan diri" }
+        ]
+      },
+      {
+        kategori: "II. MOTORIK (B. Motorik Halus)",
+        indikator: [
+          { id: "mot_56_6", teks: "Menggambar sesuai gagasan" },
+          { id: "mot_56_7", teks: "Meniru bentuk" },
+          { id: "mot_56_8", teks: "Melakukan eksplorasi dengan berbagai media dan kegiatan" },
+          { id: "mot_56_9", teks: "Menggunakan alat tulis dengan benar" },
+          { id: "mot_56_10", teks: "Menggunting sesuai pola" },
+          { id: "mot_56_11", teks: "Menempel gambar dengan tepat" },
+          { id: "mot_56_12", teks: "Mengekspresikan diri melalui gerakan menggambar secara detail" }
+        ]
+      },
+      {
+        kategori: "II. MOTORIK (C. Kesehatan Fisik)",
+        indikator: [
+          { id: "mot_56_13", teks: "Memiliki kesesuaian antara usia dengan berat badan" },
+          { id: "mot_56_14", teks: "Memiliki kesesuaian antara usia dengan tinggi badan" },
+          { id: "mot_56_15", teks: "Memiliki kesesuaian antara tinggi dengan berat badan" }
+        ]
+      },
+      {
+        kategori: "III. KOGNITIF (A. Pengetahuan Umum)",
+        indikator: [
+          { id: "kog_56_1", teks: "Mengklasifikasi benda berdasarkan fungsi" },
+          { id: "kog_56_2", teks: "Menunjukkan aktivitas yang bersifat eksploratif (misal: Apa yang terjadi ketika air ditumpahkan?)" },
+          { id: "kog_56_3", teks: "Merencanakan kegiatan yang akan dilakukan" },
+          { id: "kog_56_4", teks: "Menyebutkan/menunjukkan sebab akibat tentang lingkungan (angin bertiup menyebabkan pohon bergerak, air menyebabkan basah, api menyebabkan terbakar, dll.)" },
+          { id: "kog_56_5", teks: "Menunjukkan inisiatif dalam memilih tema permainan (misal: \"Ayo bermain pura-pura seperti burung!\")" },
+          { id: "kog_56_6", teks: "Memecahkan masalah sederhana dalam kehidupan sehari-hari" }
+        ]
+      },
+      {
+        kategori: "III. KOGNITIF (B. Konsep Ukuran, Bentuk, Warna dan Pola)",
+        indikator: [
+          { id: "kog_56_7", teks: "Menunjukkan/menyebutkan perbedaan berdasarkan ukuran (kurang dari, lebih dari, paling besar, paling kecil, dll.)" },
+          { id: "kog_56_8", teks: "Mengklasifikasikan benda berdasarkan warna, bentuk dan ukuran (3 variasi)" },
+          { id: "kog_56_9", teks: "Mengklasifikasikan benda yang lebih banyak ke dalam kelompok yang sama atau jenis yang sama atau kelompok berpasangan lebih dari 2 variasi" },
+          { id: "kog_56_10", teks: "Mengenal pola ABCD-ABCD" },
+          { id: "kog_56_11", teks: "Mengurutkan benda berdasarkan ukuran dari paling kecil ke paling besar dan sebaliknya" }
+        ]
+      },
+      {
+        kategori: "III. KOGNITIF (C. Konsep Bilangan, Lambang Bilangan dan Huruf)",
+        indikator: [
+          { id: "kog_56_12", teks: "Menyebutkan lambang bilangan 1 - 10" },
+          { id: "kog_56_13", teks: "Mencocokkan bilangan dengan lambang bilangan" },
+          { id: "kog_56_14", teks: "Menunjukkan/menyebutkan/membacakan berbagai lambang huruf vokal dan konsonan" }
+        ]
+      },
+      {
+        kategori: "IV. BAHASA (A. Menerima Bahasa)",
+        indikator: [
+          { id: "bah_56_1", teks: "Mengerti beberapa perintah secara bersamaan" },
+          { id: "bah_56_2", teks: "Mengulang kalimat yang lebih kompleks atau rumit" },
+          { id: "bah_56_3", teks: "Memahami aturan dalam permainan" }
+        ]
+      },
+      {
+        kategori: "IV. BAHASA (B. Mengungkapkan Bahasa)",
+        indikator: [
+          { id: "bah_56_4", teks: "Menjawab pertanyaan yang lebih rumit (kompleks)" },
+          { id: "bah_56_5", teks: "Menyebutkan kelompok gambar yang memiliki bunyi yang sama (misal: katak, kadal, dll.)" },
+          { id: "bah_56_6", teks: "Berkomunikasi secara lisan, memiliki perbendaharaan kata, serta memahami simbol-simbol untuk persiapan calistung" },
+          { id: "bah_56_7", teks: "Menyusun kalimat sederhana dalam struktur kalimat yang lengkap" },
+          { id: "bah_56_8", teks: "Memiliki banyak kata untuk mengekspresikan ide pada orang lain" },
+          { id: "bah_56_9", teks: "Melanjutkan bagian cerita yang telah diperdengarkan" }
+        ]
+      },
+      {
+        kategori: "IV. BAHASA (C. Keaksaraan)",
+        indikator: [
+          { id: "bah_56_10", teks: "Menyebutkan simbol-simbol huruf yang dikenal" },
+          { id: "bah_56_11", teks: "Meberi tahu/menunjukkan huruf awal dari nama benda-benda yang ada di sekitarnya" },
+          { id: "bah_56_12", teks: "Menyebutkan kelompok gambar yang memiliki bunyi/huruf yang sama (misal: bunga-buah, dll.)" },
+          { id: "bah_56_13", teks: "Memahami hubungan antara bunyi dan bentuk huruf" },
+          { id: "bah_56_14", teks: "Membaca nama sendiri" },
+          { id: "bah_56_15", teks: "Menuliskan nama sendiri" }
+        ]
+      },
+      {
+        kategori: "V. SOSIAL EMOSIONAL",
+        indikator: [
+          { id: "se_56_1", teks: "Bersikap kooperatif dengan teman/dapat bekerja sama" },
+          { id: "se_56_2", teks: "Menunjukkan sikap toleran" },
+          { id: "se_56_3", teks: "Mengekspresikan emosi yang sesuai dengan kondisi yang ada (senang-sedih, semangat, dll.)" },
+          { id: "se_56_4", teks: "Membiasakan sopan santun" },
+          { id: "se_56_5", teks: "Memahami peraturan dan disiplin" },
+          { id: "se_56_6", teks: "Menunjukkan rasa empati" },
+          { id: "se_56_7", teks: "Memiliki sikap gigih (tidak mudah menyerah)" },
+          { id: "se_56_8", teks: "Bangga terhadap hasil karya sendiri" },
+          { id: "se_56_9", teks: "Menghargai keunggulan orang lain" }
+        ]
+      }
+    ],
+  };
+// Fungsi Sakti Penerjemah Angka Umur ke Rumpun Kategori PAUD 🧠 (FIXED LOGIC)
+const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
+  // Jika di database isinya sudah berupa teks seperti "3-4 Tahun", langsung loloskan
+  if (typeof usiaInput === 'string' && usiaInput.includes('Tahun')) {
+    return usiaInput;
+  }
 
+  // Ubah ke bentuk angka bersih
+  const umur = parseInt(usiaInput, 10);
+
+  // Pemetaan presisi 1-ke-1 sesuai standarisasi kurikulum rumpun usia
+  if (umur === 2) return "2-3 Tahun";
+  if (umur === 3) return "3-4 Tahun";
+  if (umur === 4) return "4-5 Tahun";
+  if (umur === 5 || umur === 6) return "5-6 Tahun";
+  
+  // Nilai default aman jika data umur kosong/eror
+  return "5-6 Tahun"; 
+};
   // --- EFEK TARIK DATA REALTIME DARI CLOUD ---
   useEffect(() => {
     fetchSiswaByKelompok();
@@ -77,24 +431,23 @@ const InputNilai = () => {
   const fetchSiswaByKelompok = async () => {
     setLoading(true);
     try {
-      // Ambil data users dengan role 'ortu' dan filter berdasarkan Kelompok kelas terpilih
+      // Ambil data users dengan tambahan kolom 'usia' 👈
       const { data, error } = await supabase
         .from('users')
-        .select('id, nama_anak, kelompok')
+        .select('id, nama_anak, kelompok, usia') 
         .eq('role', 'ortu')
         .eq('kelompok', kelompok)
         .order('nama_anak', { ascending: true });
 
       if (error) throw error;
 
-      // Map format agar sesuai struktur penilaian state komponen React Senior
       const formattedSiswa = data.map(siswa => {
-        // Cari dulu apakah di rekap lokal sudah ada inputan agar tidak hilang saat ganti filter
         const existingInRekap = rekapData.find(r => r.id === siswa.id && r.kelompok === kelompok && r.tanggal === tanggal);
         
         return {
           id: siswa.id,
-          nama: siswa.nama_anak, // Menampilkan nama anaknya langsung, bukan nama ortunya
+          nama: siswa.nama_anak,
+          usia: siswa.usia || "5-6 Tahun", // 👈 Menyimpan data usia siswa (default ke 5-6 tahun jika di db kosong)
           emoji: existingInRekap ? existingInRekap.emoji : '😊',
           label: existingInRekap ? existingInRekap.label : 'Bahagia',
           catatan: existingInRekap ? existingInRekap.catatan : "",
@@ -110,7 +463,6 @@ const InputNilai = () => {
       setLoading(false);
     }
   };
-
   // --- HANDLER FUNCTIONS ---
 
   const handleGantiKelompok = (klp) => {
@@ -357,66 +709,87 @@ const InputNilai = () => {
           )}
 
           {/* --- FORM CONDITION 2: INPUT SEMESTER --- */}
-          {inputType === 'Semester' && (
-            selectedSiswaId ? (
-              <div className="space-y-6">
-                <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-md space-y-6">
-                  
-                  {/* Identitas Siswa */}
-                  <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
-                    <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-lg shadow-md shadow-indigo-100">
-                      {currentSelectedSiswa?.nama ? currentSelectedSiswa.nama.charAt(0) : 'S'}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-black text-[#0a1e36]">{currentSelectedSiswa?.nama}</h3>
-                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
-                        Lembar Kuesioner Rapot Capaian {selectedSemester} ({kelompok})
-                      </p>
-                    </div>
-                  </div>
+{inputType === 'Semester' && (
+  selectedSiswaId ? (
+    <div className="space-y-6">
+      <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-md space-y-6">
+        
+        {/* Identitas Siswa, Semester Dinamis & Kelompok Usia Adaptif */}
+        <div className="flex items-center gap-4 border-b border-slate-100 pb-4">
+          <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-lg shadow-md shadow-indigo-100">
+            {currentSelectedSiswa?.nama ? currentSelectedSiswa.nama.charAt(0) : 'S'}
+          </div>
+          <div className="flex flex-col text-left">
+            <h3 className="text-xl font-black text-[#0a1e36] tracking-tight">
+              {currentSelectedSiswa?.nama}
+            </h3>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+              <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md uppercase tracking-wider">
+                LEMBAR KUESIONER RAPOT CAPAIAN {selectedSemester} ({kelompok})
+              </span>
+              <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md uppercase tracking-wider">
+                👶 USIA: {currentSelectedSiswa?.usia || "5-6 Tahun"}
+              </span>
+            </div>
+          </div>
+        </div>
 
-                  {/* Render Kategori */}
-                  <div className="space-y-6">
-                    {parameterAkademik.map((kat, kIdx) => (
-                      <div key={kIdx} className="border border-slate-100 rounded-2xl overflow-hidden shadow-inner">
-                        <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
-                          <BookOpen size={16} className="text-indigo-600" />
-                          <span className="text-[10px] font-black text-[#0a1e36] tracking-wider uppercase">{kat.kategori}</span>
-                        </div>
+                  {/* Render Kategori - SEKARANG OTOMATIS MENYESUAIKAN USIA ANAK 🧠 */}
+<div className="space-y-6">
+  {(() => {
+    // Konversi otomatis angka umur (misal: 3) menjadi rumpun kategori (misal: "2-3 Tahun") ⚡
+const usiaMentah = currentSelectedSiswa?.usia || 6;
+const usiaSiswaAktif = dapatkanKategoriUsiaSesuaiAngka(usiaMentah);
 
-                        <div className="divide-y divide-slate-50">
-                          {kat.indikator.map((ind) => (
-                            <div key={ind.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                              <p className="text-xs font-bold text-slate-600 max-w-xl">{ind.teks}</p>
-                              
-                              <div className="flex gap-1 bg-slate-100 p-1 rounded-xl self-end sm:self-center">
-                                {[
-                                  { key: 'BM', name: 'Belum Muncul' },
-                                  { key: 'MM', name: 'Mulai Muncul' },
-                                  { key: 'BSH', name: 'Sesuai Harapan' },
-                                  { key: 'BSB', name: 'Sangat Baik' }
-                                ].map((skala) => (
-                                  <button
-                                    key={skala.key}
-                                    type="button"
-                                    title={skala.name}
-                                    onClick={() => updateSkorSemesterSiswa(currentSelectedSiswa.id, ind.id, skala.key)}
-                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
-                                      currentSelectedSiswa?.nilaiSemester?.[ind.id] === skala.key
-                                        ? 'bg-[#0a1e36] text-white shadow-sm'
-                                        : 'bg-white text-slate-400 hover:text-slate-600'
-                                    }`}
-                                  >
-                                    {skala.key}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+// Tarik indikator yang cocok dengan usianya dari gudang data
+const parameterSiswaAktif = parameterAkademikBerdasarkanUsia[usiaSiswaAktif] || [];
+
+    if (parameterSiswaAktif.length === 0) {
+      return <p className="text-xs text-slate-400 italic p-4">Indikator usia {usiaSiswaAktif} belum tersedia.</p>;
+    }
+
+    return parameterSiswaAktif.map((kat, kIdx) => (
+      <div key={kIdx} className="border border-slate-100 rounded-2xl overflow-hidden shadow-inner">
+        <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex items-center gap-2">
+          <BookOpen size={16} className="text-indigo-600" />
+          <span className="text-[10px] font-black text-[#0a1e36] tracking-wider uppercase">{kat.kategori}</span>
+        </div>
+
+        <div className="divide-y divide-slate-50">
+          {kat.indikator.map((ind) => (
+            <div key={ind.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <p className="text-xs font-bold text-slate-600 max-w-xl">{ind.teks}</p>
+              
+<div className="flex gap-1 bg-slate-100 p-1 rounded-xl self-end sm:self-center">
+  {[
+    { key: 'BM', name: 'Belum Muncul' },
+    { key: 'MM', name: 'Mulai Muncul' },
+    { key: 'BSH', name: 'Sesuai Harapan' },
+    { key: 'BSB', name: 'Sangat Baik' },
+    { key: 'BB', name: 'Belum Berkembang' } // 👈 Tambah BB sesuai dokumen sekolah Senior
+  ].map((skala) => (
+    <button
+      key={skala.key}
+      type="button"
+      title={skala.name}
+      onClick={() => updateSkorSemesterSiswa(currentSelectedSiswa.id, ind.id, skala.key)}
+      className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${
+        currentSelectedSiswa?.nilaiSemester?.[ind.id] === skala.key
+          ? 'bg-[#0a1e36] text-white shadow-sm'
+          : 'bg-white text-slate-400 hover:text-slate-600'
+      }`}
+    >
+      {skala.key}
+    </button>
+  ))}
+</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ));
+  })()}
+</div>
 
                   {/* Catatan Rekomendasi */}
                   <div className="space-y-2 pt-2">

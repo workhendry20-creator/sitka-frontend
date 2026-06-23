@@ -4,7 +4,7 @@ import { User, Mail, Phone, MapPin, Briefcase, Calendar, ShieldCheck, Camera, Sa
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
 
-const Settings = () => {
+const SettingsGuru = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [teacherData, setTeacherData] = useState(null);
@@ -276,4 +276,4 @@ const InfoField = ({ icon: Icon, label, fieldName, value, isEditing, onChange, p
   );
 };
 
-export default Settings;
+export default SettingsGuru;
