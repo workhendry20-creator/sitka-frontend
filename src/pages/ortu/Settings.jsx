@@ -1,6 +1,6 @@
 // src/pages/ortu/Settings.jsx
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Heart, ShieldCheck, Camera, Save, Baby, AlertCircle } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Heart, ShieldCheck, Camera, Save, Baby, AlertCircle, Key, XCircle } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
 
@@ -8,21 +8,23 @@ const Settings = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [parentData, setParentData] = useState(null);
+  
+  // State cadangan untuk menampung data asli dari database sebelum diedit
+  const [originalProfile, setOriginalProfile] = useState(null);
 
-  // State Biodata Orang Tua & Siswa (Sinkron Sempurna ke Tabel 'users' dan 'siswa')
+  // State Biodata Orang Tua & Siswa
   const [profile, setProfile] = useState({
-    nama: "",          // Diambil dari tabel users utama (Nama Ibu)
-    namaAnak: "",      // Diambil dari tabel users utama
-    nisn: "",          // Diambil dari tabel users utama (Akan diupdate ke 'users' dan 'siswa')
-    kelompok: "",      // Diambil dari tabel users utama
-    pekerjaan: "",     // Diambil dari tabel siswa (pekerjaan_ibu)
-    telepon: "",       // Diambil dari tabel siswa (no_wa)
-    email: "",         // Diambil dari tabel siswa (email)
-    hubungan: "",      // Diambil dari tabel siswa (hubungan_keluarga)
-    alamat: ""         // Diambil dari tabel siswa (alamat_lengkap)
+    nama: "",          
+    namaAnak: "",      
+    nisn: "",          
+    kelompok: "",      
+    pekerjaan: "",     
+    telepon: "",       
+    email: "",         
+    hubungan: "",      
+    alamat: ""         
   });
 
-  // Load Data Pertama Kali dari Session & Sinkronkan dengan Database Cloud
   useEffect(() => {
     fetchLatestProfile();
   }, []);
@@ -34,7 +36,6 @@ const Settings = () => {
       setParentData(userObj);
 
       try {
-        // 1. Ambil data konfig akun utama dari tabel 'users' berdasarkan ID atau Nama
         const { data: userData, error: userErr } = await supabase
           .from('users')
           .select('*')
@@ -43,7 +44,6 @@ const Settings = () => {
 
         if (userErr) throw userErr;
 
-        // 2. Ambil data pelengkap dari tabel 'siswa' dicocokkan berdasarkan nama anak/siswa yang terhubung
         const { data: siswaData } = await supabase
           .from('siswa')
           .select('*')
@@ -63,8 +63,8 @@ const Settings = () => {
             alamat: siswaData ? siswaData.alamat_lengkap : ""
           };
           setProfile(updatedProfile);
+          setOriginalProfile(updatedProfile); // Amankan data asli sebagai backup cancelation
           
-          // Perbarui data session lokal agar komponen dashboard/sidebar ikut sinkron
           const newSession = { ...userObj, ...userData };
           localStorage.setItem('user_session', JSON.stringify(newSession));
         }
@@ -78,9 +78,16 @@ const Settings = () => {
     setProfile(prev => ({ ...prev, [field]: val }));
   };
 
-  // FUNGSI UTAMA: UPDATE NISN DI TABEL USERS & SINKRONISASI PROFIL LENGKAP KE TABEL SISWA
+  // LOGIKA FUNGSI: BATALKAN PERUBAHAN
+  const handleCancel = () => {
+    if (originalProfile) {
+      setProfile({ ...originalProfile }); // Kembalikan ke data backup asli
+    }
+    setIsEditing(false); // Keluar dari mode editing
+  };
+
+  // FUNGSI SIMPAN DATA PROFIL
   const handleSave = async () => {
-    // Validasi dasar agar NISN tidak dikosongkan secara tidak sengaja
     if (!profile.nisn || profile.nisn.trim() === "") {
       Swal.fire('NISN Wajib Diisi', 'NISN tidak boleh kosong karena digunakan untuk login.', 'warning');
       return;
@@ -88,17 +95,13 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      // 1. UPDATE TABEL 'users' (Hanya memperbarui kolom NISN untuk kebutuhan login akun berikutnya)
       const { error: errorUsers } = await supabase
         .from('users')
-        .update({
-          nisn: profile.nisn
-        })
+        .update({ nisn: profile.nisn })
         .eq('id', parentData.id);
 
       if (errorUsers) throw new Error(`Gagal update Akun Login: ${errorUsers.message}`);
 
-      // 2. UPDATE TABEL 'siswa' (Menampung NISN baru serta seluruh data profil sosial orang tua)
       const { error: errorSiswa } = await supabase
         .from('siswa')
         .update({
@@ -109,17 +112,16 @@ const Settings = () => {
           hubungan_keluarga: profile.hubungan,
           alamat_lengkap: profile.alamat
         })
-        .eq('nama', profile.namaAnak); // Filter berdasarkan nama anak yang terikat
+        .eq('nama', profile.namaAnak);
 
       if (errorSiswa) throw new Error(`Gagal update Data Rekam Siswa: ${errorSiswa.message}`);
 
-      // Ambil ulang data terbaru untuk memastikan local state & session ter-update
       await fetchLatestProfile();
-      
       setIsEditing(false);
+      
       Swal.fire({
-        title: 'Profil Berhasil Disimpan!',
-        text: 'Data profil siswa diperbarui. Gunakan NISN baru Anda pada login berikutnya.',
+        title: 'Profil Diperbarui!',
+        text: 'Data informasi profil Anda berhasil disimpan aman.',
         icon: 'success',
         confirmButtonColor: '#306896',
         customClass: { popup: 'rounded-[2rem]' }
@@ -137,13 +139,85 @@ const Settings = () => {
     }
   };
 
-  // Cek apakah ada informasi penting yang masih kosong
+  // FUNGSI MANDIRI: POPUP MODAL UBAH PASSWORD VIA SWEETALERT2
+  const handleUpdatePassword = async () => {
+    Swal.fire({
+      title: 'Ubah Password Akun',
+      html: `
+        <div style="text-align: left; font-family: inherit;">
+          <label style="font-size: 11px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em;">Password Baru</label>
+          <input type="password" id="swal-input-pass" class="swal2-input" placeholder="Minimal 6 karakter" style="width: 100%; box-sizing: border-box; margin: 4px 0 15px 0; border-radius: 12px; font-size: 14px;">
+          
+          <label style="font-size: 11px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em;">Konfirmasi Password</label>
+          <input type="password" id="swal-input-confirm" class="swal2-input" placeholder="Ulangi password baru" style="width: 100%; box-sizing: border-box; margin: 4px 0 0 0; border-radius: 12px; font-size: 14px;">
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Perbarui Password',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#306896',
+      cancelButtonColor: '#94a3b8',
+      customClass: {
+        popup: 'rounded-[2.5rem] p-8',
+        confirmButton: 'rounded-xl font-bold text-xs uppercase tracking-wider px-4 py-2.5',
+        cancelButton: 'rounded-xl font-bold text-xs uppercase tracking-wider px-4 py-2.5'
+      },
+      preConfirm: () => {
+        const pass = document.getElementById('swal-input-pass').value;
+        const confirm = document.getElementById('swal-input-confirm').value;
+        
+        if (!pass || !confirm) {
+          Swal.showValidationMessage('Semua kolom password wajib diisi!');
+          return false;
+        }
+        if (pass.length < 6) {
+          Swal.showValidationMessage('Password minimal harus 6 karakter!');
+          return false;
+        }
+        if (pass !== confirm) {
+          Swal.showValidationMessage('Konfirmasi password tidak cocok!');
+          return false;
+        }
+        return pass;
+      }
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: 'Memproses...',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+          const { error } = await supabase.auth.updateUser({ password: result.value });
+          if (error) throw error;
+
+          Swal.fire({
+            title: 'Password Diganti!',
+            text: 'Kredensial login baru Anda berhasil disimpan di cloud database.',
+            icon: 'success',
+            confirmButtonColor: '#306896',
+            customClass: { popup: 'rounded-[2rem]' }
+          });
+        } catch (err) {
+          Swal.fire({
+            title: 'Gagal Ganti Password',
+            text: err.message,
+            icon: 'error',
+            confirmButtonColor: '#f43f5e',
+            customClass: { popup: 'rounded-[2rem]' }
+          });
+        }
+      }
+    });
+  };
+
   const isDataIncomplete = !profile.pekerjaan || !profile.telepon || !profile.email || !profile.hubungan || !profile.alamat;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10 text-left">
       
-      {/* ALERT WARNING MERAH JIKA BIODATA BELUM LENGKAP */}
       {isDataIncomplete && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-[2rem] flex items-center gap-4 shadow-sm animate-pulse">
           <AlertCircle className="text-red-500 shrink-0" size={28} />
@@ -179,8 +253,8 @@ const Settings = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-6">
         
-        {/* Kolom Kiri: Info Anak & Tombol Aksi */}
-        <div className="space-y-6">
+        {/* Kolom Kiri: Info Anak & Tombol Aksi Bersarang (Sesuai Screenshot 2026-06-23 at 16.20.15.png) */}
+        <div className="space-y-4">
           <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 text-left">Data Anak Terhubung</h3>
             
@@ -205,26 +279,32 @@ const Settings = () => {
             </div>
           </div>
 
-          <button 
-            onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-            disabled={loading}
-            className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-              isEditing 
-                ? 'bg-emerald-500 text-white shadow-emerald-200 shadow-lg hover:bg-emerald-600' 
-                : 'bg-[#306896] text-white shadow-blue-900/20 shadow-lg hover:bg-[#235177]'
-            }`}
-          >
-            {loading ? (
-              'Menyimpan ke Database...'
-            ) : isEditing ? (
-              <><Save size={18} /> Simpan Perubahan</>
-            ) : (
-              'Lengkapi / Edit Profil'
-            )}
-          </button>
+          {/* Wrapper Aksi Tombol Bertumpuk */}
+          <div className="space-y-3 px-1">
+            {/* Tombol Utama: Edit Profil / Simpan */}
+            <button 
+              onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+              disabled={loading}
+              className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                isEditing 
+                  ? 'bg-emerald-500 text-white shadow-emerald-200 shadow-lg hover:bg-emerald-600' 
+                  : 'bg-[#306896] text-white shadow-blue-900/20 shadow-lg hover:bg-[#235177]'
+              }`}
+            >
+              {loading ? 'Menyimpan...' : isEditing ? <><Save size={18} /> Simpan Perubahan</> : 'Lengkapi / Edit Profil'}
+            </button>
+
+            {/* Tombol: Ubah Password Akun */}
+            <button 
+              onClick={handleUpdatePassword}
+              className="w-full py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-slate-50 hover:text-orange-600 hover:border-orange-200 shadow-sm"
+            >
+              <Key size={14} /> Ubah Password Akun
+            </button>
+          </div>
         </div>
 
-        {/* Kolom Kanan: Formulir Biodata */}
+        {/* Kolom Kanan: Formulir Informasi */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between mb-8">
@@ -233,10 +313,8 @@ const Settings = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-              {/* INPUT NISN (Sekarang diletakkan di Form Utama agar bisa diubah oleh Wali Murid) */}
               <InfoField icon={ShieldCheck} label="NISN Anak (ID Login)" fieldName="nisn" value={profile.nisn} isEditing={isEditing} onChange={handleInputChange} placeholder="Masukkan 10 digit NISN asli" />
-              
-              <InfoField icon={User} label="Pekerjaan Ibu" fieldName="pekerjaan" value={profile.pekerjaan} isEditing={isEditing} onChange={handleInputChange} />
+              <UserField icon={User} label="Pekerjaan Ibu" fieldName="pekerjaan" value={profile.pekerjaan} isEditing={isEditing} onChange={handleInputChange} />
               <InfoField icon={Phone} label="Nomor WhatsApp" fieldName="telepon" value={profile.telepon} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: 0812345..." />
               <InfoField icon={Mail} label="Alamat Email" fieldName="email" value={profile.email} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: bapak/ibu@email.com" />
               <InfoField icon={Heart} label="Hubungan Keluarga" fieldName="hubungan" value={profile.hubungan} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: Ibu Kandung, Ayah, Wali" />
@@ -245,6 +323,19 @@ const Settings = () => {
                 <InfoField icon={MapPin} label="Alamat Rumah Lengkap" fieldName="alamat" value={profile.alamat} isEditing={isEditing} onChange={handleInputChange} placeholder="Tulis nama jalan, RT/RW, nomor rumah, dan kecamatan..." />
               </div>
             </div>
+
+            {/* --- BUTTON BARU: BATALKAN PERUBAHAN (Hanya muncul di bawah alamat saat mode edit aktif) --- */}
+            {isEditing && (
+              <div className="mt-8 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="w-full py-3.5 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 hover:bg-rose-100 hover:text-rose-700 shadow-sm"
+                >
+                  <XCircle size={16} /> Batalkan Perubahan
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -253,7 +344,7 @@ const Settings = () => {
   );
 };
 
-// Komponen Reusable InfoField dengan Indikator Kosong / Tanda Merah Wajib Isi
+// Sub-komponen bidang field form umum
 const InfoField = ({ icon: Icon, label, fieldName, value, isEditing, onChange, placeholder }) => {
   const isEmpty = !value || value.trim() === "";
 
@@ -264,7 +355,6 @@ const InfoField = ({ icon: Icon, label, fieldName, value, isEditing, onChange, p
           <Icon size={16} />
           <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
         </div>
-        {/* Tanda Merah Mengingatkan Mengisi */}
         {isEmpty && (
           <span className="text-[9px] font-black bg-red-50 text-red-500 px-2 py-0.5 rounded-md border border-red-100 uppercase tracking-wider animate-pulse">
             ⚠️ Wajib Diisi
@@ -286,6 +376,29 @@ const InfoField = ({ icon: Icon, label, fieldName, value, isEditing, onChange, p
         <p className={`text-sm font-bold pl-6 ${isEmpty ? 'text-red-400 italic font-medium' : 'text-[#0a1e36]'}`}>
           {isEmpty ? "Belum dilengkapi (Klik Edit Profil)" : value}
         </p>
+      )}
+    </div>
+  );
+};
+
+// Sub-komponen bidang field Pekerjaan Ibu (tidak wajib diisi warna merah)
+const UserField = ({ icon: Icon, label, fieldName, value, isEditing, onChange }) => {
+  return (
+    <div className="space-y-2 text-left">
+      <div className="flex items-center gap-2 text-slate-400">
+        <Icon size={16} />
+        <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+      </div>
+      {isEditing ? (
+        <input 
+          type="text" 
+          value={value}
+          placeholder={`Masukkan ${label}`}
+          onChange={(e) => onChange(fieldName, e.target.value)}
+          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-[#0a1e36] outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+        />
+      ) : (
+        <p className="text-sm font-bold text-[#0a1e36] pl-6">{value || "-"}</p>
       )}
     </div>
   );
