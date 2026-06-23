@@ -9,17 +9,17 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [parentData, setParentData] = useState(null);
 
-  // State Biodata Orang Tua (Dipetakan Sempurna ke Kolom tabel 'profil_ortu')
+  // State Biodata Orang Tua & Siswa (Sinkron Sempurna ke Tabel 'users' dan 'siswa')
   const [profile, setProfile] = useState({
-    nama: "",          // Diambil dari tabel users utama
+    nama: "",          // Diambil dari tabel users utama (Nama Ibu)
     namaAnak: "",      // Diambil dari tabel users utama
-    nisn: "",          // Diambil dari tabel users utama
+    nisn: "",          // Diambil dari tabel users utama (Akan diupdate ke 'users' dan 'siswa')
     kelompok: "",      // Diambil dari tabel users utama
-    pekerjaan: "",     // Diambil dari tabel profil_ortu
-    telepon: "",       // Diambil dari tabel profil_ortu (no_whatsapp)
-    email: "",         // Diambil dari tabel profil_ortu (alamat_email)
-    hubungan: "",      // Diambil dari tabel profil_ortu (hubungan_keluarga)
-    alamat: ""         // Diambil dari tabel profil_ortu (alamat_rumah)
+    pekerjaan: "",     // Diambil dari tabel siswa (pekerjaan_ibu)
+    telepon: "",       // Diambil dari tabel siswa (no_wa)
+    email: "",         // Diambil dari tabel siswa (email)
+    hubungan: "",      // Diambil dari tabel siswa (hubungan_keluarga)
+    alamat: ""         // Diambil dari tabel siswa (alamat_lengkap)
   });
 
   // Load Data Pertama Kali dari Session & Sinkronkan dengan Database Cloud
@@ -34,20 +34,20 @@ const Settings = () => {
       setParentData(userObj);
 
       try {
-        // 1. Ambil data konfig utama akun dari tabel 'users'
+        // 1. Ambil data konfig akun utama dari tabel 'users' berdasarkan ID atau Nama
         const { data: userData, error: userErr } = await supabase
           .from('users')
           .select('*')
-          .eq('nama', userObj.nama)
+          .eq('id', userObj.id)
           .single();
 
         if (userErr) throw userErr;
 
-        // 2. Ambil data pelengkap biodata dari tabel terpisah 'profil_ortu'
-        const { data: profileData } = await supabase
-          .from('profil_ortu')
+        // 2. Ambil data pelengkap dari tabel 'siswa' dicocokkan berdasarkan nama anak/siswa yang terhubung
+        const { data: siswaData } = await supabase
+          .from('siswa')
           .select('*')
-          .eq('user_name', userObj.nama)
+          .eq('nama', userObj.nama_anak || userObj.namaAnak)
           .maybeSingle();
 
         if (userData) {
@@ -56,15 +56,15 @@ const Settings = () => {
             namaAnak: userData.nama_anak || "",
             nisn: userData.nisn || "",
             kelompok: userData.kelompok || "",
-            pekerjaan: profileData ? profileData.pekerjaan : "",
-            telepon: profileData ? profileData.no_whatsapp : "",
-            email: profileData ? profileData.alamat_email : "",
-            hubungan: profileData ? profileData.hubungan_keluarga : "",
-            alamat: profileData ? profileData.alamat_rumah : ""
+            pekerjaan: siswaData ? siswaData.pekerjaan_ibu : "",
+            telepon: siswaData ? siswaData.no_wa : "",
+            email: siswaData ? siswaData.email : "",
+            hubungan: siswaData ? siswaData.hubungan_keluarga : "",
+            alamat: siswaData ? siswaData.alamat_lengkap : ""
           };
           setProfile(updatedProfile);
           
-          // Perbarui data session lokal agar komponen dashboard ikut sinkron
+          // Perbarui data session lokal agar komponen dashboard/sidebar ikut sinkron
           const newSession = { ...userObj, ...userData };
           localStorage.setItem('user_session', JSON.stringify(newSession));
         }
@@ -78,53 +78,48 @@ const Settings = () => {
     setProfile(prev => ({ ...prev, [field]: val }));
   };
 
-  // FUNGSI UTAMA: SIMPAN DATA DENGAN LOGIKA UPSERT (INSERT/UPDATE) KE TABEL PROFIL_ORTU
+  // FUNGSI UTAMA: UPDATE NISN DI TABEL USERS & SINKRONISASI PROFIL LENGKAP KE TABEL SISWA
   const handleSave = async () => {
+    // Validasi dasar agar NISN tidak dikosongkan secara tidak sengaja
+    if (!profile.nisn || profile.nisn.trim() === "") {
+      Swal.fire('NISN Wajib Diisi', 'NISN tidak boleh kosong karena digunakan untuk login.', 'warning');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Siapkan payload data yang disesuaikan dengan skema nama kolom baru di Supabase
-      const payload = {
-        user_name: parentData.nama,
-        pekerjaan: profile.pekerjaan,
-        no_whatsapp: profile.telepon,
-        alamat_email: profile.email,
-        hubungan_keluarga: profile.hubungan,
-        alamat_rumah: profile.alamat
-      };
+      // 1. UPDATE TABEL 'users' (Hanya memperbarui kolom NISN untuk kebutuhan login akun berikutnya)
+      const { error: errorUsers } = await supabase
+        .from('users')
+        .update({
+          nisn: profile.nisn
+        })
+        .eq('id', parentData.id);
 
-      // Cek apakah data profil untuk user ini sudah pernah diisi atau belum
-      const { data: existing } = await supabase
-        .from('profil_ortu')
-        .select('id')
-        .eq('user_name', parentData.nama)
-        .maybeSingle();
+      if (errorUsers) throw new Error(`Gagal update Akun Login: ${errorUsers.message}`);
 
-      let dbError;
+      // 2. UPDATE TABEL 'siswa' (Menampung NISN baru serta seluruh data profil sosial orang tua)
+      const { error: errorSiswa } = await supabase
+        .from('siswa')
+        .update({
+          nisn: profile.nisn,
+          pekerjaan_ibu: profile.pekerjaan,
+          no_wa: profile.telepon,
+          email: profile.email,
+          hubungan_keluarga: profile.hubungan,
+          alamat_lengkap: profile.alamat
+        })
+        .eq('nama', profile.namaAnak); // Filter berdasarkan nama anak yang terikat
 
-      if (existing) {
-        // Jika data lama ditemukan, lakukan UPDATE
-        const { error } = await supabase
-          .from('profil_ortu')
-          .update(payload)
-          .eq('user_name', parentData.nama);
-        dbError = error;
-      } else {
-        // Jika data masih kosong, lakukan INSERT
-        const { error } = await supabase
-          .from('profil_ortu')
-          .insert([payload]);
-        dbError = error;
-      }
-
-      if (dbError) throw dbError;
+      if (errorSiswa) throw new Error(`Gagal update Data Rekam Siswa: ${errorSiswa.message}`);
 
       // Ambil ulang data terbaru untuk memastikan local state & session ter-update
       await fetchLatestProfile();
       
       setIsEditing(false);
       Swal.fire({
-        title: 'Profil Diperbarui!',
-        text: 'Data informasi pelengkap Orang Tua berhasil disimpan aman ke cloud database.',
+        title: 'Profil Berhasil Disimpan!',
+        text: 'Data profil siswa diperbarui. Gunakan NISN baru Anda pada login berikutnya.',
         icon: 'success',
         confirmButtonColor: '#306896',
         customClass: { popup: 'rounded-[2rem]' }
@@ -202,9 +197,9 @@ const Settings = () => {
             <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-left">
               <ShieldCheck className="text-slate-400" size={24} />
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase">NISN & Kelas</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase">Kelas Terdaftar</p>
                 <p className="text-sm font-bold text-[#0a1e36]">
-                  {profile.nisn || '-'} • <span className="text-indigo-600">{profile.kelompok || '-'}</span>
+                  Kelompok <span className="text-indigo-600 font-black">{profile.kelompok || '-'}</span>
                 </p>
               </div>
             </div>
@@ -238,12 +233,16 @@ const Settings = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-              <InfoField icon={User} label="Pekerjaan" fieldName="pekerjaan" value={profile.pekerjaan} isEditing={isEditing} onChange={handleInputChange} />
+              {/* INPUT NISN (Sekarang diletakkan di Form Utama agar bisa diubah oleh Wali Murid) */}
+              <InfoField icon={ShieldCheck} label="NISN Anak (ID Login)" fieldName="nisn" value={profile.nisn} isEditing={isEditing} onChange={handleInputChange} placeholder="Masukkan 10 digit NISN asli" />
+              
+              <InfoField icon={User} label="Pekerjaan Ibu" fieldName="pekerjaan" value={profile.pekerjaan} isEditing={isEditing} onChange={handleInputChange} />
               <InfoField icon={Phone} label="Nomor WhatsApp" fieldName="telepon" value={profile.telepon} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: 0812345..." />
-              <InfoField icon={Mail} label="Alamat Email" fieldName="email" value={profile.email} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: bapak@email.com" />
-              <InfoField icon={Heart} label="Hubungan Keluarga" fieldName="hubungan" value={profile.hubungan} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: Ayah, Ibu, Wali" />
+              <InfoField icon={Mail} label="Alamat Email" fieldName="email" value={profile.email} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: bapak/ibu@email.com" />
+              <InfoField icon={Heart} label="Hubungan Keluarga" fieldName="hubungan" value={profile.hubungan} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: Ibu Kandung, Ayah, Wali" />
+              
               <div className="md:col-span-2">
-                <InfoField icon={MapPin} label="Alamat Rumah" fieldName="alamat" value={profile.alamat} isEditing={isEditing} onChange={handleInputChange} placeholder="Tulis nama jalan, RT/RW, nomor rumah, dan kota..." />
+                <InfoField icon={MapPin} label="Alamat Rumah Lengkap" fieldName="alamat" value={profile.alamat} isEditing={isEditing} onChange={handleInputChange} placeholder="Tulis nama jalan, RT/RW, nomor rumah, dan kecamatan..." />
               </div>
             </div>
           </div>

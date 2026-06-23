@@ -22,7 +22,6 @@ const InputNilai = () => {
   
   // State untuk Rekapitulasi Global
   const [rekapData, setRekapData] = useState([]);
-  
 
   // --- PARAMETER ADAPTIF: BERDASARKAN RENTANG USIA ANAK (DOKUMEN PAUD RESMI) ---
   const parameterAkademikBerdasarkanUsia = {
@@ -431,23 +430,47 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
   const fetchSiswaByKelompok = async () => {
     setLoading(true);
     try {
-      // Ambil data users dengan tambahan kolom 'usia' 👈
+      // =======================================================================
+      // 1. IF-ELSE KELOMPOK / ROMBEL
+      // Tugas: Mengubah string panjang dari UI menjadi huruf tunggal sesuai DB
+      // =======================================================================
+      const dbRombel = kelompok === 'Kelompok A' ? 'A' : 'B';
+
+      // Tarik data dari database Supabase
       const { data, error } = await supabase
-        .from('users')
-        .select('id, nama_anak, kelompok, usia') 
-        .eq('role', 'ortu')
-        .eq('kelompok', kelompok)
-        .order('nama_anak', { ascending: true });
+        .from('v_siswa_evaluasi')
+        .select('id, nama, rombel, usia, nisn') 
+        .eq('rombel', dbRombel)
+        .order('nama', { ascending: true });
 
       if (error) throw error;
 
+      // Proses mapping data siswa ke dalam State UI
       const formattedSiswa = data.map(siswa => {
         const existingInRekap = rekapData.find(r => r.id === siswa.id && r.kelompok === kelompok && r.tanggal === tanggal);
         
+        // =======================================================================
+        // 2. IF-ELSE USIA (Menerjemahkan Angka Umur ke Rumpun Kurikulum PAUD)
+        // Tugas: Memastikan indikator penilaian muncul tepat sesuai umur anak
+        // =======================================================================
+        const umurMentah = siswa.usia ? parseInt(siswa.usia, 10) : 5; 
+        let kategoriUsiaFinal = "5-6 Tahun"; // Nilai default aman jika umur di atas 5 tahun atau kosong
+
+        if (umurMentah === 2) {
+          kategoriUsiaFinal = "2-3 Tahun";
+        } else if (umurMentah === 3) {
+          kategoriUsiaFinal = "3-4 Tahun";
+        } else if (umurMentah === 4) {
+          kategoriUsiaFinal = "4-5 Tahun";
+        } else if (umurMentah === 5 || umurMentah === 6) {
+          kategoriUsiaFinal = "5-6 Tahun";
+        }
+
         return {
           id: siswa.id,
-          nama: siswa.nama_anak,
-          usia: siswa.usia || "5-6 Tahun", // 👈 Menyimpan data usia siswa (default ke 5-6 tahun jika di db kosong)
+          nama: siswa.nama, 
+          usia: siswa.usia, // 👈 Di sini string kategori ("4-5 Tahun", dll.) disimpan ke dalam state
+          nisn: siswa.nisn || "-", 
           emoji: existingInRekap ? existingInRekap.emoji : '😊',
           label: existingInRekap ? existingInRekap.label : 'Bahagia',
           catatan: existingInRekap ? existingInRekap.catatan : "",
@@ -458,7 +481,7 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
 
       setAnekdotSiswa(formattedSiswa);
     } catch (err) {
-      console.error("Gagal menarik data siswa dari Supabase:", err.message);
+      console.error("Gagal menarik data siswa dari Big Data Supabase:", err.message);
     } finally {
       setLoading(false);
     }
@@ -542,6 +565,13 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
 
   const currentSelectedSiswa = anekdotSiswa.find(s => s.id === parseInt(selectedSiswaId));
 
+  const dapatkanDaftarParameterSiswaTerpilih = () => {
+    if (!detailSiswaSemesterTerpilih) return [];
+    
+    const kategori = detailSiswaSemesterTerpilih.usia;
+    
+    return parameterAkademikBerdasarkanUsia[kategori] || parameterAkademikBerdasarkanUsia["5-6 Tahun"];
+  };
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 text-left">
       
@@ -578,21 +608,24 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
             </div>
 
             {/* Dropdown Siswa DINAMIS CLOUD */}
-            {inputType === 'Semester' && (
-              <div className="relative">
-                <select 
-                  value={selectedSiswaId}
-                  onChange={(e) => setSelectedSiswaId(e.target.value)}
-                  className="pl-6 pr-10 py-4 bg-indigo-600 text-white border-none rounded-2xl text-sm font-black appearance-none outline-none cursor-pointer"
-                >
-                  <option value="">-- Pilih Anak Didik --</option>
-                  {anekdotSiswa.map(s => (
-                    <option key={s.id} value={s.id} className="text-black">{s.nama}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none" size={16} />
-              </div>
-            )}
+{inputType === 'Semester' && (
+  <div className="relative">
+    <select 
+      value={selectedSiswaId}
+      onChange={(e) => {
+        // 🔥 KUNCI BIAR BERUBAH REALTIME: Set ID Siswa yang baru diklik
+        setSelectedSiswaId(e.target.value);
+      }}
+      className="pl-6 pr-10 py-4 bg-indigo-600 text-white border-none rounded-2xl text-sm font-black appearance-none outline-none cursor-pointer"
+    >
+      <option value="">-- Pilih Anak Didik --</option>
+      {anekdotSiswa.map(s => (
+        <option key={s.id} value={s.id} className="text-black">{s.nama}</option>
+      ))}
+    </select>
+    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none" size={16} />
+  </div>
+)}
 
             {/* Dropdown Target Semester */}
             {inputType === 'Semester' && (

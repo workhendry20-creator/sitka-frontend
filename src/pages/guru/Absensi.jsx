@@ -31,19 +31,22 @@ const Absensi = () => {
   const fetchSiswaByKelompok = async () => {
     setLoading(true);
     try {
+      // 1. Ubah string UI "Kelompok A" -> "A" agar sinkron dengan isi data cloud kita
+      const dbRombel = kelompok === 'Kelompok A' ? 'A' : 'B';
+
+      // 2. Alihkan target query dari tabel 'users' ke tabel 'siswa'
       const { data, error } = await supabase
-        .from('users')
-        .select('id, nama_anak')
-        .eq('role', 'ortu')
-        .eq('kelompok', kelompok)
-        .order('nama_anak', { ascending: true });
+        .from('siswa')
+        .select('id, nama')
+        .eq('rombel', dbRombel)
+        .order('nama', { ascending: true });
 
       if (error) throw error;
 
-      // Map data dari DB ke state komponen dengan default status 'Hadir'
-      const formattedSiswa = data.map(siswa => ({
+      // 3. Map data dari DB menggunakan properti 'nama' (bukan 'nama_anak' lagi)
+      const formattedSiswa = (data || []).map(siswa => ({
         id: siswa.id,
-        nama: siswa.nama_anak,
+        nama: siswa.nama, // 👈 Ubah dari siswa.nama_anak menjadi siswa.nama
         status: 'Hadir'
       }));
 

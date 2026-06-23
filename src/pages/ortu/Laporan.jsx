@@ -22,7 +22,8 @@ const Laporan = () => {
   // --- MENGAMBIL DATA PROFIL REALTIME DARI REGISTRASI ---
   const dataAnak = {
     nama: parentData?.nama_anak || "Anak Didik SITKA",
-    kelompok: parentData?.kelompok || "Kelompok Belajar",
+    kelompok: parentData?.kelompok || "A",
+    nisn: parentData?.nisn || "-",
     stats: { hadir: 18, izin: 1, sakit: 1, alpa: 0 }
   };
 
@@ -42,9 +43,9 @@ const Laporan = () => {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 text-left">
       
-      {/* --- 1. HEADER PROFILE ANAK (DINAMIS SINKRON CLOUD) --- */}
+      {/* --- 1. HEADER PROFILE ANAK (SINKRON PORTAL DASHBOARD) --- */}
       <div className="bg-[#0a1e36] p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="flex items-center gap-6">
@@ -52,13 +53,15 @@ const Laporan = () => {
               <Baby size={36} className="text-amber-400" />
             </div>
             <div>
-              <h2 className="text-2xl font-black tracking-tight">{dataAnak.nama}</h2>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-500/20">
-                  {dataAnak.kelompok}
+              <h2 className="text-2xl font-black tracking-tight uppercase">{dataAnak.nama}</h2>
+              <div className="flex items-center gap-2 mt-2">
+                {/* Badge Kelompok: Berubah menjadi "Kelompok A" */}
+                <span className="px-3 py-1 bg-indigo-900/60 text-indigo-200 rounded-xl text-[10px] font-black uppercase tracking-wider border border-indigo-700/50">
+                  Kelompok {dataAnak.kelompok}
                 </span>
-                <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
-                  Siswa Aktif
+                {/* Badge Status: Mengganti "Siswa Aktif" dengan NISN asli anak */}
+                <span className="px-3 py-1 bg-emerald-950/80 text-emerald-400 rounded-xl text-[10px] font-black tracking-wide border border-emerald-800/60">
+                  NISN: {dataAnak.nisn}
                 </span>
               </div>
             </div>
@@ -192,7 +195,6 @@ const Laporan = () => {
               { label: 'Tanpa Berita', val: dataAnak.stats.alpa, color: 'rose', icon: AlertCircle, desc: 'Perlu konfirmasi' },
             ].map(s => {
               const IconComponent = s.icon;
-              // Set warna dinamis yang aman dari purging Tailwind CSS
               const colorClasses = {
                 emerald: 'bg-emerald-50 text-emerald-600',
                 blue: 'bg-blue-50 text-blue-600',

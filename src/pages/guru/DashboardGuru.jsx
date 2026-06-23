@@ -12,15 +12,19 @@ const data = [
 ];
 
 const DashboardGuru = () => {
-  // State untuk menampung data pengumuman asli dari Supabase cloud
+  // State manajemen dashboard
   const [announcements, setAnnouncements] = useState([]);
   const [loadingBroadcast, setLoadingBroadcast] = useState(true);
+  const [totalSiswa, setTotalSiswa] = useState(0);
+  const [loadingStats, setLoadingStats] = useState(true);
 
-  // --- AMBIL DATA PENGUMUMAN REAL-TIME DARI DATABASE ---
+  // --- HOOKS UTAMA SYNC DATABASE ---
   useEffect(() => {
     fetchCloudAnnouncements();
+    fetchTotalSiswaRealtime();
   }, []);
 
+  // 1. Ambil Data Pengumuman Realtime
   const fetchCloudAnnouncements = async () => {
     setLoadingBroadcast(true);
     try {
@@ -38,7 +42,24 @@ const DashboardGuru = () => {
     }
   };
 
-  // Helper pemformatan tanggal lokalisasi Indonesia agar serasi dengan sistem admin
+  // 2. Ambil Hitungan Total Siswa dari Table 'siswa' (Bukan Users)
+  const fetchTotalSiswaRealtime = async () => {
+    setLoadingStats(true);
+    try {
+      const { count, error } = await supabase
+        .from('siswa')
+        .select('*', { count: 'exact', head: true });
+
+      if (error) throw error;
+      setTotalSiswa(count || 0);
+    } catch (err) {
+      console.error("Gagal mengambil total Big Data siswa:", err.message);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  // Helper pemformatan tanggal lokalisasi Indonesia
   const formatIndoDate = (isoString) => {
     if (!isoString) return '-';
     return new Date(isoString).toLocaleString('id-ID', { 
@@ -48,6 +69,9 @@ const DashboardGuru = () => {
       minute: '2-digit' 
     });
   };
+
+  // Kalkulasi sederhana penyesuaian dummy tugas terkumpul berdasarkan total siswa dinamis
+  const dummyTugasCount = totalSiswa > 0 ? Math.floor(totalSiswa * 0.85) : 0;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 text-left">
@@ -84,12 +108,30 @@ const DashboardGuru = () => {
         </div>
       )}
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Terintegrasi dengan Big Data 'siswa' */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { label: 'Total Siswa', val: '32', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Kehadiran Hari Ini', val: '98%', icon: Clock, color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Tugas Terkumpul', val: '12/32', icon: BookOpen, color: 'text-orange-600', bg: 'bg-orange-50' },
+          { 
+            label: 'Total Siswa', 
+            val: loadingStats ? '...' : `${totalSiswa}`, 
+            icon: Users, 
+            color: 'text-blue-600', 
+            bg: 'bg-blue-50' 
+          },
+          { 
+            label: 'Kehadiran Hari Ini', 
+            val: '98%', 
+            icon: Clock, 
+            color: 'text-green-600', 
+            bg: 'bg-green-50' 
+          },
+          { 
+            label: 'Tugas Terkumpul', 
+            val: loadingStats ? '...' : `${dummyTugasCount}/${totalSiswa}`, 
+            icon: BookOpen, 
+            color: 'text-orange-600', 
+            bg: 'bg-orange-50' 
+          },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center gap-6 hover:shadow-md transition-all group">
             <div className={`w-16 h-16 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
@@ -138,15 +180,15 @@ const DashboardGuru = () => {
           </div>
         </div>
 
-        {/* Status Kehadiran */}
+        {/* Status Kehadiran Ringkasan */}
         <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm flex flex-col justify-between">
           <div>
-            <h3 className="text-xl font-bold text-[#0a1e36] mb-8">Status Kehadiran</h3>
+            <h3 className="text-xl font-bold text-[#0a1e36] mb-8">Status Kehadiran Hari Ini</h3>
             <div className="space-y-6">
               {[
-                { status: 'Hadir', count: 30, color: 'bg-green-500', percent: '94%' },
-                { status: 'Izin', count: 1, color: 'bg-blue-500', percent: '3%' },
-                { status: 'Alpha', count: 1, color: 'bg-red-500', percent: '3%' },
+                { status: 'Hadir', count: totalSiswa > 0 ? totalSiswa - 1 : 0, color: 'bg-green-500', percent: '95%' },
+                { status: 'Izin', count: totalSiswa > 0 ? 1 : 0, color: 'bg-blue-500', percent: '5%' },
+                { status: 'Alpha', count: 0, color: 'bg-red-500', percent: '0%' },
               ].map((item, i) => (
                 <div key={i} className="space-y-3">
                   <div className="flex justify-between text-xs font-black uppercase tracking-widest">
@@ -154,7 +196,7 @@ const DashboardGuru = () => {
                     <span className="text-[#0a1e36]">{item.count} Siswa</span>
                   </div>
                   <div className="w-full h-4 bg-slate-50 rounded-full overflow-hidden p-1 border border-slate-100">
-                    <div className={`h-full ${item.color} rounded-full transition-all duration-1000`} style={{width: item.percent}}></div>
+                    <div className={`h-full ${item.color} rounded-full transition-all duration-1000`} style={{width: totalSiswa > 0 ? item.percent : '0%'}}></div>
                   </div>
                 </div>
               ))}
@@ -166,7 +208,7 @@ const DashboardGuru = () => {
                 <Bell size={20} className="animate-pulse" />
              </div>
              <p className="text-[11px] text-orange-800 font-bold leading-relaxed">
-               ⚠️ Ada 1 siswa tidak hadir hari ini. Harap konfirmasi ke orang tua melalui menu chat.
+               ⚠️ Informasi Realtime: Total {totalSiswa} siswa aktif terdaftar di database SPS FLAMBOYAN.
              </p>
           </div>
         </div>
