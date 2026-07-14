@@ -102,7 +102,7 @@ const Chat = () => {
   if (loading) {
     return (
       <div className="flex bg-white rounded-[2.5rem] border border-gray-100 shadow-sm h-[calc(100vh-140px)] items-center justify-center font-bold text-orange-600 animate-pulse">
-        Menghubungkan ke server kontak Guru SITKA...
+        Menghubungkan ke server kontak Guru SI-FLAMBOYAN...
       </div>
     );
   }

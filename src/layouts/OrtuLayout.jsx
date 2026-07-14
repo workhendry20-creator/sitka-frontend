@@ -30,7 +30,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
   const handleLogout = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
-      text: "Apakah Bunda/Ayah yakin ingin keluar dari SITKA?",
+      text: "Apakah Bunda/Ayah yakin ingin keluar dari SI-FLAMBOYAN?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#306896',
@@ -55,7 +55,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
   const activeMenu = menuItems.find(item => location.pathname.includes(item.path))?.name || 'Dashboard';
 
   return (
-    <div className="flex min-h-screen bg-slate-50 relative">
+    <div className="flex h-screen bg-slate-50 relative overflow-hidden">
       
       {/* OVERLAY MOBILE */}
       {isSidebarOpen && (
@@ -67,7 +67,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
 
       {/* SIDEBAR */}
       <aside className={`
-        fixed md:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ease-in-out
+        fixed md:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col md:flex-shrink-0 transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="p-8 flex items-center justify-between">
@@ -75,14 +75,14 @@ const OrtuLayout = ({ children, onLogout, user }) => {
             <div className="w-10 h-10 bg-[#306896] rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
               <span className="text-white font-bold text-xl">S</span>
             </div>
-            <h1 className="text-2xl font-black text-[#0a1e36] tracking-tight">SITKA</h1>
+            <h1 className="text-2xl font-black text-[#0a1e36] tracking-tight">SI-FLAMBOYAN</h1>
           </Link>
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400">
             <X size={24} />
           </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = location.pathname.includes(item.path);
             return (
@@ -115,8 +115,8 @@ const OrtuLayout = ({ children, onLogout, user }) => {
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-8 sticky top-0 z-30">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-8 flex-shrink-0 z-30">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}
@@ -150,7 +150,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
           </div>
         </header>
 
-        <div className="p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}
         </div>
       </main>

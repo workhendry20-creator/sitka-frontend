@@ -59,12 +59,12 @@ function App() {
     // 3. Kembalikan navigasi ke halaman depan
     navigate('/', { replace: true });
     // 4. Alert sukses estetik
-    alert('✨ Anda telah keluar dari sistem SITKA. Sampai jumpa kembali, Senior! 🫡');
+    alert('✨ Anda telah keluar dari sistem SI-FLAMBOYAN. Sampai jumpa kembali, Senior! 🫡');
   };
 
   // Fungsi pembantu untuk mengamankan halaman berdasarkan Role akun
   const ProtectedRoute = ({ allowedRole, children }) => {
-    if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-400">MEMUAT SISTEM SITKA...</div>;
+    if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-slate-400">MEMUAT SISTEM SI-FLAMBOYAN...</div>;
     
     // Jika tidak ada data login, tendang balik ke halaman Login utama "/"
     if (!userSession) {

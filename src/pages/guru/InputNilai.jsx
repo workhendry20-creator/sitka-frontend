@@ -23,6 +23,8 @@ const InputNilai = () => {
   // State untuk Rekapitulasi Global
   const [rekapData, setRekapData] = useState([]);
 
+  const [selectedRekapDetail, setSelectedRekapDetail] = useState(null);
+
   // --- PARAMETER ADAPTIF: BERDASARKAN RENTANG USIA ANAK (DOKUMEN PAUD RESMI) ---
   const parameterAkademikBerdasarkanUsia = {
     "2-3 Tahun": [
@@ -515,33 +517,106 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
     }));
   };
 
-  const handleSaveToRekap = () => {
+  const handleSaveToRekap = async () => {
     if (inputType === 'Semester' && !selectedSiswaId) {
       return Swal.fire('Form Belum Lengkap', 'Silakan pilih nama anak didik terlebih dahulu.', 'warning');
     }
 
-    let updatedData = [];
-    if (inputType === 'Semester') {
-      const targetSiswa = anekdotSiswa.find(s => s.id === parseInt(selectedSiswaId));
-      if (targetSiswa) {
-        updatedData = [{ ...targetSiswa, kelompok, tanggal, label: `Semester ${selectedSemester}` }];
-      }
-    } else {
-      updatedData = anekdotSiswa.map(s => ({ ...s, kelompok, tanggal }));
-    }
-    
-    setRekapData(prev => {
-      const idsToFilter = updatedData.map(u => u.id);
-      const filtered = prev.filter(p => !(p.kelompok === kelompok && p.tanggal === tanggal && idsToFilter.includes(p.id) && p.label.includes(inputType === 'Semester' ? 'Semester' : 'Bahagia')));
-      return [...filtered, ...updatedData];
+    Swal.fire({
+      title: 'Menyimpan Nilai...',
+      text: `Sedang merekam data ${inputType} ke Supabase Cloud.`,
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
     });
 
-    Swal.fire({
-      icon: 'success',
-      title: 'Tersimpan ke Rekap!',
-      text: `Data ${inputType} berhasil direkam ke tabel rekap lokal.`,
-      confirmButtonColor: '#4f46e5'
-    });
+    try {
+      if (inputType === 'Semester') {
+        const targetSiswa = anekdotSiswa.find(s => s.id === parseInt(selectedSiswaId));
+        if (!targetSiswa) throw new Error("Siswa tidak ditemukan.");
+
+        const payloadSemester = {
+          nisn: targetSiswa.nisn || "-",
+          nama_siswa: targetSiswa.nama,
+          kelompok: kelompok,
+          tanggal: tanggal,
+          semester: selectedSemester,
+          rekomendasi_guru: targetSiswa.rekomendasi || '',
+          skor_indikator: targetSiswa.nilaiSemester || {}, 
+          input_oleh_guru: `Wali Kelas ${kelompok}`
+        };
+
+        const { error: errSem } = await supabase
+          .from('nilai_semester')
+          .upsert([payloadSemester], { onConflict: 'nisn, semester' });
+
+        if (errSem) throw errSem;
+
+      } else {
+        const payloadHarian = anekdotSiswa.map(s => ({
+          nisn: s.nisn || "-",
+          nama_siswa: s.nama,
+          kelompok: kelompok,
+          tanggal: tanggal,
+          status_kondisi: s.label || 'Bahagia',
+          catatan_anekdot: s.catatan || '',
+          input_oleh_guru: `Wali Kelas ${kelompok}`
+        }));
+
+        const { error: errHar } = await supabase
+          .from('nilai_harian')
+          .upsert(payloadHarian, { onConflict: 'nisn, tanggal' });
+
+        if (errHar) throw errHar;
+      }
+
+      // =======================================================================
+      // 🔥 PERBAIKAN SINKRONISASI LOKAL (Data Detail Ikut Tersimpan Permanen)
+      // =======================================================================
+      let updatedData = [];
+      if (inputType === 'Semester') {
+        const targetSiswa = anekdotSiswa.find(s => s.id === parseInt(selectedSiswaId));
+        if (targetSiswa) {
+          updatedData = [{ 
+            ...targetSiswa, 
+            kelompok, 
+            tanggal, 
+            label: `Semester ${selectedSemester}`,
+            rekomendasi: targetSiswa.rekomendasi || '',
+            nilaiSemester: { ...targetSiswa.nilaiSemester } // Menyimpan snapshot nilai agar tidak hilang saat bolak-balik
+          }];
+        }
+      } else {
+        updatedData = anekdotSiswa.map(s => ({ ...s, kelompok, tanggal }));
+      }
+      
+      setRekapData(prev => {
+        const idsToFilter = updatedData.map(u => u.id);
+        const filtered = prev.filter(p => !(
+          p.kelompok === kelompok && 
+          p.tanggal === tanggal && 
+          idsToFilter.includes(p.id) && 
+          p.label.includes(inputType === 'Semester' ? 'Semester' : 'Bahagia')
+        ));
+        return [...filtered, ...updatedData];
+      });
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Sukses Sinkronisasi!',
+        text: `Data ${inputType} berhasil diamankan di database cloud sekolah.`,
+        confirmButtonColor: '#306896',
+        customClass: { popup: 'rounded-[2rem]' }
+      });
+
+    } catch (err) {
+      Swal.fire({
+        title: 'Gagal Sinkronisasi Cloud',
+        text: err.message,
+        icon: 'error',
+        confirmButtonColor: '#f43f5e',
+        customClass: { popup: 'rounded-[2rem]' }
+      });
+    }
   };
 
   const downloadCSV = () => {
@@ -559,7 +634,7 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Rekap_Nilai_SITKA_${tanggal}.csv`;
+    a.download = `Rekap_Nilai_SI-FLAMBOYAN_${tanggal}.csv`;
     a.click();
   };
 
@@ -571,6 +646,85 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
     const kategori = detailSiswaSemesterTerpilih.usia;
     
     return parameterAkademikBerdasarkanUsia[kategori] || parameterAkademikBerdasarkanUsia["5-6 Tahun"];
+  };
+  // --- HANDLER DETAIL REKAPITULASI ---
+  const handleLihatDetailSiswa = (item) => {
+    // Jika tipenya bukan Semester atau tidak memiliki data skor, munculkan info biasa
+    if (!item.label.includes('Semester') || !item.nilaiSemester || Object.keys(item.nilaiSemester).length === 0) {
+      return Swal.fire({
+        title: item.nama,
+        html: `<div class="text-left bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <p class="font-semibold text-gray-500 mb-1">Catatan/Anekdot Harian:</p>
+                <p class="text-gray-800 font-medium">${item.catatan || 'Tidak ada catatan harian.'}</p>
+               </div>`,
+        confirmButtonColor: '#306896',
+        customClass: { popup: 'rounded-[2rem]' }
+      });
+    }
+
+    // Bangun baris tabel HTML secara dinamis dari skor indikator semester (BM, MM, BSH, dll.)
+    let barisIndikatorHtml = '';
+    
+    // Ambil daftar parameter kurikulum berdasarkan usia anak yang tersimpan di state item tersebut
+    const kategoriUsia = item.usia || '5-6 Tahun';
+    const parameterKurikulum = parameterAkademikBerdasarkanUsia[kategoriUsia] || parameterAkademikBerdasarkanUsia["5-6 Tahun"];
+
+    parameterKurikulum.forEach(kat => {
+      kat.indikator.forEach(ind => {
+        const skorAnak = item.nilaiSemester[ind.id];
+        if (skorAnak) { // Hanya tampilkan indikator yang sudah dinilai guru
+          // Beri warna badge sesuai tingkat perkembangan anak
+          let warnaBadge = 'bg-gray-100 text-gray-700';
+          if (skorAnak === 'BSH') warnaBadge = 'bg-indigo-100 text-indigo-700 font-bold';
+          if (skorAnak === 'BSB') warnaBadge = 'bg-emerald-100 text-emerald-700 font-bold';
+          if (skorAnak === 'BB') warnaBadge = 'bg-rose-100 text-rose-700 font-bold';
+
+          barisIndikatorHtml += `
+            <tr class="border-b border-gray-100 hover:bg-gray-50/50">
+              <td class="py-3 pr-2 text-xs font-semibold text-indigo-600 align-top">${ind.id.toUpperCase()}</td>
+              <td class="py-3 px-2 text-xs text-gray-700 text-left align-top">${ind.teks}</td>
+              <td class="py-3 pl-2 text-right align-top">
+                <span class="px-2.5 py-1 text-[11px] rounded-md ${warnaBadge}">${skorAnak}</span>
+              </td>
+            </tr>
+          `;
+        }
+      });
+    });
+
+    if (!barisIndikatorHtml) {
+      barisIndikatorHtml = `<tr><td colspan="3" class="text-center py-4 text-sm text-gray-400 italic">Belum ada skor indikator yang diisi.</td></tr>`;
+    }
+
+    // Tampilkan popup SweetAlert berisi tabel rapi capaian perkembangan
+    Swal.fire({
+      title: `<span class="text-lg font-bold block text-gray-900">${item.nama}</span>
+              <span class="text-xs text-gray-400 block font-normal mt-0.5">${item.label} (${item.kelompok})</span>`,
+      html: `
+        <div class="max-h-[60vh] overflow-y-auto pr-1">
+          <div class="mb-4 text-left bg-indigo-50/50 p-3 rounded-xl border border-indigo-100/60">
+            <span class="block text-[11px] font-bold text-indigo-500 uppercase tracking-wider mb-0.5">Rekomendasi Pendidik / Catatan Akhir:</span>
+            <p class="text-xs text-gray-700 italic font-medium">"${item.rekomendasi || 'Belum ada rekomendasi tertulis.'}"</p>
+          </div>
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b-2 border-gray-200 text-gray-400 text-[11px] uppercase tracking-wider">
+                <th class="pb-2 font-bold w-16">Kode</th>
+                <th class="pb-2 font-bold">Indikator Penilaian</th>
+                <th class="pb-2 font-bold text-right w-16">Skor</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${barisIndikatorHtml}
+            </tbody>
+          </table>
+        </div>
+      `,
+      confirmButtonText: 'Tutup Detail',
+      confirmButtonColor: '#306896',
+      width: '600px',
+      customClass: { popup: 'rounded-[1.5rem]' }
+    });
   };
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 text-left">
@@ -669,7 +823,7 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
       {/* --- REFRESH LOADING INDICATOR --- */}
       {loading ? (
         <div className="text-center py-12 font-bold text-indigo-600 animate-pulse">
-           Sedang menarik data anak didik terbaru dari database SITKA...
+           Sedang menarik data anak didik terbaru dari database SI-FLAMBOYAN...
         </div>
       ) : (
         <>
@@ -876,7 +1030,7 @@ const parameterSiswaAktif = parameterAkademikBerdasarkanUsia[usiaSiswaAktif] || 
       <div className="bg-[#0a1e36] p-8 md:p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
-            <h3 className="text-2xl font-black mb-1 italic">Rekapitulasi Input</h3>
+            <h3 className="text-2xl font-black mb-1 italic">Rekapitulasi Input ({inputType})</h3>
             <p className="text-indigo-300 text-xs font-bold uppercase tracking-[0.2em]">Data Terkumpul ({kelompok})</p>
           </div>
           <button 
@@ -898,32 +1052,60 @@ const parameterSiswaAktif = parameterAkademikBerdasarkanUsia[usiaSiswaAktif] || 
               </tr>
             </thead>
             <tbody>
-              {rekapData.length === 0 ? (
-                <tr>
-                  <td colSpan="4" className="text-center py-10 text-slate-500 font-bold italic bg-white/5 rounded-2xl">
-                    Belum ada data di rekap. Klik 'Simpan Ke Rekap' untuk memindahkan data.
-                  </td>
-                </tr>
-              ) : (
-                rekapData.sort((a,b) => a.kelompok.localeCompare(b.kelompok)).map((item, idx) => (
-                  <tr key={idx} className="bg-white/5 backdrop-blur-md rounded-2xl">
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-lg text-[10px] font-black uppercase">
-                        {item.kelompok}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-sm">{item.nama}</td>
-                    <td className="px-6 py-4">
-                      <span className="text-[10px] font-black bg-white/10 px-2 py-1 rounded-md text-slate-300">
-                        {item.label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-300 italic max-w-xs truncate">
-                      {item.rekomendasi || item.catatan || "(Kosong)"}
-                    </td>
-                  </tr>
-                ))
-              )}
+              {(() => {
+                // ⚡ FILTER OTOMATIS: Pisahkan data agar tidak bercampur antara Harian/Semester
+                const dataTerfilter = rekapData.filter(item => {
+                  if (inputType === 'Semester') {
+                    return item.label.includes('Semester');
+                  } else {
+                    return !item.label.includes('Semester');
+                  }
+                });
+
+                if (dataTerfilter.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan="4" className="text-center py-10 text-slate-500 font-bold italic bg-white/5 rounded-2xl">
+                        📭 Belum ada data rekapitulasi untuk kategori <span className="text-indigo-400">{inputType}</span>.
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return dataTerfilter
+                  .sort((a, b) => a.kelompok.localeCompare(b.kelompok))
+                  .map((item, idx) => (
+                    <tr 
+                      key={idx} 
+                      onClick={() => handleLihatDetailSiswa(item)} // 👈 TRIGER KLIK POPUP DETAIL BB, BSH, DLL
+                      className="bg-white/5 backdrop-blur-md rounded-2xl hover:bg-white/10 cursor-pointer transition-all group"
+                    >
+                      <td className="px-6 py-4">
+                        <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-lg text-[10px] font-black uppercase">
+                          {item.kelompok}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm group-hover:text-indigo-300 transition-colors">
+                            {item.nama}
+                          </span>
+                          <span className="text-[10px] text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                            🔍 Lihat Detail
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-[10px] font-black bg-white/10 px-2 py-1 rounded-md text-slate-300">
+                          {item.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-xs text-slate-300 italic max-w-xs truncate">
+                        {item.label.includes('Semester') ? (item.rekomendasi || "(Tidak ada rekomendasi)") : (item.catatan || "(Tidak ada catatan)")}
+                      </td>
+                    </tr>
+                  ));
+              })()}
             </tbody>
           </table>
         </div>

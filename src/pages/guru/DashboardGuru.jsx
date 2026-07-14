@@ -79,7 +79,7 @@ const DashboardGuru = () => {
       {/* Welcome Message */}
       <div className="bg-gradient-to-r from-[#306896] to-[#4682b4] p-8 rounded-[3rem] text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10">
-          <h2 className="text-3xl font-black mb-2 tracking-tight">Selamat Datang di SITKA Dashboard</h2>
+          <h2 className="text-3xl font-black mb-2 tracking-tight">Selamat Datang di SI-FLAMBOYAN Dashboard</h2>
           <p className="opacity-80 font-medium italic">Manajemen kelas jadi lebih mudah dan terintegrasi hari ini.</p>
         </div>
         <BookOpen className="absolute right-[-20px] bottom-[-20px] w-64 h-64 opacity-10 rotate-12" />

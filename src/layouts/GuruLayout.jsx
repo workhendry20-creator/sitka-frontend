@@ -25,7 +25,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
   const handleLogout = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
-      text: "Apakah Senior yakin ingin keluar dari SITKA?",
+      text: "Apakah Senior yakin ingin keluar dari SI-FLAMBOYAN?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#306896', // Menyesuaikan warna tema Guru Layout
@@ -47,7 +47,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 relative">
+    <div className="flex h-screen bg-slate-50 relative overflow-hidden">
       
       {/* --- OVERLAY UNTUK MOBILE --- */}
       {isSidebarOpen && (
@@ -59,7 +59,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
 
       {/* --- SIDEBAR --- */}
       <aside className={`
-        fixed md:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ease-in-out
+        fixed md:static inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col md:flex-shrink-0 transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         {/* Logo Area */}
@@ -68,7 +68,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
             <div className="w-10 h-10 bg-[#306896] rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
               <span className="text-white font-bold text-xl">S</span>
             </div>
-            <h1 className="text-2xl font-black text-[#0a1e36] tracking-tight">SITKA</h1>
+            <h1 className="text-2xl font-black text-[#0a1e36] tracking-tight">SI-FLAMBOYAN</h1>
           </Link>
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400">
             <X size={24} />
@@ -76,7 +76,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
         </div>
 
         {/* Menu Navigation */}
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -110,9 +110,9 @@ const GuruLayout = ({ children, onLogout, user }) => {
       </aside>
 
       {/* --- MAIN CONTENT AREA --- */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* HEADER */}
-        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-8 sticky top-0 z-30">
+        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-8 flex-shrink-0 z-30">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}
@@ -135,7 +135,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
               {/* 🔥 SEKARANG NAMA PROFIL SINKRON OTOMATIS DARI SUPABASE */}
               <div className="hidden sm:block">
                 <p className="text-sm font-bold text-[#0a1e36] group-hover:text-[#306896] transition-colors">
-                  {user?.nama || 'Pengajar SITKA'}
+                  {user?.nama || 'Pengajar SI-FLAMBOYAN'}
                 </p>
                 <p className="text-[9px] font-black text-[#306896] tracking-widest uppercase">
                   {user?.role ? `TENAGA PENDIDIK ${user.role}` : 'GURU PAUD'}
@@ -149,7 +149,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
         </header>
 
         {/* PAGE CONTENT */}
-        <div className="p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}
         </div>
       </main>

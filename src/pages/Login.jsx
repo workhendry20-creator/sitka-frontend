@@ -27,7 +27,7 @@ const Login = ({ onLoginSuccess }) => {
       // 1. PENANGANAN LOGIN KHUSUS ADMIN (Bypass Sementara jika data admin belum di DB)
       if (selectedRole === 'ADMIN') {
         if (idPengguna === 'admin' && kataSandi === 'admin123') {
-          const adminSession = { nama: 'Administrator SITKA', role: 'admin' };
+          const adminSession = { nama: 'Administrator SI-FLAMBOYAN', role: 'admin' };
           localStorage.setItem('user_session', JSON.stringify(adminSession));
           onLoginSuccess(adminSession);
           navigate('/admin/dashboard');
@@ -104,7 +104,7 @@ const Login = ({ onLoginSuccess }) => {
             <GraduationCap size={64} className="text-white" />
           </div>
           <h2 className="text-4xl font-bold mb-6 leading-tight">
-            Pantau Pembelajaran Jadi Lebih Mudah dengan SITKA.
+            Pantau Pembelajaran Jadi Lebih Mudah dengan SI-FLAMBOYAN.
           </h2>
           <div className="space-y-4">
             <div className="flex items-center gap-4">
@@ -128,7 +128,7 @@ const Login = ({ onLoginSuccess }) => {
         <div className="w-full max-w-[440px]">
           
           <div className="text-center md:text-left mb-10">
-            <h1 className="text-4xl font-black text-[#0a1e36] mb-2 tracking-tight">Masuk SITKA</h1>
+            <h1 className="text-4xl font-black text-[#0a1e36] mb-2 tracking-tight">Masuk SI-FLAMBOYAN</h1>
             <p className="text-slate-400 font-medium">Selamat datang kembali! Silakan masuk ke akun Anda.</p>
           </div>
 

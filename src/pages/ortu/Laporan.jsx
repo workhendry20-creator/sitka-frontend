@@ -21,7 +21,7 @@ const Laporan = () => {
 
   // --- MENGAMBIL DATA PROFIL REALTIME DARI REGISTRASI ---
   const dataAnak = {
-    nama: parentData?.nama_anak || "Anak Didik SITKA",
+    nama: parentData?.nama_anak || "Anak Didik SI-FLAMBOYAN",
     kelompok: parentData?.kelompok || "A",
     nisn: parentData?.nisn || "-",
     stats: { hadir: 18, izin: 1, sakit: 1, alpa: 0 }

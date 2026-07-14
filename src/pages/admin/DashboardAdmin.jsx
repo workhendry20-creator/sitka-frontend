@@ -15,7 +15,7 @@ const DashboardAdmin = () => {
       <div className="bg-[#0a1e36] p-10 rounded-[3rem] text-white relative overflow-hidden shadow-2xl shadow-indigo-900/20">
         <div className="relative z-10">
           <h2 className="text-4xl font-black mb-2 tracking-tight">System Overview</h2>
-          <p className="text-indigo-200 font-medium">Selamat datang di Pusat Kontrol SITKA. Kelola seluruh ekosistem digital sekolah di sini.</p>
+          <p className="text-indigo-200 font-medium">Selamat datang di Pusat Kontrol SI-FLAMBOYAN. Kelola seluruh ekosistem digital sekolah di sini.</p>
         </div>
         <div className="absolute right-[-30px] top-[-30px] w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl"></div>
       </div>

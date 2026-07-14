@@ -88,7 +88,7 @@ const Kurikulum = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `SITKA_KURIKULUM_REALTIME_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `SI-FLAMBOYAN_KURIKULUM_REALTIME_${new Date().toISOString().slice(0,10)}.csv`);
     link.click();
 
     Swal.fire({
@@ -123,7 +123,7 @@ const Kurikulum = () => {
               <Database className="text-indigo-400" size={32} />
               <h2 className="text-3xl font-black italic tracking-tight">Pusat Manajemen Kurikulum</h2>
             </div>
-            <p className="text-indigo-200 text-sm font-medium opacity-80">Sinkronisasi Basis Data Terpadu Anak Didik SITKA Berbasis Cloud.</p>
+            <p className="text-indigo-200 text-sm font-medium opacity-80">Sinkronisasi Basis Data Terpadu Anak Didik SI-FLAMBOYAN Berbasis Cloud.</p>
           </div>
           
           <button 
@@ -178,7 +178,7 @@ const Kurikulum = () => {
         <div className="overflow-x-auto">
           {loading ? (
             <div className="text-center py-20 font-bold text-indigo-600 animate-pulse">
-              Menghubungkan ke server cloud SITKA...
+              Menghubungkan ke server cloud SI-FLAMBOYAN...
             </div>
           ) : filteredSiswa.length === 0 ? (
             <div className="text-center py-20 text-slate-400 font-bold italic">
@@ -246,7 +246,7 @@ const Kurikulum = () => {
         {/* FOOTER TABLE */}
         <div className="p-6 bg-slate-50/50 text-center border-t border-slate-50">
            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-             Menampilkan {filteredSiswa.length} Data Dari Database - SITKA Kurikulum Terpadu 2026
+             Menampilkan {filteredSiswa.length} Data Dari Database - SI-FLAMBOYAN Kurikulum Terpadu 2026
            </p>
         </div>
       </div>

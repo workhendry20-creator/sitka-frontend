@@ -118,7 +118,7 @@ const ChatAdmin = () => {
           <Megaphone className="text-orange-400 -rotate-12" size={40} />
           <div>
             <h2 className="text-3xl font-black italic">Broadcast Center</h2>
-            <p className="text-indigo-200 text-sm opacity-80">Kirim pesan pengumuman ke seluruh ekosistem SITKA Cloud</p>
+            <p className="text-indigo-200 text-sm opacity-80">Kirim pesan pengumuman ke seluruh ekosistem SI-FLAMBOYAN Cloud</p>
           </div>
         </div>
       </div>

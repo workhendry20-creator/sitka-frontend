@@ -28,7 +28,7 @@ const AdminLayout = ({ children, onLogout, user }) => {
   const handleLogoutClick = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
-      text: "Apakah Senior yakin ingin keluar dari sistem SITKA?",
+      text: "Apakah Senior yakin ingin keluar dari sistem SI-FLAMBOYAN?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#306896',
@@ -71,7 +71,7 @@ const AdminLayout = ({ children, onLogout, user }) => {
             <div className="w-10 h-10 bg-[#306896] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
               <Shield size={24} className="text-white" />
             </div>
-            <h1 className="text-xl font-black tracking-tight uppercase">SITKA ADMIN</h1>
+            <h1 className="text-xl font-black tracking-tight uppercase">SI-FLAMBOYAN ADMIN</h1>
           </div>
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 p-1">
             <X size={24} />
@@ -144,7 +144,7 @@ const AdminLayout = ({ children, onLogout, user }) => {
               <div className="text-right select-none">
                 {/* Menampilkan Nama Lengkap Admin */}
                 <p className="text-base font-black text-[#0a1e36] tracking-tight leading-tight group-hover:text-[#306896] transition-colors">
-                  {user?.nama || 'Administrator SITKA'}
+                  {user?.nama || 'Administrator SI-FLAMBOYAN'}
                 </p>
                 {/* Menampilkan Sub-text Role Admin */}
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 font-mono">

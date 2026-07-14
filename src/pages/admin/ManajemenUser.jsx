@@ -43,7 +43,7 @@ const ManajemenUser = () => {
   const handleDeleteUser = async (id, name) => {
     const result = await Swal.fire({
       title: 'Apakah Anda Yakin?',
-      text: `Akun ${name} akan dihapus permanen dari sistem SITKA.`,
+      text: `Akun ${name} akan dihapus permanen dari sistem SI-FLAMBOYAN.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -151,7 +151,7 @@ const ManajemenUser = () => {
                 </p>
               </div>
               <div>
-                <span style="color: #10b981; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking-wider: 0.5px;">Token Validasi SITKA</span>
+                <span style="color: #10b981; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking-wider: 0.5px;">Token Validasi SI-FLAMBOYAN</span>
                 <p style="margin: 2px 0 0 0; font-size: 13px; font-weight: 800; color: #065f46;">🔐 ${validTxt(user.token)}</p>
               </div>
             </div>
@@ -214,7 +214,7 @@ const ManajemenUser = () => {
                 </p>
               </div>
               <div>
-                <span style="color: #10b981; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking-wider: 0.5px;">Token Validasi SITKA</span>
+                <span style="color: #10b981; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking-wider: 0.5px;">Token Validasi SI-FLAMBOYAN</span>
                 <p style="margin: 2px 0 0 0; font-size: 13px; font-weight: 800; color: #065f46;">🔐 ${validTxt(user.token)}</p>
               </div>
             </div>
