@@ -15,6 +15,23 @@ const Chat = () => {
   // --- AMBIL DAFTAR GURU SECARA REALTIME DARI SUPABASE ---
   useEffect(() => {
     fetchDaftarGuru();
+
+    const handleStorage = (e) => {
+      if (e.key === 'sitka_chats') {
+        const globalChats = JSON.parse(e.newValue || '[]');
+        const myUser = JSON.parse(localStorage.getItem('user_session')) || { id: 999 };
+        
+        setChatHistory(prevHistory => prevHistory.map(guru => {
+          let msgs = globalChats.filter(m => m.guruId == guru.id && m.ortuId == myUser.id);
+          if (msgs.length === 0) {
+             msgs = [{ id: `init-${guru.id}`, sender: 'guru', text: `Assalamu'alaikum Mama/Papa, ada yang bisa kami bantu?`, time: '08:00' }];
+          }
+          return { ...guru, messages: msgs };
+        }));
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const fetchDaftarGuru = async () => {
@@ -28,6 +45,9 @@ const Chat = () => {
 
       if (error) throw error;
 
+      const myUser = JSON.parse(localStorage.getItem('user_session')) || { id: 999 };
+      const globalChats = JSON.parse(localStorage.getItem('sitka_chats') || '[]');
+
       // Memetakan data guru asli dari DB dan menyematkan mapel/posisi dinamis beserta pembuka chat
       const formattedTeachers = data.map((guru, index) => {
         let posisiSistem = 'Guru Pendamping';
@@ -35,19 +55,17 @@ const Chat = () => {
         else if (guru.nama.includes('Endah')) posisiSistem = 'Guru Sentra Balok';
         else if (guru.nama.includes('Ahmad')) posisiSistem = 'Guru Agama / Tahfidz';
 
+        let msgs = globalChats.filter(m => m.guruId == guru.id && m.ortuId == myUser.id);
+        if (msgs.length === 0) {
+           msgs = [{ id: `init-${guru.id}`, sender: 'guru', text: `Assalamu'alaikum Mama/Papa, ada yang bisa kami bantu mengenai perkembangan ananda di sekolah?`, time: '08:00' }];
+        }
+
         return {
           id: guru.id,
           nama: guru.nama, // Nama Asli dari DB (Contoh: Budi Santoso, S.Pd)
           mapel: posisiSistem,
           online: index !== 1, // Simulasi status online
-          messages: [
-            { 
-              id: `init-${guru.id}`, 
-              sender: 'guru', 
-              text: `Assalamu'alaikum Mama/Papa, ada yang bisa kami bantu mengenai perkembangan ananda di sekolah?`, 
-              time: '08:00' 
-            }
-          ]
+          messages: msgs
         };
       });
 
@@ -76,21 +94,27 @@ const Chat = () => {
     e.preventDefault();
     if (!messageText.trim() || !activeId) return;
 
+    const myUser = JSON.parse(localStorage.getItem('user_session')) || { id: 999 };
+
     const newMessage = {
       id: Date.now(),
+      guruId: activeId,
+      ortuId: myUser.id,
       sender: 'ortu', // Identitas pengirim dikunci sebagai Ortu (Warna Oranye)
       text: messageText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    const updatedHistory = chatHistory.map(teacher => {
+    const globalChats = JSON.parse(localStorage.getItem('sitka_chats') || '[]');
+    globalChats.push(newMessage);
+    localStorage.setItem('sitka_chats', JSON.stringify(globalChats));
+
+    setChatHistory(prev => prev.map(teacher => {
       if (teacher.id === activeId) {
         return { ...teacher, messages: [...teacher.messages, newMessage] };
       }
       return teacher;
-    });
-
-    setChatHistory(updatedHistory);
+    }));
     setMessageText('');
   };
 
@@ -102,7 +126,7 @@ const Chat = () => {
   if (loading) {
     return (
       <div className="flex bg-white rounded-[2.5rem] border border-gray-100 shadow-sm h-[calc(100vh-140px)] items-center justify-center font-bold text-orange-600 animate-pulse">
-        Menghubungkan ke server kontak Guru SI-FLAMBOYAN...
+        Menghubungkan ke server kontak Guru SITKA...
       </div>
     );
   }

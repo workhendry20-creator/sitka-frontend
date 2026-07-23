@@ -15,6 +15,23 @@ const Chat = () => {
   // --- AMBIL DAFTAR WALI MURID (ORTU) DARI DATABASE ---
   useEffect(() => {
     fetchDaftarOrtu();
+
+    const handleStorage = (e) => {
+      if (e.key === 'sitka_chats') {
+        const globalChats = JSON.parse(e.newValue || '[]');
+        const myUser = JSON.parse(localStorage.getItem('user_session')) || { id: 999 };
+        
+        setChatHistory(prevHistory => prevHistory.map(ortu => {
+          let msgs = globalChats.filter(m => m.guruId == myUser.id && m.ortuId == ortu.id);
+          if (msgs.length === 0) {
+             msgs = [{ id: `init-${ortu.id}`, sender: 'ortu', text: `Halo Ibu/Pak Guru, bagaimana perkembangan ${ortu.siswa || 'anak saya'} di sekolah hari ini?`, time: '08:30' }];
+          }
+          return { ...ortu, messages: msgs };
+        }));
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const fetchDaftarOrtu = async () => {
@@ -28,22 +45,25 @@ const Chat = () => {
 
       if (error) throw error;
 
+      const myUser = JSON.parse(localStorage.getItem('user_session')) || { id: 999 };
+      const globalChats = JSON.parse(localStorage.getItem('sitka_chats') || '[]');
+
       // Map data Ortu dari DB dan berikan template chat pembuka awal
-      const formattedContacts = data.map((ortu, index) => ({
-        id: ortu.id,
-        nama: ortu.nama, // Nama Wali / Orang Tua
-        siswa: ortu.nama_anak, // Nama Anak Didik
-        kelompok: ortu.kelompok,
-        online: index % 2 === 0, // Simulasi status keaktifan bergantian
-        messages: [
-          { 
-            id: `init-${ortu.id}`, 
-            sender: 'ortu', 
-            text: `Halo Ibu/Pak Guru, bagaimana perkembangan ${ortu.nama_anak} di sekolah hari ini?`, 
-            time: '08:30' 
-          }
-        ]
-      }));
+      const formattedContacts = data.map((ortu, index) => {
+        let msgs = globalChats.filter(m => m.guruId == myUser.id && m.ortuId == ortu.id);
+        if (msgs.length === 0) {
+           msgs = [{ id: `init-${ortu.id}`, sender: 'ortu', text: `Halo Ibu/Pak Guru, bagaimana perkembangan ${ortu.nama_anak} di sekolah hari ini?`, time: '08:30' }];
+        }
+
+        return {
+          id: ortu.id,
+          nama: ortu.nama, // Nama Wali / Orang Tua
+          siswa: ortu.nama_anak, // Nama Anak Didik
+          kelompok: ortu.kelompok,
+          online: index % 2 === 0, // Simulasi status keaktifan bergantian
+          messages: msgs
+        };
+      });
 
       setChatHistory(formattedContacts);
       if (formattedContacts.length > 0) {
@@ -70,21 +90,27 @@ const Chat = () => {
     e.preventDefault();
     if (!messageText.trim() || !activeId) return;
 
+    const myUser = JSON.parse(localStorage.getItem('user_session')) || { id: 999 };
+
     const newMessage = {
       id: Date.now(),
+      guruId: myUser.id,
+      ortuId: activeId,
       sender: 'guru', // Identitas pengirim diset sebagai Guru
       text: messageText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    const updatedHistory = chatHistory.map(contact => {
+    const globalChats = JSON.parse(localStorage.getItem('sitka_chats') || '[]');
+    globalChats.push(newMessage);
+    localStorage.setItem('sitka_chats', JSON.stringify(globalChats));
+
+    setChatHistory(prev => prev.map(contact => {
       if (contact.id === activeId) {
         return { ...contact, messages: [...contact.messages, newMessage] };
       }
       return contact;
-    });
-
-    setChatHistory(updatedHistory);
+    }));
     setMessageText('');
   };
 

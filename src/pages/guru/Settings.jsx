@@ -169,7 +169,7 @@ const SettingsGuru = () => {
           </div>
           <div className="mb-4 text-white">
             <h2 className="text-2xl font-black">{profile.nama || 'Nama Guru'}</h2>
-            <p className="text-white/60 font-medium tracking-wide text-sm">Tenaga Pendidik SI-FLAMBOYAN</p>
+            <p className="text-white/60 font-medium tracking-wide text-sm">Tenaga Pendidik SITKA</p>
           </div>
         </div>
       </div>
@@ -224,7 +224,7 @@ const SettingsGuru = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-              <InfoField icon={Mail} label="Email Instansi" fieldName="email" value={profile.email} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: nama@si-flamboyan.sch.id" />
+              <InfoField icon={Mail} label="Email Instansi" fieldName="email" value={profile.email} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: nama@sitka.sch.id" />
               <InfoField icon={Phone} label="Nomor WhatsApp" fieldName="noWhatsapp" value={profile.noWhatsapp} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: 0812-3456-xxxx" />
               <InfoField icon={Calendar} label="Tanggal Lahir" fieldName="tglLahir" value={profile.tglLahir} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: 22 Mei 1988" />
               <InfoField icon={Briefcase} label="Pendidikan Terakhir" fieldName="pendidikan" value={profile.pendidikan} isEditing={isEditing} onChange={handleInputChange} placeholder="Contoh: S1 PG-PAUD" />

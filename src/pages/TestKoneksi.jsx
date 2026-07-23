@@ -26,7 +26,7 @@ const TestKoneksi = () => {
 
   return (
     <div style={{ padding: '40px', fontFamily: 'sans-serif', textAlign: 'left' }}>
-      <h2 style={{ fontWeight: 'bold', color: '#0a1e36', margin: 0 }}>SI-FLAMBOYAN Database Connection Test</h2>
+      <h2 style={{ fontWeight: 'bold', color: '#0a1e36', margin: 0 }}>SITKA Database Connection Test</h2>
       <p style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '20px' }}>Frontend ⇄ Supabase Cloud</p>
       
       <div style={{ 

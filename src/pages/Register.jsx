@@ -84,7 +84,7 @@ const Register = () => {
       if (error) throw error;
 
       // 4. Notifikasi Berhasil Premium
-      alert(`✨ Barakallah, Registrasi Berhasil!\n\nAkun ${selectedRole === 'GURU' ? 'Guru' : 'Orang Tua'} atas nama "${formData.namaLengkap}" kini telah aktif dan terdaftar dengan aman di dalam sistem SI-FLAMBOYAN Cloud. Silakan kembali ke halaman login untuk masuk ke dashboard, Senior! 🫡🚀`);
+      alert(`✨ Barakallah, Registrasi Berhasil!\n\nAkun ${selectedRole === 'GURU' ? 'Guru' : 'Orang Tua'} atas nama "${formData.namaLengkap}" kini telah aktif dan terdaftar dengan aman di dalam sistem SITKA Cloud. Silakan kembali ke halaman login untuk masuk ke dashboard, Senior! 🫡🚀`);
       
       // Reset isian formulir
       setFormData({

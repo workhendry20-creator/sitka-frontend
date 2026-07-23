@@ -1,6 +1,6 @@
 // src/pages/admin/Kurikulum.jsx
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   Database, Search, Calendar, BarChart3, FileSpreadsheet,
   UserCheck, BookOpen, Fingerprint
 } from 'lucide-react';
@@ -80,15 +80,15 @@ const Kurikulum = () => {
     }
 
     const headers = ["ID Akun,Nama Anak Didik,Kelompok Belajar,Nama Orang Tua (Wali),Token Validasi,Sandi Akses\n"];
-    const rows = siswaData.map(d => 
+    const rows = siswaData.map(d =>
       `${d.id},"${d.nama_anak || '-'}","${d.kelompok || '-'}","${d.nama || '-'}","${d.token || '-'}","${d.password || '-'}"`
     ).join("\n");
-    
+
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `SI-FLAMBOYAN_KURIKULUM_REALTIME_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `SITKA_KURIKULUM_REALTIME_${new Date().toISOString().slice(0, 10)}.csv`);
     link.click();
 
     Swal.fire({
@@ -114,19 +114,19 @@ const Kurikulum = () => {
 
   return (
     <div className="space-y-8 pb-20 text-left">
-      
+
       {/* HEADER: BIG DATA DASHBOARD */}
       <div className="bg-[#0a1e36] p-10 rounded-[3rem] text-white relative overflow-hidden shadow-2xl">
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
               <Database className="text-indigo-400" size={32} />
-              <h2 className="text-3xl font-black italic tracking-tight">Pusat Manajemen Kurikulum</h2>
+              <h2 className="text-3xl font-black italic tracking-tight">Pusat Manajemen Data</h2>
             </div>
-            <p className="text-indigo-200 text-sm font-medium opacity-80">Sinkronisasi Basis Data Terpadu Anak Didik SI-FLAMBOYAN Berbasis Cloud.</p>
+            <p className="text-indigo-200 text-sm font-medium opacity-80">Sinkronisasi Basis Data Terpadu Anak Didik SITKA Berbasis Cloud.</p>
           </div>
-          
-          <button 
+
+          <button
             onClick={exportToCSV}
             className="group flex items-center gap-3 px-8 py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-emerald-900/30 active:scale-95"
           >
@@ -162,11 +162,11 @@ const Kurikulum = () => {
             <h3 className="font-black text-[#0a1e36] text-xl">Database Terpadu Kurikulum</h3>
             <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-tighter italic">*Data asli realtime bersumber dari tabel users cloud</p>
           </div>
-          
+
           <div className="relative w-full md:w-96">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Cari nama anak, kelompok, atau ortu..."
               className="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
               value={searchTerm}
@@ -178,7 +178,7 @@ const Kurikulum = () => {
         <div className="overflow-x-auto">
           {loading ? (
             <div className="text-center py-20 font-bold text-indigo-600 animate-pulse">
-              Menghubungkan ke server cloud SI-FLAMBOYAN...
+              Menghubungkan ke server cloud SITKA...
             </div>
           ) : filteredSiswa.length === 0 ? (
             <div className="text-center py-20 text-slate-400 font-bold italic">
@@ -242,12 +242,12 @@ const Kurikulum = () => {
             </table>
           )}
         </div>
-        
+
         {/* FOOTER TABLE */}
         <div className="p-6 bg-slate-50/50 text-center border-t border-slate-50">
-           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-             Menampilkan {filteredSiswa.length} Data Dari Database - SI-FLAMBOYAN Kurikulum Terpadu 2026
-           </p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Menampilkan {filteredSiswa.length} Data Dari Database - SITKA Kurikulum Terpadu 2026
+          </p>
         </div>
       </div>
 

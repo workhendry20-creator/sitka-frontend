@@ -43,7 +43,7 @@ const ManajemenUser = () => {
   const handleDeleteUser = async (id, name) => {
     const result = await Swal.fire({
       title: 'Apakah Anda Yakin?',
-      text: `Akun ${name} akan dihapus permanen dari sistem SI-FLAMBOYAN.`,
+      text: `Akun ${name} akan dihapus permanen dari sistem SITKA.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -151,7 +151,7 @@ const ManajemenUser = () => {
                 </p>
               </div>
               <div>
-                <span style="color: #10b981; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking-wider: 0.5px;">Token Validasi SI-FLAMBOYAN</span>
+                <span style="color: #10b981; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking-wider: 0.5px;">Token Validasi SITKA</span>
                 <p style="margin: 2px 0 0 0; font-size: 13px; font-weight: 800; color: #065f46;">🔐 ${validTxt(user.token)}</p>
               </div>
             </div>
@@ -214,7 +214,7 @@ const ManajemenUser = () => {
                 </p>
               </div>
               <div>
-                <span style="color: #10b981; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking-wider: 0.5px;">Token Validasi SI-FLAMBOYAN</span>
+                <span style="color: #10b981; font-size: 10px; font-weight: 800; text-transform: uppercase; tracking-wider: 0.5px;">Token Validasi SITKA</span>
                 <p style="margin: 2px 0 0 0; font-size: 13px; font-weight: 800; color: #065f46;">🔐 ${validTxt(user.token)}</p>
               </div>
             </div>
@@ -245,17 +245,6 @@ const ManajemenUser = () => {
               <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Kelola Akun Guru & Orang Tua Cloud</p>
             </div>
           </div>
-          <button 
-            onClick={() => Swal.fire({
-              title: `Tambah Akun ${roleFilter === 'guru' ? 'Guru' : 'Ortu'}`,
-              text: 'Gunakan fitur registrasi bawaan atau jalankan query SQL untuk efisiensi massal.',
-              icon: 'info',
-              confirmButtonColor: '#4f46e5'
-            })}
-            className="flex items-center justify-center gap-3 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg active:scale-95"
-          >
-            <UserPlus size={18} /> Tambah {roleFilter === 'guru' ? 'Guru' : 'Ortu'}
-          </button>
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 pt-4 border-t border-gray-50">

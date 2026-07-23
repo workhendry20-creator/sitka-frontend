@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Image as ImageIcon, Send, MessageCircle, 
   Heart, MoreHorizontal, X, User, Check
@@ -7,59 +7,137 @@ import Swal from 'sweetalert2';
 
 const PostAktivitas = () => {
   const [postText, setPostText] = useState('');
-  const [selectedComments, setSelectedComments] = useState(null); // State untuk Modal
+  const [selectedComments, setSelectedComments] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const imageInputRef = useRef(null);
 
-  // Data Dummy Postingan
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      guru: "Ibu Siti Aminah",
-      waktu: "2 jam yang lalu",
-      konten: "Hari ini anak-anak Kelompok A belajar mewarnai menggunakan teknik gradasi. Semuanya sangat antusias! 🎨✨",
-      likes: 12,
-      comments: [
-        { id: 1, user: "Mama Aditya", teks: "Wah seru banget! Aditya cerita terus tadi pas pulang.", waktu: "1 jam yang lalu" },
-        { id: 2, user: "Papa Rizky", teks: "Hasil warnanya bagus-bagus ya bu.", waktu: "30 menit yang lalu" }
-      ]
-    },
-    {
-      id: 2,
-      guru: "Ibu Siti Aminah",
-      waktu: "5 jam yang lalu",
-      konten: "Makan siang bersama dengan menu sehat: Sayur bayam dan telur dadar. Menanamkan kebiasaan makan sayur sejak dini. 🥗",
-      likes: 8,
-      comments: [
-        { id: 3, user: "Bunda Salsa", teks: "Salsa tadi habis ya bu sayurnya?", waktu: "2 jam yang lalu" }
-      ]
+  // State Postingan Global (Sync LocalStorage)
+  const [posts, setPosts] = useState([]);
+
+  useEffect(() => {
+    // Sinkronisasi data postingan dengan role Ortu
+    const saved = localStorage.getItem('sitka_posts');
+    if (saved) {
+      setPosts(JSON.parse(saved));
+    } else {
+      const defaultPosts = [
+        {
+          id: 1,
+          guru: "Ibu Siti Aminah",
+          waktu: "2 jam yang lalu",
+          konten: "Hari ini anak-anak Kelompok A belajar mewarnai menggunakan teknik gradasi. Semuanya sangat antusias! 🎨✨",
+          image: "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&q=80&w=1000",
+          likes: 12,
+          comments: [
+            { id: 1, user: "Mama Aditya", teks: "Wah seru banget! Aditya cerita terus tadi pas pulang.", waktu: "1 jam yang lalu" }
+          ]
+        },
+        {
+          id: 2,
+          guru: "Pak Guru Budi",
+          waktu: "5 jam yang lalu",
+          konten: "Latihan fisik pagi ini: Melatih keseimbangan dan motorik kasar di lapangan sekolah. Semangat terus ya anak-anak! 🏃‍♂️",
+          image: "https://images.unsplash.com/photo-1560439514-4e9645039924?auto=format&fit=crop&q=80&w=1000",
+          likes: 8,
+          comments: []
+        }
+      ];
+      setPosts(defaultPosts);
+      localStorage.setItem('sitka_posts', JSON.stringify(defaultPosts));
     }
-  ]);
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'sitka_posts' && e.newValue) setPosts(JSON.parse(e.newValue));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 3 * 1024 * 1024) {
+        Swal.fire('Terlalu Besar', 'Maksimal ukuran gambar adalah 3MB', 'warning');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handlePost = () => {
-    if(!postText) return;
+    if(!postText && !selectedImage) {
+      Swal.fire('Informasi', 'Isi teks atau foto untuk diposting.', 'info');
+      return;
+    }
+    
+    // Ambil identitas guru dari sesi
+    const userSession = JSON.parse(localStorage.getItem('user_session')) || { nama: 'Ibu Guru' };
+    
+    const newPost = {
+      id: Date.now(),
+      guru: userSession.nama,
+      waktu: "Baru saja",
+      konten: postText,
+      image: selectedImage, // will be null or base64 string
+      likes: 0,
+      comments: []
+    };
+    
+    const updatedPosts = [newPost, ...posts];
+    setPosts(updatedPosts);
+    localStorage.setItem('sitka_posts', JSON.stringify(updatedPosts));
+
     Swal.fire({
       icon: 'success',
-      title: 'Berhasil Update!',
+      title: 'Berhasil Terkirim!',
       text: 'Aktivitas sudah terbit di beranda orang tua.',
-      confirmButtonColor: '#4f46e5'
+      confirmButtonColor: '#4f46e5',
+      customClass: { popup: 'rounded-[2rem]' }
     });
     setPostText('');
+    setSelectedImage(null);
   };
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
       
       {/* --- BOX BUAT POSTINGAN --- */}
-      <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
+      <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
+        {selectedImage && (
+          <div className="relative inline-block mt-2 group animate-in fade-in duration-300">
+            <img src={selectedImage} alt="Preview" className="w-[200px] h-auto object-cover rounded-xl shadow-md border border-slate-100" />
+            <button 
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-3 -right-3 bg-rose-500 text-white rounded-full p-1 w-8 h-8 flex items-center justify-center hover:bg-rose-600 shadow-lg"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
         <textarea 
           placeholder="Apa aktivitas seru hari ini, Bu Guru?"
           value={postText}
           onChange={(e) => setPostText(e.target.value)}
-          className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none min-h-[120px] resize-none"
+          className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none min-h-[100px] resize-none transition-all"
         />
-        <div className="flex items-center justify-between mt-4">
-          <button className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-xl transition-all font-bold text-xs">
-            <ImageIcon size={20} className="text-indigo-500" />
-            Tambah Foto
+        <div className="flex items-center justify-between pt-2">
+          <input 
+            type="file" 
+            accept="image/*"
+            ref={imageInputRef}
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+          <button 
+            onClick={() => imageInputRef.current.click()}
+            className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all font-bold text-xs"
+          >
+            <ImageIcon size={20} />
+            {selectedImage ? "Ganti Foto" : "Tambah Foto"}
           </button>
           <button 
             onClick={handlePost}
@@ -87,6 +165,11 @@ const PostAktivitas = () => {
                 </div>
                 <button className="text-slate-300"><MoreHorizontal size={20} /></button>
               </div>
+              {post.image && (
+                <div className="mb-4 rounded-[1.5rem] overflow-hidden bg-slate-100 border border-slate-50 relative aspect-video">
+                  <img src={post.image} alt="Media" className="w-full h-full object-cover" />
+                </div>
+              )}
               <p className="text-slate-600 text-sm leading-relaxed mb-6">{post.konten}</p>
               
               <div className="flex items-center gap-6 pt-4 border-t border-slate-50">

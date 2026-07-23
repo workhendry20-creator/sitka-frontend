@@ -1,6 +1,6 @@
 // src/pages/guru/DashboardGuru.jsx
 import React, { useState, useEffect } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Download, Users, BookOpen, Clock, Megaphone, Bell } from 'lucide-react';
 import { supabase } from '../../utils/supabaseClient';
 
@@ -9,6 +9,13 @@ const data = [
   { name: 'Minggu 2', nilai: 82 },
   { name: 'Minggu 3', nilai: 75 },
   { name: 'Minggu 4', nilai: 90 },
+];
+
+const dataAnekdotHarian = [
+  { kondisi: 'Bahagia 😊', jumlah: 18, color: '#6366f1' },
+  { kondisi: 'Tenang 😐', jumlah: 5, color: '#3b82f6' },
+  { kondisi: 'Sedih 😢', jumlah: 1, color: '#f43f5e' },
+  { kondisi: 'Istimewa 🌟', jumlah: 2, color: '#f59e0b' }
 ];
 
 const DashboardGuru = () => {
@@ -79,7 +86,7 @@ const DashboardGuru = () => {
       {/* Welcome Message */}
       <div className="bg-gradient-to-r from-[#306896] to-[#4682b4] p-8 rounded-[3rem] text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10">
-          <h2 className="text-3xl font-black mb-2 tracking-tight">Selamat Datang di SI-FLAMBOYAN Dashboard</h2>
+          <h2 className="text-3xl font-black mb-2 tracking-tight">Selamat Datang di SITKA Dashboard</h2>
           <p className="opacity-80 font-medium italic">Manajemen kelas jadi lebih mudah dan terintegrasi hari ini.</p>
         </div>
         <BookOpen className="absolute right-[-20px] bottom-[-20px] w-64 h-64 opacity-10 rotate-12" />
@@ -109,7 +116,8 @@ const DashboardGuru = () => {
       )}
 
       {/* Stats Cards - Terintegrasi dengan Big Data 'siswa' */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* --- GRID TOP STATS CARD (HANYA 2 KOTAK) --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {[
           { 
             label: 'Total Siswa', 
@@ -125,13 +133,7 @@ const DashboardGuru = () => {
             color: 'text-green-600', 
             bg: 'bg-green-50' 
           },
-          { 
-            label: 'Tugas Terkumpul', 
-            val: loadingStats ? '...' : `${dummyTugasCount}/${totalSiswa}`, 
-            icon: BookOpen, 
-            color: 'text-orange-600', 
-            bg: 'bg-orange-50' 
-          },
+          // ✂️ Objek 'Tugas Terkumpul' sudah dibuang dari array ini
         ].map((stat, i) => (
           <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center gap-6 hover:shadow-md transition-all group">
             <div className={`w-16 h-16 ${stat.bg} ${stat.color} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
@@ -146,39 +148,35 @@ const DashboardGuru = () => {
       </div>
 
       {/* Chart Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-xl font-bold text-[#0a1e36]">Perkembangan Nilai Rata-rata</h3>
-              <p className="text-slate-400 text-sm font-medium">Statistik 4 Minggu Terakhir</p>
-            </div>
-            <button className="flex items-center gap-2 px-6 py-3 bg-slate-50 hover:bg-slate-100 text-[#306896] rounded-2xl font-black text-xs transition-all uppercase tracking-widest border border-slate-100">
-              <Download size={16} />
-              Export CSV
-            </button>
-          </div>
-          
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data}>
-                <defs>
-                  <linearGradient id="colorNilai" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#306896" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#306896" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} />
-                <Tooltip 
-                  contentStyle={{borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '15px'}}
-                />
-                <Area type="monotone" dataKey="nilai" stroke="#306896" strokeWidth={5} fillOpacity={1} fill="url(#colorNilai)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
+  <div className="flex items-center justify-between">
+    <div>
+      <h3 className="text-xl font-black text-[#0a1e36]">Ringkasan Anekdot & Kondisi Siswa</h3>
+
+      <p className="text-xs font-bold text-slate-400">Statistik Mood / Catatan Harian Hari Ini</p>
+
+    </div>
+  </div>
+
+  {/* Container Grafik Anekdot */}
+  <div className="h-64 w-full pt-4">
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={dataAnekdotHarian}>
+        <XAxis dataKey="kondisi" stroke="#94a3b8" fontSize={12} tickLine={false} />
+        <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />
+        <Tooltip 
+          contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none' }}
+          cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }}
+        />
+        <Bar dataKey="jumlah" radius={[12, 12, 0, 0]}>
+          {dataAnekdotHarian.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={entry.color} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  </div>
+</div>
 
         {/* Status Kehadiran Ringkasan */}
         <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm flex flex-col justify-between">
@@ -208,11 +206,10 @@ const DashboardGuru = () => {
                 <Bell size={20} className="animate-pulse" />
              </div>
              <p className="text-[11px] text-orange-800 font-bold leading-relaxed">
-               ⚠️ Informasi Realtime: Total {totalSiswa} siswa aktif terdaftar di database SPS FLAMBOYAN.
+               ⚠️ Informasi Realtime: Total {totalSiswa} siswa aktif terdaftar di database SITKA.
              </p>
           </div>
         </div>
-      </div>
     </div>
   );
 };

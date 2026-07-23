@@ -21,24 +21,24 @@ const ReportGuru = () => {
   const fetchProgressSiswa = async () => {
     setLoading(true);
     try {
-      // Menarik data siswa (role ortu) berdasarkan filter kelompok yang dipilih guru
+      // 1. Ubah format dari 'Kelompok A' -> 'A' (Sinkron dengan halaman Absensi & struktur Database)
+      const dbRombel = selectedKelompok === 'Kelompok A' ? 'A' : 'B';
+
+      // 2. Tarik data yang sama dan riil dari tabel 'siswa' 
       const { data, error } = await supabase
-        .from('users')
-        .select('id, nama, nama_anak, kelompok')
-        .eq('role', 'ortu')
-        .eq('kelompok', selectedKelompok)
-        .order('nama_anak', { ascending: true });
+        .from('siswa')
+        .select('id, nama')
+        .eq('rombel', dbRombel)
+        .order('nama', { ascending: true });
 
       if (error) throw error;
 
-      // Map data Supabase ke state laporan. 
-      // Catatan: Karena kita belum membuat integrasi tabel submisi fisik ortu, 
-      // kita set status default ke 'Belum Mengisi' namun data nama anak dan ortu 100% akurat dari database.
-      const mappedReports = data.map(siswa => ({
+      // 3. Map format untuk antarmuka tabel pelaporan
+      const mappedReports = (data || []).map(siswa => ({
         id: siswa.id,
-        namaSiswa: siswa.nama_anak,
-        namaOrtu: siswa.nama, // Kolom 'nama' adalah nama akun Wali/Ortu
-        status: "Belum Mengisi", // Siap dikoneksikan ke tabel progress kelak
+        namaSiswa: siswa.nama,
+        namaOrtu: "-", // Disesuaikan: saat ini relasi ortu diabaikan (karena data pusat dari siswa)
+        status: "Belum Mengisi", 
         totalSkor: "-",
         tanggal: "-",
         catatan: "-",

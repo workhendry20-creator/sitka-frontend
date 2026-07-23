@@ -30,7 +30,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
   const handleLogout = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
-      text: "Apakah Bunda/Ayah yakin ingin keluar dari SI-FLAMBOYAN?",
+      text: "Apakah Bunda/Ayah yakin ingin keluar dari SITKA?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#306896',
@@ -75,7 +75,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
             <div className="w-10 h-10 bg-[#306896] rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
               <span className="text-white font-bold text-xl">S</span>
             </div>
-            <h1 className="text-2xl font-black text-[#0a1e36] tracking-tight">SI-FLAMBOYAN</h1>
+            <h1 className="text-2xl font-black text-[#0a1e36] tracking-tight">SITKA</h1>
           </Link>
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400">
             <X size={24} />

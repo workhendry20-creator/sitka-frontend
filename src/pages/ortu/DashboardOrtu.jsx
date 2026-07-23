@@ -1,6 +1,6 @@
 // src/pages/ortu/DashboardOrtu.jsx
 import React, { useState, useEffect } from 'react';
-import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Star, Calendar, BookOpen, Megaphone, School, Baby } from 'lucide-react';
 import { supabase } from '../../utils/supabaseClient';
 
@@ -11,6 +11,7 @@ const DashboardOrtu = () => {
   
   // State untuk menampung data user login secara realtime
   const [parentData, setParentData] = useState(null);
+  const [catatanHarian, setCatatanHarian] = useState([]);
 
   useEffect(() => {
     // 1. Ambil info pengumuman admin dari cloud
@@ -19,9 +20,28 @@ const DashboardOrtu = () => {
     // 2. Ambil session user login untuk baca nama, nama_anak, dan kelompok
     const savedSession = localStorage.getItem('user_session');
     if (savedSession) {
-      setParentData(JSON.parse(savedSession));
+      const parsedData = JSON.parse(savedSession);
+      setParentData(parsedData);
+      fetchCatatanAnekdot(parsedData.nama_anak);
     }
   }, []);
+
+  const fetchCatatanAnekdot = async (namaAnak) => {
+    try {
+      if(!namaAnak) return;
+      const { data, error } = await supabase
+        .from('nilai_harian')
+        .select('*')
+        .eq('nama_siswa', namaAnak)
+        .order('tanggal', { ascending: false })
+        .limit(3);
+      if (!error && data) {
+        setCatatanHarian(data);
+      }
+    } catch (err) {
+      console.error("Gagal menarik catatan harian ortu:", err);
+    }
+  };
 
   const fetchCloudAnnouncements = async () => {
     setLoadingBroadcast(true);
@@ -51,10 +71,6 @@ const DashboardOrtu = () => {
     });
   };
 
-  const radarData = [
-    { subject: 'Fisik', A: 85 }, { subject: 'Kognitif', A: 90 },
-    { subject: 'Bahasa', A: 78 }, { subject: 'Sosial', A: 82 }, { subject: 'Seni', A: 70 },
-  ];
 
   const attendanceData = [
     { name: 'Hadir', value: 90 }, { name: 'Izin', value: 5 }, { name: 'Alpa', value: 5 },
@@ -133,11 +149,11 @@ const DashboardOrtu = () => {
         )
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="flex flex-col md:flex-row justify-center gap-8">
         {/* Grafik Lingkaran (Kehadiran) */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col items-center">
+        <div className="w-full md:w-1/2 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col items-center">
           <h3 className="text-lg font-bold text-[#0a1e36] mb-4 flex items-center gap-2">
-            <Calendar className="text-blue-600" size={20} /> Kehadiran
+            <Calendar className="text-blue-600" size={20} /> Kehadiran Bulanan
           </h3>
           <div className="h-64 w-full">
             <ResponsiveContainer>
@@ -158,40 +174,48 @@ const DashboardOrtu = () => {
             ))}
           </div>
         </div>
-
-        {/* Grafik Radar (Perkembangan) */}
-        <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-          <h3 className="text-lg font-bold text-[#0a1e36] mb-4 flex items-center gap-2">
-            <Star className="text-yellow-500 fill-yellow-500" size={20} /> Grafik Perkembangan
-          </h3>
-          <div className="h-72 w-full">
-            <ResponsiveContainer>
-              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                <PolarGrid stroke="#e2e8f0" />
-                <PolarAngleAxis dataKey="subject" tick={{fill: '#64748b', fontSize: 12, fontWeight: 'bold'}} />
-                <Radar name={namaPanggilanAnak} dataKey="A" stroke="#306896" fill="#306896" fillOpacity={0.6} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
       </div>
 
-      {/* Rekap Nilai Terakhir */}
+      {/* Catatan Harian Terbaru (Buku Penghubung) */}
       <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
-        <h3 className="text-lg font-bold text-[#0a1e36] mb-6">Nilai Mata Pelajaran Terakhir</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {['Matematika', 'B. Indonesia', 'Agama', 'Seni Lukis'].map((mapel, i) => (
-            <div key={i} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-md transition-all">
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{mapel}</p>
-                <p className="text-xl font-black text-[#0a1e36]">92</p>
+        <h3 className="text-lg font-bold text-[#0a1e36] mb-6 flex items-center gap-2">
+          <BookOpen className="text-indigo-600" size={20} /> Jurnal Cerdas & Catatan Harian
+        </h3>
+        
+        {catatanHarian.length > 0 ? (
+          <div className="space-y-4">
+            {catatanHarian.map((catatan, i) => (
+              <div key={i} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex flex-col md:flex-row md:items-start justify-between gap-6 hover:bg-white hover:shadow-md transition-all">
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-3 mb-3">
+                    <span className={`text-[10px] font-black px-4 py-1.5 rounded-xl uppercase tracking-widest ${
+                      ['Bahagia', 'Senang', 'Ceria'].includes(catatan.status_kondisi) ? 'bg-indigo-100 text-indigo-700' :
+                      ['Tenang', 'Baik'].includes(catatan.status_kondisi) ? 'bg-emerald-100 text-emerald-700' :
+                      ['Kreatif', 'Aktif'].includes(catatan.status_kondisi) ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                    }`}>
+                      {catatan.status_kondisi || 'Kondisi Baik'}
+                    </span>
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <Calendar size={14} />
+                      <span className="text-[11px] font-bold font-mono">{catatan.tanggal}</span>
+                    </div>
+                  </div>
+                  <p className="text-slate-600 font-medium text-sm leading-relaxed max-w-2xl italic">
+                    "{catatan.catatan_anekdot || 'Ananda belajar dan bermain dengan baik hari ini.'}"
+                  </p>
+                </div>
+                <div className="text-left md:text-right md:border-l border-slate-200 md:pl-6">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Dievaluasi Oleh</p>
+                  <p className="text-sm font-black text-[#0a1e36]">{catatan.input_oleh_guru || 'Pendamping Pendidik'}</p>
+                </div>
               </div>
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-[#306896] shadow-sm group-hover:bg-[#306896] group-hover:text-white transition-colors">
-                <BookOpen size={20} />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-10 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+            <p className="text-slate-400 font-bold text-sm italic">Opsi pemantauan harian akan muncul ketika Wali Kelas menerbitkan catatan untuk ananda.</p>
+          </div>
+        )}
       </div>
     </div>
   );

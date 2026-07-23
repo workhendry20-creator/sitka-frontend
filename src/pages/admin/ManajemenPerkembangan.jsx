@@ -91,7 +91,7 @@ const ManajemenPerkembangan = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Laporan_Perkembangan_${selectedKelompok.replace(" ", "_")}_SI-FLAMBOYAN.csv`;
+    a.download = `Laporan_Perkembangan_${selectedKelompok.replace(" ", "_")}_SITKA.csv`;
     a.click();
 
     Swal.fire({

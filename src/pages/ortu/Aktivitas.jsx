@@ -1,42 +1,30 @@
 // src/pages/ortu/Aktivitas.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share2, Send, Clock, User, MoreHorizontal } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const Aktivitas = () => {
-  // Data Dummy Postingan Guru
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      guru: "Ibu Guru Ani",
-      role: "Wali Kelas A1",
-      waktu: "2 jam yang lalu",
-      caption: "Hari ini anak-anak belajar mengenal warna melalui teknik Finger Painting. Kreativitas mereka luar biasa! 🎨✨",
-      image: "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&q=80&w=1000",
-      likes: 12,
-      isLiked: false,
-      comments: [
-        { id: 1, user: "Mama Budi", text: "Seru sekali kegiatannya Bu!" }
-      ]
-    },
-    {
-      id: 2,
-      guru: "Pak Guru Budi",
-      role: "Guru Olahraga",
-      waktu: "5 jam yang lalu",
-      caption: "Latihan fisik pagi ini: Melatih keseimbangan dan motorik kasar di lapangan sekolah. Semangat terus ya anak-anak! 🏃‍♂️",
-      image: "https://images.unsplash.com/photo-1560439514-4e9645039924?auto=format&fit=crop&q=80&w=1000",
-      likes: 8,
-      isLiked: true,
-      comments: []
+  const [posts, setPosts] = useState([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('sitka_posts');
+    if (saved) {
+      setPosts(JSON.parse(saved));
     }
-  ]);
+    
+    // Auto-refresh via storage event untuk cross-tab
+    const handleStorageChange = (e) => {
+      if (e.key === 'sitka_posts' && e.newValue) setPosts(JSON.parse(e.newValue));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const [commentInput, setCommentInput] = useState({});
 
   // Fungsi Like
   const toggleLike = (postId) => {
-    setPosts(posts.map(post => {
+    const updatedPosts = posts.map(post => {
       if (post.id === postId) {
         return {
           ...post,
@@ -45,22 +33,29 @@ const Aktivitas = () => {
         };
       }
       return post;
-    }));
+    });
+    setPosts(updatedPosts);
+    localStorage.setItem('sitka_posts', JSON.stringify(updatedPosts));
   };
 
   // Fungsi Tambah Komentar
   const handleComment = (postId) => {
     if (!commentInput[postId]) return;
+    
+    const userSession = JSON.parse(localStorage.getItem('user_session')) || { nama: 'Orang Tua' };
 
-    setPosts(posts.map(post => {
+    const updatedPosts = posts.map(post => {
       if (post.id === postId) {
         return {
           ...post,
-          comments: [...post.comments, { id: Date.now(), user: "Mama Aditya", text: commentInput[postId] }]
+          comments: [...post.comments, { id: Date.now(), user: userSession.nama, teks: commentInput[postId], waktu: "Baru saja" }]
         };
       }
       return post;
-    }));
+    });
+    
+    setPosts(updatedPosts);
+    localStorage.setItem('sitka_posts', JSON.stringify(updatedPosts));
 
     setCommentInput({ ...commentInput, [postId]: '' });
     
@@ -104,13 +99,15 @@ const Aktivitas = () => {
           </div>
 
           {/* Post Content (Image) */}
-          <div className="relative aspect-video bg-slate-100">
-            <img src={post.image} alt="Aktivitas" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-            <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2">
-              <Clock size={12} className="text-[#306896]" />
-              <span className="text-[10px] font-black text-[#306896] uppercase">{post.waktu}</span>
+          {post.image && (
+            <div className="relative aspect-video bg-slate-100">
+              <img src={post.image} alt="Aktivitas" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2">
+                <Clock size={12} className="text-[#306896]" />
+                <span className="text-[10px] font-black text-[#306896] uppercase">{post.waktu}</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Post Actions */}
           <div className="p-6 space-y-4">
@@ -134,7 +131,7 @@ const Aktivitas = () => {
             {/* Caption */}
             <p className="text-sm text-slate-700 leading-relaxed">
               <span className="font-black text-[#0a1e36] mr-2">{post.guru}</span>
-              {post.caption}
+              {post.konten}
             </p>
 
             {/* Comment Section */}
@@ -142,7 +139,7 @@ const Aktivitas = () => {
               {post.comments.map((comment) => (
                 <div key={comment.id} className="flex gap-3 text-sm">
                   <span className="font-black text-[#0a1e36] whitespace-nowrap">{comment.user}</span>
-                  <span className="text-slate-500 font-medium">{comment.text}</span>
+                  <span className="text-slate-500 font-medium">{comment.teks || comment.text}</span>
                 </div>
               ))}
             </div>

@@ -1,6 +1,6 @@
 // src/pages/ortu/Settings.jsx
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Heart, ShieldCheck, Camera, Save, Baby, AlertCircle, Key, XCircle } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Heart, ShieldCheck, Camera, Save, Baby, AlertCircle, Key, XCircle, Star } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
 
@@ -16,7 +16,8 @@ const Settings = () => {
   const [profile, setProfile] = useState({
     nama: "",          
     namaAnak: "",      
-    nisn: "",          
+    nisn: "",
+    usia: "",
     kelompok: "",      
     pekerjaan: "",     
     telepon: "",       
@@ -55,6 +56,7 @@ const Settings = () => {
             nama: userData.nama || "",
             namaAnak: userData.nama_anak || "",
             nisn: userData.nisn || "",
+            usia: siswaData ? siswaData.usia : "",
             kelompok: userData.kelompok || "",
             pekerjaan: siswaData ? siswaData.pekerjaan_ibu : "",
             telepon: siswaData ? siswaData.no_wa : "",
@@ -106,6 +108,7 @@ const Settings = () => {
         .from('siswa')
         .update({
           nisn: profile.nisn,
+          usia: profile.usia,
           pekerjaan_ibu: profile.pekerjaan,
           no_wa: profile.telepon,
           email: profile.email,
@@ -259,12 +262,34 @@ const Settings = () => {
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 text-left">Data Anak Terhubung</h3>
             
             <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 flex items-center gap-4 text-left">
-              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-orange-600 shadow-sm">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-orange-600 shadow-sm shrink-0">
                 <Baby size={24} />
               </div>
-              <div>
-                <p className="text-[10px] font-black text-orange-600 uppercase">Nama Siswa</p>
-                <p className="text-sm font-bold text-[#0a1e36]">{profile.namaAnak || '-'}</p>
+              <div className="flex-1 w-full min-w-0">
+                <p className="text-[10px] font-black text-orange-600 uppercase mb-1">Nama Siswa</p>
+                <p className="text-sm font-bold text-[#0a1e36] truncate">{profile.namaAnak || '-'}</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-4 text-left">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-emerald-600 shadow-sm shrink-0">
+                <Star size={24} />
+              </div>
+              <div className="flex-1 w-full min-w-0">
+                <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Usia Saat Ini</p>
+                {isEditing ? (
+                  <input 
+                    type="number" 
+                    value={profile.usia || ''}
+                    onChange={(e) => handleInputChange('usia', e.target.value)}
+                    placeholder="Mis. 5"
+                    className="w-full bg-white border border-emerald-200 rounded-lg px-3 py-1.5 text-sm font-bold text-[#0a1e36] outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                ) : (
+                  <p className="text-sm font-bold text-[#0a1e36]">
+                    {profile.usia ? `${profile.usia} Tahun` : '-'}
+                  </p>
+                )}
               </div>
             </div>
 

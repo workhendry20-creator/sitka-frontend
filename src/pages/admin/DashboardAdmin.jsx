@@ -1,13 +1,48 @@
 // src/pages/admin/DashboardAdmin.jsx
-import React from 'react';
-import { Users, UserCheck, BookOpen, Activity, ArrowUpRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, UserCheck, Activity, ArrowUpRight } from 'lucide-react';
+import { supabase } from '../../utils/supabaseClient';
 
 const DashboardAdmin = () => {
+  const [totalGuru, setTotalGuru] = useState(0);
+  const [totalSiswa, setTotalSiswa] = useState(0);
+  const [adminName, setAdminName] = useState('Admin');
+
+  useEffect(() => {
+    // Ambil data user yang sedang login
+    const session = JSON.parse(localStorage.getItem('user_session'));
+    if (session && session.nama) {
+      setAdminName(session.nama);
+    }
+
+    const fetchStats = async () => {
+      try {
+        // Ambil Total Guru dari tabel users
+        const { count: guruCount } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'Guru');
+        
+        if (guruCount !== null) setTotalGuru(guruCount);
+
+        // Ambil Total Siswa dari tabel siswa
+        const { count: siswaCount } = await supabase
+          .from('siswa')
+          .select('*', { count: 'exact', head: true });
+          
+        if (siswaCount !== null) setTotalSiswa(siswaCount);
+      } catch (error) {
+        console.error("Gagal mengambil statistik:", error);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   const stats = [
-    { label: 'Total Guru', value: '42', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Total Siswa', value: '380', icon: UserCheck, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Mata Pelajaran', value: '18', icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { label: 'Login Hari Ini', value: '124', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Total Guru', value: totalGuru, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Total Siswa', value: totalSiswa, icon: UserCheck, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Login Aktif (Anda)', value: adminName, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ];
 
   return (
@@ -15,12 +50,12 @@ const DashboardAdmin = () => {
       <div className="bg-[#0a1e36] p-10 rounded-[3rem] text-white relative overflow-hidden shadow-2xl shadow-indigo-900/20">
         <div className="relative z-10">
           <h2 className="text-4xl font-black mb-2 tracking-tight">System Overview</h2>
-          <p className="text-indigo-200 font-medium">Selamat datang di Pusat Kontrol SI-FLAMBOYAN. Kelola seluruh ekosistem digital sekolah di sini.</p>
+          <p className="text-indigo-200 font-medium">Selamat datang di Pusat Kontrol SITKA. Kelola seluruh ekosistem digital sekolah di sini.</p>
         </div>
         <div className="absolute right-[-30px] top-[-30px] w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((item, i) => (
           <div key={i} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
             <div className="flex justify-between items-start mb-4">
@@ -30,7 +65,7 @@ const DashboardAdmin = () => {
               <ArrowUpRight size={20} className="text-slate-300" />
             </div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</p>
-            <p className="text-3xl font-black text-[#0a1e36] mt-1">{item.value}</p>
+            <p className={`font-black text-[#0a1e36] mt-1 ${item.label.includes('Login') ? 'text-xl' : 'text-3xl'}`}>{item.value}</p>
           </div>
         ))}
       </div>
@@ -45,9 +80,9 @@ const DashboardAdmin = () => {
                   <Activity size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-[#0a1e36]">Input Nilai Berhasil</p>
-                  <p className="text-xs text-slate-500">Guru Ani menginput nilai Matematika kelas A1.</p>
-                  <p className="text-[9px] font-black text-indigo-500 mt-2 uppercase">2 MENIT YANG LALU</p>
+                  <p className="text-sm font-bold text-[#0a1e36]">Sistem Terhubung</p>
+                  <p className="text-xs text-slate-500">Koneksi ke database Supabase berjalan normal.</p>
+                  <p className="text-[9px] font-black text-indigo-500 mt-2 uppercase">BARU SAJA</p>
                 </div>
               </div>
             ))}
@@ -56,11 +91,11 @@ const DashboardAdmin = () => {
         
         <div className="bg-indigo-600 p-8 rounded-[3rem] text-white flex flex-col justify-between">
           <div>
-            <h3 className="text-xl font-black mb-2">Pencadangan Data</h3>
-            <p className="text-indigo-100 text-sm">Backup sistem terakhir dilakukan 4 jam yang lalu. Status: Aman.</p>
+            <h3 className="text-xl font-black mb-2">Sinkronisasi Database</h3>
+            <p className="text-indigo-100 text-sm">Sistem terhubung aktif dengan layanan backend. Semua data anak didik dan aktivitas aman.</p>
           </div>
           <button className="bg-white text-indigo-600 font-black text-xs uppercase tracking-widest py-4 px-6 rounded-2xl mt-8 hover:bg-indigo-50 transition-colors">
-            Cadangkan Sekarang
+            Cek Status Koneksi
           </button>
         </div>
       </div>

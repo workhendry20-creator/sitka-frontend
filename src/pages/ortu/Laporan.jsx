@@ -21,7 +21,7 @@ const Laporan = () => {
 
   // --- MENGAMBIL DATA PROFIL REALTIME DARI REGISTRASI ---
   const dataAnak = {
-    nama: parentData?.nama_anak || "Anak Didik SI-FLAMBOYAN",
+    nama: parentData?.nama_anak || "Anak Didik SITKA",
     kelompok: parentData?.kelompok || "A",
     nisn: parentData?.nisn || "-",
     stats: { hadir: 18, izin: 1, sakit: 1, alpa: 0 }
@@ -31,8 +31,6 @@ const Laporan = () => {
   const laporanPerkembangan = [
     { id: 1, tanggal: '2026-04-22', tipe: 'Harian', status: 'Bahagia 😊', catatan: `${dataAnak.nama.split(' ')[0]} hari ini sangat aktif membantu teman merapikan mainan setelah jam istirahat selesai.`, guru: 'Ibu Ani, S.Pd' },
     { id: 2, tanggal: '2026-04-20', tipe: 'Harian', status: 'Istimewa 🌟', catatan: 'Berhasil menghafal doa makan dan doa belajar dengan sangat lancar dan penuh percaya diri.', guru: 'Ibu Ani, S.Pd' },
-    { id: 3, tanggal: '2026-04-14', tipe: 'Mingguan', status: 'Sangat Baik', catatan: `Menunjukkan kemajuan besar dalam koordinasi motorik halus (mewarnai di dalam garis) dan fokus mendengarkan cerita.`, guru: 'Ibu Ani, S.Pd' },
-    { id: 4, tanggal: '2026-03-30', tipe: 'Quartal', status: 'Melampaui Harapan', catatan: `Secara keseluruhan ${dataAnak.nama.split(' ')[0]} menunjukkan kemandirian dan rasa empati yang sangat baik di triwulan awal ini.`, guru: 'Ibu Ani, S.Pd' },
   ];
 
   const riwayatAbsensi = [
@@ -102,7 +100,7 @@ const Laporan = () => {
         <div className="space-y-6">
           {/* --- FILTER PERIODE --- */}
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {['Harian', 'Mingguan', 'Quartal', 'Semester'].map(p => (
+            {['Harian', 'Semester'].map(p => (
               <button 
                 key={p}
                 onClick={() => setFilterPeriode(p)}

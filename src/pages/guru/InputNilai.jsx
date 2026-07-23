@@ -634,7 +634,7 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Rekap_Nilai_SI-FLAMBOYAN_${tanggal}.csv`;
+    a.download = `Rekap_Nilai_SITKA_${tanggal}.csv`;
     a.click();
   };
 
@@ -754,7 +754,7 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
                 }}
                 className="pl-6 pr-10 py-4 bg-indigo-50 border-none rounded-2xl text-sm font-black text-[#0a1e36] appearance-none focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
               >
-                {['Input Harian', 'Input Mingguan', 'Input Quartal', 'Input Semester'].map(opt => (
+                {['Input Harian', 'Input Semester'].map(opt => (
                   <option key={opt} value={opt}>{opt}</option>
                 ))}
               </select>
@@ -823,7 +823,7 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
       {/* --- REFRESH LOADING INDICATOR --- */}
       {loading ? (
         <div className="text-center py-12 font-bold text-indigo-600 animate-pulse">
-           Sedang menarik data anak didik terbaru dari database SI-FLAMBOYAN...
+           Sedang menarik data anak didik terbaru dari database SITKA...
         </div>
       ) : (
         <>

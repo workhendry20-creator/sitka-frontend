@@ -10,7 +10,7 @@ import Swal from 'sweetalert2';
 const SettingsAdmin = () => {
   // --- STATE UTK PENGATURAN SISTEM ---
   const [systemConfig, setSystemConfig] = useState({
-    namaSekolah: 'TK SI-FLAMBOYAN INTERNASIONAL',
+    namaSekolah: 'TK SITKA INTERNASIONAL',
     tahunAjaran: '2026/2027',
     semester: 'Ganjil',
     fiturChat: true,
@@ -31,7 +31,7 @@ const SettingsAdmin = () => {
     Swal.fire({
       icon: 'success',
       title: 'Konfigurasi Disimpan!',
-      text: 'Identitas dan parameter akademik SI-FLAMBOYAN berhasil diperbarui.',
+      text: 'Identitas dan parameter akademik SITKA berhasil diperbarui.',
       confirmButtonColor: '#0a1e36'
     });
   };
@@ -115,7 +115,7 @@ const SettingsAdmin = () => {
           </div>
           <div>
             <h2 className="text-3xl font-black italic">Konfigurasi Sistem</h2>
-            <p className="text-indigo-200 text-sm opacity-80">Atur parameter global, keamanan, dan pemeliharaan database SI-FLAMBOYAN</p>
+            <p className="text-indigo-200 text-sm opacity-80">Atur parameter global, keamanan, dan pemeliharaan database SITKA</p>
           </div>
         </div>
         <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl"></div>
@@ -243,7 +243,7 @@ const SettingsAdmin = () => {
               <Database size={18} /> Maintenance Zone
             </h3>
             <p className="text-xs font-medium text-slate-400 leading-relaxed">
-              Lakukan pembersihan data berkala untuk menjaga performa query database cloud Supabase SI-FLAMBOYAN tetap ringan.
+              Lakukan pembersihan data berkala untuk menjaga performa query database cloud Supabase SITKA tetap ringan.
             </p>
             <div className="space-y-3">
               <button 

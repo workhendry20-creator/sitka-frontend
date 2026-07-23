@@ -25,7 +25,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
   const handleLogout = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
-      text: "Apakah Senior yakin ingin keluar dari SI-FLAMBOYAN?",
+      text: "Apakah Senior yakin ingin keluar dari SITKA?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#306896', // Menyesuaikan warna tema Guru Layout
@@ -68,7 +68,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
             <div className="w-10 h-10 bg-[#306896] rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
               <span className="text-white font-bold text-xl">S</span>
             </div>
-            <h1 className="text-2xl font-black text-[#0a1e36] tracking-tight">SI-FLAMBOYAN</h1>
+            <h1 className="text-2xl font-black text-[#0a1e36] tracking-tight">SITKA</h1>
           </Link>
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400">
             <X size={24} />
@@ -135,7 +135,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
               {/* 🔥 SEKARANG NAMA PROFIL SINKRON OTOMATIS DARI SUPABASE */}
               <div className="hidden sm:block">
                 <p className="text-sm font-bold text-[#0a1e36] group-hover:text-[#306896] transition-colors">
-                  {user?.nama || 'Pengajar SI-FLAMBOYAN'}
+                  {user?.nama || 'Pengajar SITKA'}
                 </p>
                 <p className="text-[9px] font-black text-[#306896] tracking-widest uppercase">
                   {user?.role ? `TENAGA PENDIDIK ${user.role}` : 'GURU PAUD'}
