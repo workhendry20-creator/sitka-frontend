@@ -560,9 +560,9 @@ const ProgressOrtu = () => {
         <div className="space-y-6">
           {/* HEADER UTAMA SEMPURNA & MODERN */}
           <div className="bg-[#0a1e36] text-white p-8 rounded-[2.5rem] shadow-xl border border-white/10 relative overflow-hidden">
-            <div className="max-w-3xl mx-auto relative z-10 space-y-4">
+            <div className="relative z-10 space-y-5">
               
-              {/* BAR ATAS HEADER ALIGNED RAPI */}
+              {/* BAR ATAS: NAVIGASI & SLIDER USIA */}
               <div className="flex items-center justify-between gap-3">
                 <button 
                   onClick={() => navigate('/ortu/dashboard')}
@@ -571,7 +571,7 @@ const ProgressOrtu = () => {
                   <ChevronLeft size={16} /> Dashboard
                 </button>
 
-                {/* CONTROL SLIDER AGE BRACKET NAVIGASI RAPI */}
+                {/* CONTROL SLIDER AGE BRACKET */}
                 <div className="flex items-center gap-1.5 bg-white/10 border border-white/15 px-2.5 py-1.5 rounded-2xl backdrop-blur-md">
                   <button 
                     onClick={handlePrevAge}
@@ -597,10 +597,10 @@ const ProgressOrtu = () => {
                 </div>
               </div>
 
-              {/* JUDUL & BADGE LOCK STATUS */}
-              <div className="pt-1 space-y-1.5 text-left">
+              {/* JUDUL & BADGE */}
+              <div className="space-y-2 text-left">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black tracking-widest uppercase bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full border border-amber-400/30 flex items-center gap-1.5 shadow-2xs">
+                  <span className="text-[10px] font-black tracking-widest uppercase bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full border border-amber-400/30 flex items-center gap-1.5">
                     <Baby size={12} /> {childName} • Usia {childAgeInfo}
                   </span>
                   
@@ -618,7 +618,7 @@ const ProgressOrtu = () => {
                 <h1 className="text-2xl md:text-3xl font-black italic tracking-tight">
                   Tahapan Perkembangan
                 </h1>
-                <p className="text-xs text-indigo-200 opacity-90 max-w-lg leading-relaxed">
+                <p className="text-xs text-indigo-200 opacity-90 leading-relaxed">
                   Pilih domain perkembangan di bawah ini untuk mengisi pencapaian kemandirian ananda.
                 </p>
               </div>
@@ -780,7 +780,7 @@ const ProgressOrtu = () => {
         <div className="space-y-6">
           {/* TOP BAR LAYAR DETAIL SEMPURNA */}
           <div className="bg-[#0a1e36] text-white p-8 rounded-[2.5rem] shadow-xl border border-white/10 relative overflow-hidden">
-            <div className="max-w-3xl mx-auto relative z-10 space-y-4">
+            <div className="relative z-10 space-y-5">
               <div className="flex items-center justify-between">
                 <button 
                   onClick={() => setCurrentView('menu')}
@@ -794,7 +794,7 @@ const ProgressOrtu = () => {
                 </span>
               </div>
 
-              <div className="pt-1 text-left space-y-1">
+              <div className="text-left space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 block">
                   Detail Kategori Perkembangan
                 </span>
