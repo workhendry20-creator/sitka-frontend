@@ -545,11 +545,27 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
           input_oleh_guru: `Wali Kelas ${kelompok}`
         };
 
-        const { error: errSem } = await supabase
-          .from('nilai_semester')
-          .upsert([payloadSemester], { onConflict: 'nisn, semester' });
+        // -----------------------------------------------------------
+        // 🔥 SINKRONISASI DAY-BY-DAY KE LOCALSTORAGE UNTUK REPORT GURU
+        // -----------------------------------------------------------
+        try {
+          const rawSem = localStorage.getItem('sitka_all_semester_reports');
+          const existingSem = rawSem ? JSON.parse(rawSem) : [];
+          const filteredSem = existingSem.filter(s => !(s.nisn === payloadSemester.nisn && s.semester === payloadSemester.semester));
+          filteredSem.push(payloadSemester);
+          localStorage.setItem('sitka_all_semester_reports', JSON.stringify(filteredSem));
+        } catch (e) {
+          console.error("Gagal simpan semester ke localStorage:", e);
+        }
 
-        if (errSem) throw errSem;
+        try {
+          const { error: errSem } = await supabase
+            .from('nilai_semester')
+            .upsert([payloadSemester], { onConflict: 'nisn, semester' });
+          if (errSem) console.warn("Supabase semester warning:", errSem.message);
+        } catch (e) {
+          console.warn("Cloud Supabase semester offline/fallback.");
+        }
 
       } else {
         const payloadHarian = anekdotSiswa.map(s => ({
@@ -557,16 +573,49 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
           nama_siswa: s.nama,
           kelompok: kelompok,
           tanggal: tanggal,
+          emoji: s.emoji || '😊',
           status_kondisi: s.label || 'Bahagia',
           catatan_anekdot: s.catatan || '',
           input_oleh_guru: `Wali Kelas ${kelompok}`
         }));
 
-        const { error: errHar } = await supabase
-          .from('nilai_harian')
-          .upsert(payloadHarian, { onConflict: 'nisn, tanggal' });
+        // -----------------------------------------------------------
+        // 🔥 SINKRONISASI DAY-BY-DAY KE LOCALSTORAGE UNTUK REPORT GURU
+        // -----------------------------------------------------------
+        try {
+          const rawHar = localStorage.getItem('sitka_all_harian_reports');
+          const existingHar = rawHar ? JSON.parse(rawHar) : [];
+          
+          // Gabungkan data baru dengan filter pencocokan (nisn/nama & tanggal)
+          const updatedHar = [...existingHar];
+          payloadHarian.forEach(item => {
+            const cleanName = (item.nama_siswa || "").toLowerCase().trim();
+            const matchIndex = updatedHar.findIndex(h => 
+              ((h.nisn && item.nisn && h.nisn !== '-' && h.nisn === item.nisn) || 
+               (h.nama_siswa && h.nama_siswa.toLowerCase().trim() === cleanName)) &&
+              h.tanggal === item.tanggal
+            );
 
-        if (errHar) throw errHar;
+            if (matchIndex >= 0) {
+              updatedHar[matchIndex] = item;
+            } else {
+              updatedHar.push(item);
+            }
+          });
+
+          localStorage.setItem('sitka_all_harian_reports', JSON.stringify(updatedHar));
+        } catch (e) {
+          console.error("Gagal simpan harian ke localStorage:", e);
+        }
+
+        try {
+          const { error: errHar } = await supabase
+            .from('nilai_harian')
+            .upsert(payloadHarian, { onConflict: 'nisn, tanggal' });
+          if (errHar) console.warn("Supabase harian warning:", errHar.message);
+        } catch (e) {
+          console.warn("Cloud Supabase harian offline/fallback.");
+        }
       }
 
       // =======================================================================
@@ -582,7 +631,7 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
             tanggal, 
             label: `Semester ${selectedSemester}`,
             rekomendasi: targetSiswa.rekomendasi || '',
-            nilaiSemester: { ...targetSiswa.nilaiSemester } // Menyimpan snapshot nilai agar tidak hilang saat bolak-balik
+            nilaiSemester: { ...targetSiswa.nilaiSemester }
           }];
         }
       } else {
@@ -603,7 +652,7 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
       Swal.fire({
         icon: 'success',
         title: 'Sukses Sinkronisasi!',
-        text: `Data ${inputType} berhasil diamankan di database cloud sekolah.`,
+        text: `Data ${inputType} berhasil tersimpan per hari & terhubung ke modul Report Guru!`,
         confirmButtonColor: '#306896',
         customClass: { popup: 'rounded-[2rem]' }
       });

@@ -71,9 +71,12 @@ function App() {
       return <Navigate to="/" replace />;
     }
 
+    const currentRole = (userSession.role || '').toLowerCase();
+    const targetRole = (allowedRole || '').toLowerCase();
+
     // Jika role akun di database tidak sesuai dengan rute yang diakses, tendang ke rute yang benar
-    if (userSession.role !== allowedRole) {
-      return <Navigate to={`/${userSession.role}/dashboard`} replace />;
+    if (currentRole !== targetRole) {
+      return <Navigate to={`/${currentRole || 'ortu'}/dashboard`} replace />;
     }
 
     return children;
