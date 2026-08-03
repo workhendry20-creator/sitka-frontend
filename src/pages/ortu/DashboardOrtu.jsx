@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, 
-  BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend 
 } from 'recharts';
 import { 
   Star, Calendar, BookOpen, Megaphone, School, Baby, 
@@ -15,7 +15,6 @@ const DashboardOrtu = () => {
   const [loadingBroadcast, setLoadingBroadcast] = useState(true);
   const [parentData, setParentData] = useState(null);
   const [catatanHarian, setCatatanHarian] = useState([]);
-  const [dailyChartData, setDailyChartData] = useState([]);
   const [hasSemesterEvaluation, setHasSemesterEvaluation] = useState(false);
   const [semesterChartData, setSemesterChartData] = useState([
     { domain: '🌟 Agama & Moral', nilai: 0, label: '0% (Belum Diisi)' },
@@ -75,38 +74,47 @@ const DashboardOrtu = () => {
       }
     } catch (e) {}
 
-    setCatatanHarian(combinedHarian.slice(0, 5));
-
-    // OLAAH DATA UNTUK GRAFIK HARIAN (UPDATE SETIAP HARI SAAT GURU INPUT)
-    if (combinedHarian.length > 0) {
-      const graphData = combinedHarian.slice(0, 7).reverse().map((rec, idx) => {
-        const st = (rec.status_kondisi || 'Bahagia').toLowerCase();
-        let skor = 85;
-        if (st.includes('bahagia') || st.includes('senang') || st.includes('ceria')) skor = 95;
-        else if (st.includes('aktif') || st.includes('semangat')) skor = 90;
-        else if (st.includes('fokus') || st.includes('konsentrasi')) skor = 85;
-        else if (st.includes('kreatif') || st.includes('seni')) skor = 88;
-        else if (st.includes('sedih') || st.includes('menangis')) skor = 60;
-
-        return {
-          tgl: rec.tanggal || `Hari ${idx + 1}`,
-          skorMood: skor,
-          kondisi: rec.status_kondisi || 'Bahagia',
-          emoji: rec.emoji || '😊'
-        };
-      });
-      setDailyChartData(graphData);
-    } else {
-      // Sample data jika belum ada entri anekdot dari guru
-      setDailyChartData([
-        { tgl: 'Hari 1', skorMood: 85, kondisi: 'Bahagia', emoji: '😊' },
-        { tgl: 'Hari 2', skorMood: 90, kondisi: 'Aktif', emoji: '⚡' },
-        { tgl: 'Hari 3', skorMood: 80, kondisi: 'Fokus', emoji: '🎯' },
-        { tgl: 'Hari 4', skorMood: 95, kondisi: 'Kreatif', emoji: '🎨' },
-        { tgl: 'Hari 5', skorMood: 90, kondisi: 'Ceria', emoji: '😊' },
-      ]);
-    }
+    setCatatanHarian(combinedHarian);
   };
+
+  // KALKULASI DUAL DIMENSI HITUNGAN 4 EMOJI UNTUK GRAFIK BATANG HARIAN
+  // Grafik perlahan naik sesuai skala banyaknya input anekdot siswa tersebut
+  const emojiChartData = useMemo(() => {
+    let bahagiaCount = 0;
+    let aktifCount = 0;
+    let fokusCount = 0;
+    let istimewaCount = 0;
+
+    if (catatanHarian.length > 0) {
+      catatanHarian.forEach(rec => {
+        const cond = (rec.status_kondisi || '').toLowerCase();
+        const em = rec.emoji || '';
+
+        if (cond.includes('bahagia') || cond.includes('senang') || em === '😊') {
+          bahagiaCount++;
+        } else if (cond.includes('aktif') || cond.includes('kreatif') || em === '⚡' || em === '🎨') {
+          aktifCount++;
+        } else if (cond.includes('fokus') || cond.includes('konsentrasi') || em === '🎯') {
+          fokusCount++;
+        } else {
+          istimewaCount++;
+        }
+      });
+    } else {
+      // Fallback visualisasi awal 0 entri
+      bahagiaCount = 1;
+      aktifCount = 1;
+      fokusCount = 0;
+      istimewaCount = 0;
+    }
+
+    return [
+      { category: 'Bahagia 😊', jumlah: bahagiaCount, fill: '#6366f1' },
+      { category: 'Aktif ⚡', jumlah: aktifCount, fill: '#f59e0b' },
+      { category: 'Fokus 🎯', jumlah: fokusCount, fill: '#3b82f6' },
+      { category: 'Ceria 🌟', jumlah: istimewaCount, fill: '#10b981' },
+    ];
+  }, [catatanHarian]);
 
   // 2. CEK EVALUASI SEMESTER (KOSONGKAN JIKA GURU BELUM INPUT)
   const checkSemesterData = async (namaAnak) => {
@@ -236,48 +244,46 @@ const DashboardOrtu = () => {
       )}
 
       {/* ======================================================================= */}
-      {/* SECTION GRAFIK 1: GRAFIK ANEKDOT HARIAN & GRAFIK SEMESTER */}
+      {/* SECTION GRAFIK 1: GRAFIK BATANG ANEKDOT HARIAN (4 EMOJI) & GRAFIK SEMESTER */}
       {/* ======================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* GRAFIK 1: GRAFIK ANEKDOT HARIAN (TERCONNECTED HARIAN GURU) */}
+        {/* GRAFIK 1: GRAFIK BATANG ANEKDOT HARIAN (4 EMOJI - PERLAHAN NAIK SESUAI SKALA INPUT) */}
         <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4 text-left">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <Smile size={20} className="text-amber-500" />
-                <h3 className="text-lg font-black text-[#0a1e36]">Grafik Mood & Anekdot Harian</h3>
+                <h3 className="text-lg font-black text-[#0a1e36]">Grafik Frekuensi Anekdot Harian</h3>
               </div>
-              <p className="text-xs font-medium text-slate-400">Otomatis diperbarui setiap hari saat Guru menginput catatan harian</p>
+              <p className="text-xs font-medium text-slate-400">Skala grafik batang naik seiring banyaknya input anekdot dari Guru</p>
             </div>
             <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200">
-              ⚡ Realtime Sync
+              ⚡ {catatanHarian.length} Total Entri
             </span>
           </div>
 
-          {/* AREA / BAR CHART GRAFIK HARIAN */}
+          {/* BAR CHART GRAFIK HARIAN 4 EMOJI */}
           <div className="h-64 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dailyChartData} margin={{ top: 10, right: 10, left: -25, bottom: 10 }}>
-                <defs>
-                  <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
+              <BarChart data={emojiChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="tgl" stroke="#94a3b8" fontSize={10} fontWeight="bold" tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} tickLine={false} />
+                <XAxis dataKey="category" stroke="#94a3b8" fontSize={11} fontWeight="bold" tickLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
                 <Tooltip 
-                  formatter={(val, name, item) => [`${item.payload.kondisi} ${item.payload.emoji}`, 'Kondisi Harian']}
+                  formatter={(val, name, item) => [`${val} Catatan Anekdot`, item.payload.category]}
                   contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
                 />
-                <Area type="monotone" dataKey="skorMood" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorMood)" />
-              </AreaChart>
+                <Bar dataKey="jumlah" radius={[12, 12, 0, 0]}>
+                  {emojiChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
           <p className="text-[10px] text-slate-400 font-medium italic text-center">
-            💡 Grafik mengukur tren emosi & aktivitas positif si kecil berdasarkan jurnal guru tiap harinya.
+            💡 Setiap kali Guru menginput catatan harian baru untuk si kecil, batang emoji bersangkutan akan naik secara real-time.
           </p>
         </div>
 
