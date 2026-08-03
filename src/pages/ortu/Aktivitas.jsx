@@ -1,28 +1,41 @@
 // src/pages/ortu/Aktivitas.jsx
 import React, { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Share2, Send, Clock, User, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Send, Clock, MoreHorizontal, ImageOff } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const Aktivitas = () => {
   const [posts, setPosts] = useState([]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('sitka_posts');
-    if (saved) {
-      setPosts(JSON.parse(saved));
-    }
-    
-    // Auto-refresh via storage event untuk cross-tab
-    const handleStorageChange = (e) => {
-      if (e.key === 'sitka_posts' && e.newValue) setPosts(JSON.parse(e.newValue));
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
   const [commentInput, setCommentInput] = useState({});
 
-  // Fungsi Like
+  // Helper: baca dan set posts dari localStorage
+  const loadPosts = () => {
+    const saved = localStorage.getItem('sitka_posts');
+    if (saved) {
+      try { setPosts(JSON.parse(saved)); } catch(e) { setPosts([]); }
+    } else {
+      setPosts([]);
+    }
+  };
+
+  useEffect(() => {
+    loadPosts();
+    
+    // Sinkronisasi antar tab/window (cross-tab)
+    const handleStorageChange = (e) => {
+      if (e.key === 'sitka_posts') loadPosts();
+    };
+    // 🔥 Real-time sync DALAM tab yang sama — saat guru posting
+    const handleRealtime = () => loadPosts();
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('sitka_posts_updated', handleRealtime);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sitka_posts_updated', handleRealtime);
+    };
+  }, []);
+
+  // Fungsi Like — broadcast balik ke guru jika dalam satu browser
   const toggleLike = (postId) => {
     const updatedPosts = posts.map(post => {
       if (post.id === postId) {
@@ -36,11 +49,12 @@ const Aktivitas = () => {
     });
     setPosts(updatedPosts);
     localStorage.setItem('sitka_posts', JSON.stringify(updatedPosts));
+    window.dispatchEvent(new CustomEvent('sitka_posts_updated'));
   };
 
   // Fungsi Tambah Komentar
   const handleComment = (postId) => {
-    if (!commentInput[postId]) return;
+    if (!commentInput[postId]?.trim()) return;
     
     const userSession = JSON.parse(localStorage.getItem('user_session')) || { nama: 'Orang Tua' };
 
@@ -56,15 +70,13 @@ const Aktivitas = () => {
     
     setPosts(updatedPosts);
     localStorage.setItem('sitka_posts', JSON.stringify(updatedPosts));
+    window.dispatchEvent(new CustomEvent('sitka_posts_updated'));
 
     setCommentInput({ ...commentInput, [postId]: '' });
     
-    // Toast Notification
     const Toast = Swal.mixin({
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 2000,
+      toast: true, position: 'top-end',
+      showConfirmButton: false, timer: 2000,
     });
     Toast.fire({ icon: 'success', title: 'Komentar terkirim' });
   };
@@ -78,6 +90,19 @@ const Aktivitas = () => {
         <p className="text-slate-400 font-bold text-sm uppercase tracking-[0.2em]">Melihat Momen Berharga Si Kecil</p>
       </div>
 
+      {/* Empty state jika belum ada postingan dari guru */}
+      {posts.length === 0 && (
+        <div className="bg-white rounded-[2.5rem] border border-dashed border-slate-200 p-12 text-center space-y-3">
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+            <ImageOff size={28} className="text-slate-400" />
+          </div>
+          <h3 className="font-black text-slate-600">Belum Ada Aktivitas</h3>
+          <p className="text-xs text-slate-400 font-medium leading-relaxed max-w-xs mx-auto">
+            Guru belum memposting aktivitas hari ini. Pantau terus ya, Bunda/Ayah! 🌟
+          </p>
+        </div>
+      )}
+
       {/* Feed Postingan */}
       {posts.map((post) => (
         <div key={post.id} className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden">
@@ -85,12 +110,14 @@ const Aktivitas = () => {
           {/* Post Header */}
           <div className="p-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center font-black text-[#306896]">
-                {post.guru.charAt(0)}
+              <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center font-black text-indigo-600 text-lg">
+                {post.guru ? post.guru.charAt(0).toUpperCase() : 'G'}
               </div>
               <div>
                 <h4 className="font-bold text-[#0a1e36] leading-none">{post.guru}</h4>
-                <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{post.role}</p>
+                <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
+                  {post.role || 'Wali Kelas'} • {post.waktu}
+                </p>
               </div>
             </div>
             <button className="text-slate-300 hover:text-slate-500 transition-colors">
@@ -101,7 +128,7 @@ const Aktivitas = () => {
           {/* Post Content (Image) */}
           {post.image && (
             <div className="relative aspect-video bg-slate-100">
-              <img src={post.image} alt="Aktivitas" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              <img src={post.image} alt="Aktivitas" className="w-full h-full object-cover" />
               <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2">
                 <Clock size={12} className="text-[#306896]" />
                 <span className="text-[10px] font-black text-[#306896] uppercase">{post.waktu}</span>
@@ -129,10 +156,12 @@ const Aktivitas = () => {
             </div>
 
             {/* Caption */}
-            <p className="text-sm text-slate-700 leading-relaxed">
-              <span className="font-black text-[#0a1e36] mr-2">{post.guru}</span>
-              {post.konten}
-            </p>
+            {post.konten && (
+              <p className="text-sm text-slate-700 leading-relaxed">
+                <span className="font-black text-[#0a1e36] mr-2">{post.guru}</span>
+                {post.konten}
+              </p>
+            )}
 
             {/* Comment Section */}
             <div className="space-y-3 pt-4 border-t border-gray-50">
@@ -146,13 +175,15 @@ const Aktivitas = () => {
 
             {/* Input Komentar */}
             <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-100 mt-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-50 transition-all">
-              <div className="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center text-[10px] font-black text-orange-600">M</div>
+              <div className="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center text-[10px] font-black text-orange-600">
+                {(JSON.parse(localStorage.getItem('user_session') || '{}')?.nama || 'O').charAt(0).toUpperCase()}
+              </div>
               <input 
                 type="text" 
                 placeholder="Tulis apresiasi anda..."
                 value={commentInput[post.id] || ''}
                 onChange={(e) => setCommentInput({...commentInput, [post.id]: e.target.value})}
-                onKeyPress={(e) => e.key === 'Enter' && handleComment(post.id)}
+                onKeyDown={(e) => e.key === 'Enter' && handleComment(post.id)}
                 className="flex-1 bg-transparent outline-none text-xs font-medium"
               />
               <button 

@@ -15,42 +15,29 @@ const PostAktivitas = () => {
   const [posts, setPosts] = useState([]);
 
   useEffect(() => {
-    // Sinkronisasi data postingan dengan role Ortu
+    // Load postingan dari localStorage (murni data riil Guru)
     const saved = localStorage.getItem('sitka_posts');
     if (saved) {
-      setPosts(JSON.parse(saved));
-    } else {
-      const defaultPosts = [
-        {
-          id: 1,
-          guru: "Ibu Siti Aminah",
-          waktu: "2 jam yang lalu",
-          konten: "Hari ini anak-anak Kelompok A belajar mewarnai menggunakan teknik gradasi. Semuanya sangat antusias! 🎨✨",
-          image: "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&q=80&w=1000",
-          likes: 12,
-          comments: [
-            { id: 1, user: "Mama Aditya", teks: "Wah seru banget! Aditya cerita terus tadi pas pulang.", waktu: "1 jam yang lalu" }
-          ]
-        },
-        {
-          id: 2,
-          guru: "Pak Guru Budi",
-          waktu: "5 jam yang lalu",
-          konten: "Latihan fisik pagi ini: Melatih keseimbangan dan motorik kasar di lapangan sekolah. Semangat terus ya anak-anak! 🏃‍♂️",
-          image: "https://images.unsplash.com/photo-1560439514-4e9645039924?auto=format&fit=crop&q=80&w=1000",
-          likes: 8,
-          comments: []
-        }
-      ];
-      setPosts(defaultPosts);
-      localStorage.setItem('sitka_posts', JSON.stringify(defaultPosts));
+      try { setPosts(JSON.parse(saved)); } catch(e) { setPosts([]); }
     }
 
+    // Sinkronisasi antar tab/window
     const handleStorageChange = (e) => {
-      if (e.key === 'sitka_posts' && e.newValue) setPosts(JSON.parse(e.newValue));
+      if (e.key === 'sitka_posts' && e.newValue) {
+        try { setPosts(JSON.parse(e.newValue)); } catch(e) { /* ignore */ }
+      }
+    };
+    // Sinkronisasi dalam tab yang sama (dari ortu yg komentar/like)
+    const handleCustomSync = () => {
+      const latest = localStorage.getItem('sitka_posts');
+      if (latest) try { setPosts(JSON.parse(latest)); } catch(e) { /* ignore */ }
     };
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('sitka_posts_updated', handleCustomSync);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sitka_posts_updated', handleCustomSync);
+    };
   }, []);
 
   const handleImageUpload = (e) => {
@@ -80,10 +67,12 @@ const PostAktivitas = () => {
     const newPost = {
       id: Date.now(),
       guru: userSession.nama,
+      role: 'Wali Kelas',
       waktu: "Baru saja",
       konten: postText,
-      image: selectedImage, // will be null or base64 string
+      image: selectedImage,
       likes: 0,
+      isLiked: false,
       comments: []
     };
     
@@ -91,10 +80,13 @@ const PostAktivitas = () => {
     setPosts(updatedPosts);
     localStorage.setItem('sitka_posts', JSON.stringify(updatedPosts));
 
+    // 🔥 BROADCAST EVENT agar ortu yg sedang membuka halaman Aktivitas langsung update
+    window.dispatchEvent(new CustomEvent('sitka_posts_updated', { detail: newPost }));
+
     Swal.fire({
       icon: 'success',
       title: 'Berhasil Terkirim!',
-      text: 'Aktivitas sudah terbit di beranda orang tua.',
+      text: 'Aktivitas sudah terbit di beranda orang tua secara real-time.',
       confirmButtonColor: '#4f46e5',
       customClass: { popup: 'rounded-[2rem]' }
     });
