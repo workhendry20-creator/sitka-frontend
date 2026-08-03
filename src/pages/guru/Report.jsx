@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { 
   ClipboardCheck, Search, User, ArrowUpRight, 
-  CheckCircle2, Clock, AlertCircle, Layers, ChevronDown,
+  CheckCircle2, Clock, AlertCircle, Layers, ChevronDown, ChevronUp,
   Database, Sparkles, BarChart3, TrendingUp, BookOpen,
   Award, Eye, Filter, Heart, Activity, FileText, Video, Calendar, UserCheck
 } from 'lucide-react';
