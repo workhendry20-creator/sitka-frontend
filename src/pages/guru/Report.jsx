@@ -277,26 +277,40 @@ const ReportGuru = () => {
           (h.nama_siswa && h.nama_siswa.toLowerCase().trim() === studentNameClean)
         );
 
-        // Fallback harian default jika belum ada input sama sekali agar emoji & rekap tetap terrekap visual
-        if (studentHarianList.length === 0) {
-          studentHarianList = [
-            {
-              tanggal: "Hari Ini",
-              status_kondisi: "Bahagia",
-              emoji: "😊",
-              catatan_anekdot: `Kondisi anak sangat baik, ceria, dan aktif mengikuti kegiatan pembelajaran ${selectedKelompok}.`
-            }
-          ];
-        }
-
         // Filter Nilai Semester untuk siswa ini
         const studentSemesterData = semesterData.find(s => 
           (s.nisn && siswa.nisn && s.nisn !== '-' && s.nisn === siswa.nisn) || 
           (s.nama_siswa && s.nama_siswa.toLowerCase().trim() === studentNameClean)
         );
 
-        const lastCondition = studentHarianList[0]?.status_kondisi || 'Bahagia';
-        const lastEmoji = getEmojiForCondition(lastCondition, studentHarianList[0]?.emoji);
+        const lastCondition = studentHarianList[0]?.status_kondisi || null;
+        const lastEmoji = lastCondition ? getEmojiForCondition(lastCondition, studentHarianList[0]?.emoji) : '-';
+
+        // Hitung skor riil per domain dari skor_indikator Guru (tanpa hardcoded 100%)
+        const skorInd = studentSemesterData?.skor_indikator || {};
+        const calcDomainScore = (prefix) => {
+          const entries = Object.entries(skorInd).filter(([k]) => k.startsWith(prefix));
+          if (entries.length === 0) return null;
+          const total = entries.reduce((acc, [, v]) => {
+            if (v === 'BSB') return acc + 100;
+            if (v === 'BSH') return acc + 75;
+            if (v === 'MM') return acc + 50;
+            if (v === 'BM') return acc + 25;
+            return acc;
+          }, 0);
+          return Math.round(total / entries.length);
+        };
+        const agamaScore = calcDomainScore('nam_');
+        const motorikScore = calcDomainScore('mot_');
+        const kognitifScore = calcDomainScore('kog_');
+        const bahasaRaw = calcDomainScore('bah_');
+        const seRaw = calcDomainScore('se_');
+        const bahasaScore = (bahasaRaw !== null && seRaw !== null)
+          ? Math.round((bahasaRaw + seRaw) / 2)
+          : (bahasaRaw ?? seRaw);
+        const avgSemester = studentSemesterData
+          ? Math.round([(agamaScore ?? 100), (motorikScore ?? 100), (kognitifScore ?? 100), (bahasaScore ?? 100)].reduce((a, b) => a + b, 0) / 4)
+          : 0;
 
         return {
           id: siswa.id,
@@ -311,15 +325,17 @@ const ReportGuru = () => {
           mediaTypeOrtu: ortuReportData?.mediaType || null,
           detailProgressOrtu: Array.isArray(ortuReportData?.items) ? ortuReportData.items : [],
           usiaTahun: ortuReportData?.usiaTahun || (selectedKelompok === 'Kelompok A' ? 3 : 5),
-          
-          // Big Data Extensions
+
+          // Big Data Extensions (MURNI DATA RIIL)
           harianList: studentHarianList,
           harianCount: studentHarianList.length,
-          lastHarianCondition: `${lastEmoji} ${lastCondition}`,
-          semesterScore: studentSemesterData?.rekomendasi_guru ? "BSB" : "BSH",
+          hasHarian: studentHarianList.length > 0,
+          lastHarianCondition: lastCondition ? `${lastEmoji} ${lastCondition}` : '—',
           hasSemester: !!studentSemesterData,
-          semesterRekomendasi: studentSemesterData?.rekomendasi_guru || (studentSemesterData ? dapatkanRekomendasiAI(studentSemesterData.skor_indikator || {}) : "") || `Ananda ${siswa.nama} berkembang sangat baik dalam nilai agama, moral, motorik, kognitif, serta bahasa & sosial sesuai usianya.`,
-          semesterSnapshot: studentSemesterData?.skor_indikator || {}
+          avgSemester,
+          domainScores: { agamaScore, motorikScore, kognitifScore, bahasaScore },
+          semesterRekomendasi: studentSemesterData?.rekomendasi_guru || (studentSemesterData ? dapatkanRekomendasiAI(studentSemesterData.skor_indikator || {}) : ""),
+          semesterSnapshot: skorInd
         };
       });
 
@@ -579,22 +595,22 @@ const ReportGuru = () => {
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-xs' 
                       : 'bg-slate-100 text-slate-500 border-slate-200'
                     }`}>
-                      {item.hasSemester ? '✨ 100% Sempurna' : '🔒 Belum Diisi (0%)'}
+                      {item.hasSemester ? `✨ ${item.avgSemester}% Capaian` : '🔒 Belum Diisi'}
                     </span>
                   </div>
 
-                  {/* GRAFIK SEMESTER VISUAL UTAMA */}
+                  {/* GRAFIK SEMESTER VISUAL UTAMA - SKOR RIIL */}
                   <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
                       <span className="text-purple-900 flex items-center gap-1">
                         <TrendingUp size={14} className="text-purple-600"/> Grafik Capaian Semester
                       </span>
                       <span className={item.hasSemester ? "text-purple-700 font-bold" : "text-slate-400 font-bold"}>
-                        {item.hasSemester ? '100% Sempurna (Full)' : '0% (Kosong)'}
+                        {item.hasSemester ? `${item.avgSemester}% Rata-rata` : '0% (Belum Diisi)'}
                       </span>
                     </div>
                     
-                    {/* ANIMATED PROGRESS BAR */}
+                    {/* ANIMATED PROGRESS BAR RIIL */}
                     <div className="w-full bg-slate-200 h-4 rounded-full overflow-hidden p-0.5 shadow-inner">
                       <div 
                         className={`h-full rounded-full transition-all duration-1000 ${
@@ -602,71 +618,50 @@ const ReportGuru = () => {
                           ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600' 
                           : 'bg-slate-300'
                         }`}
-                        style={{ width: `${item.hasSemester ? 100 : 0}%` }}
+                        style={{ width: `${item.hasSemester ? item.avgSemester : 0}%` }}
                       ></div>
                     </div>
 
                     <p className="text-[9px] font-medium text-slate-400 pt-0.5">
                       {item.hasSemester 
-                        ? '✅ Nilai evaluasi semester telah lengkap & grafik capaian tampil 100% sempurna.' 
+                        ? `✅ Nilai semester terinput. Rata-rata capaian: ${item.avgSemester}%` 
                         : '🔒 Evaluasi semester belum diisi oleh Wali Kelas.'}
                     </p>
                   </div>
 
-                  {/* BREAKDOWN 4 ASPEK PERKEMBANGAN SISWA */}
-                  <div className="space-y-2 pt-1">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Grafik 4 Aspek Perkembangan Utama:</span>
-                    
-                    <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
-                        <div className="flex justify-between text-slate-700">
-                          <span>🌟 Agama & Moral</span>
-                          <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
-                            {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
-                        <div className="flex justify-between text-slate-700">
-                          <span>🏃 Motorik & Fisik</span>
-                          <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
-                            {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
-                        <div className="flex justify-between text-slate-700">
-                          <span>🧠 Kognitif</span>
-                          <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
-                            {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
-                        <div className="flex justify-between text-slate-700">
-                          <span>🗣️ Bahasa & Sosial</span>
-                          <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
-                            {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
-                          </span>
-                        </div>
-                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
-                        </div>
+                  {/* BREAKDOWN 4 ASPEK PERKEMBANGAN - SKOR RIIL */}
+                  {item.hasSemester ? (
+                    <div className="space-y-2 pt-1">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Capaian Riil 4 Aspek Perkembangan:</span>
+                      <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
+                        {[
+                          { label: '🌟 Agama & Moral', score: item.domainScores?.agamaScore },
+                          { label: '🏃 Motorik & Fisik', score: item.domainScores?.motorikScore },
+                          { label: '🧠 Kognitif', score: item.domainScores?.kognitifScore },
+                          { label: '🗣️ Bahasa & Sosial', score: item.domainScores?.bahasaScore },
+                        ].map(({ label, score }) => {
+                          const pct = score ?? 0;
+                          const colorBar = pct >= 75 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-400';
+                          const colorText = pct >= 75 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-rose-500';
+                          return (
+                            <div key={label} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                              <div className="flex justify-between text-slate-700">
+                                <span>{label}</span>
+                                <span className={colorText}>{score !== null ? `${pct}%` : '—'}</span>
+                              </div>
+                              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                <div className={`${colorBar} h-full rounded-full transition-all duration-700`} style={{ width: `${pct}%` }}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="pt-1 p-3.5 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center">
+                      <p className="text-[10px] font-bold text-slate-400">🔒 Input nilai semester untuk melihat capaian 4 aspek perkembangan.</p>
+                    </div>
+                  )}
 
                 </div>
               ))}
@@ -715,22 +710,22 @@ const ReportGuru = () => {
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-xs' 
                               : 'bg-slate-100 text-slate-500 border-slate-200'
                             }`}>
-                              {item.hasSemester ? '✨ 100% Sempurna' : '🔒 Belum Diisi (0%)'}
+                              {item.hasSemester ? `✨ ${item.avgSemester}% Capaian` : '🔒 Belum Diisi'}
                             </span>
                           </div>
 
-                          {/* GRAFIK SEMESTER VISUAL UTAMA */}
+                          {/* GRAFIK SEMESTER VISUAL UTAMA - SKOR RIIL */}
                           <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
                               <span className="text-purple-900 flex items-center gap-1">
                                 <TrendingUp size={14} className="text-purple-600"/> Grafik Capaian Semester
                               </span>
                               <span className={item.hasSemester ? "text-purple-700 font-bold" : "text-slate-400 font-bold"}>
-                                {item.hasSemester ? '100% Sempurna (Full)' : '0% (Kosong)'}
+                                {item.hasSemester ? `${item.avgSemester}% Rata-rata` : '0% (Belum Diisi)'}
                               </span>
                             </div>
                             
-                            {/* ANIMATED PROGRESS BAR */}
+                            {/* ANIMATED PROGRESS BAR RIIL */}
                             <div className="w-full bg-slate-200 h-4 rounded-full overflow-hidden p-0.5 shadow-inner">
                               <div 
                                 className={`h-full rounded-full transition-all duration-1000 ${
@@ -738,71 +733,50 @@ const ReportGuru = () => {
                                   ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600' 
                                   : 'bg-slate-300'
                                 }`}
-                                style={{ width: `${item.hasSemester ? 100 : 0}%` }}
+                                style={{ width: `${item.hasSemester ? item.avgSemester : 0}%` }}
                               ></div>
                             </div>
 
                             <p className="text-[9px] font-medium text-slate-400 pt-0.5">
                               {item.hasSemester 
-                                ? '✅ Nilai evaluasi semester telah lengkap & grafik capaian tampil 100% sempurna.' 
+                                ? `✅ Nilai semester terinput. Rata-rata capaian: ${item.avgSemester}%` 
                                 : '🔒 Evaluasi semester belum diisi oleh Wali Kelas.'}
                             </p>
                           </div>
 
-                          {/* BREAKDOWN 4 ASPEK PERKEMBANGAN SISWA */}
-                          <div className="space-y-2 pt-1">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Grafik 4 Aspek Perkembangan Utama:</span>
-                            
-                            <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
-                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
-                                <div className="flex justify-between text-slate-700">
-                                  <span>🌟 Agama & Moral</span>
-                                  <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
-                                    {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
-                                  </span>
-                                </div>
-                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
-                                </div>
-                              </div>
-
-                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
-                                <div className="flex justify-between text-slate-700">
-                                  <span>🏃 Motorik & Fisik</span>
-                                  <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
-                                    {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
-                                  </span>
-                                </div>
-                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
-                                </div>
-                              </div>
-
-                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
-                                <div className="flex justify-between text-slate-700">
-                                  <span>🧠 Kognitif</span>
-                                  <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
-                                    {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
-                                  </span>
-                                </div>
-                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
-                                </div>
-                              </div>
-
-                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
-                                <div className="flex justify-between text-slate-700">
-                                  <span>🗣️ Bahasa & Sosial</span>
-                                  <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
-                                    {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
-                                  </span>
-                                </div>
-                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
-                                </div>
+                          {/* BREAKDOWN 4 ASPEK PERKEMBANGAN - SKOR RIIL */}
+                          {item.hasSemester ? (
+                            <div className="space-y-2 pt-1">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Capaian Riil 4 Aspek Perkembangan:</span>
+                              <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
+                                {[
+                                  { label: '🌟 Agama & Moral', score: item.domainScores?.agamaScore },
+                                  { label: '🏃 Motorik & Fisik', score: item.domainScores?.motorikScore },
+                                  { label: '🧠 Kognitif', score: item.domainScores?.kognitifScore },
+                                  { label: '🗣️ Bahasa & Sosial', score: item.domainScores?.bahasaScore },
+                                ].map(({ label, score }) => {
+                                  const pct = score ?? 0;
+                                  const colorBar = pct >= 75 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-400';
+                                  const colorText = pct >= 75 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-600' : 'text-rose-500';
+                                  return (
+                                    <div key={label} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                                      <div className="flex justify-between text-slate-700">
+                                        <span>{label}</span>
+                                        <span className={colorText}>{score !== null ? `${pct}%` : '—'}</span>
+                                      </div>
+                                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                        <div className={`${colorBar} h-full rounded-full transition-all duration-700`} style={{ width: `${pct}%` }}></div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
-                          </div>
+                          ) : (
+                            <div className="pt-1 p-3.5 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center">
+                              <p className="text-[10px] font-bold text-slate-400">🔒 Input nilai semester untuk melihat capaian 4 aspek perkembangan.</p>
+                            </div>
+                          )}
 
                         </div>
                       ))}
