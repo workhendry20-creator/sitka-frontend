@@ -321,6 +321,28 @@ const ProgressOrtu = () => {
   // STATUS STATUS TERKUNCI (LOCK) JIKA PILIHAN USIA BERBEDA DENGAN USIA SEBENARNYA ANAK
   const isAgeLocked = currentAgeKey !== actualChildAgeKey;
 
+  // NAMA & USIA SISWA DINAMIS DARI DATABASE / SESSION
+  const childName = useMemo(() => {
+    return activeChild?.nama_anak || activeChild?.namaAnak || activeChild?.nama_siswa || activeChild?.nama || "Si Kecil";
+  }, [activeChild]);
+
+  const childAgeInfo = useMemo(() => {
+    if (!activeChild) return "3 Tahun";
+    const dob = activeChild.date_of_birth || activeChild.tanggal_lahir_anak || activeChild.tgl_lahir_anak || activeChild.tgl_lahir;
+    if (!dob) {
+      const ageNum = parseInt(activeChild.usia, 10);
+      return !isNaN(ageNum) ? `${ageNum} Tahun` : "3 Tahun";
+    }
+    const parsedDate = new Date(dob);
+    if (!isNaN(parsedDate.getTime())) {
+      const diffMs = Date.now() - parsedDate.getTime();
+      const months = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.4375));
+      const years = Math.floor(months / 12);
+      return `${years} Thn (${months} Bln)`;
+    }
+    return activeChild.usia ? `${activeChild.usia} Tahun` : "3 Tahun";
+  }, [activeChild]);
+
   // NAVIGASI PANAH USIA [<] [>]
   const handlePrevAge = () => {
     if (selectedAgeKeyIndex > 0) {
@@ -578,8 +600,8 @@ const ProgressOrtu = () => {
               {/* JUDUL & BADGE LOCK STATUS */}
               <div className="pt-1 space-y-1.5 text-left">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black tracking-widest uppercase bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full border border-amber-400/30">
-                    SDIDTK • Kuesioner Ortu
+                  <span className="text-[10px] font-black tracking-widest uppercase bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full border border-amber-400/30 flex items-center gap-1.5 shadow-2xs">
+                    <Baby size={12} /> {childName} • Usia {childAgeInfo}
                   </span>
                   
                   {isAgeLocked ? (
