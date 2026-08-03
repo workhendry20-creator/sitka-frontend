@@ -83,7 +83,7 @@ const DashboardOrtu = () => {
       console.warn("Gagal menarik cloud harian ortu:", err);
     }
 
-    // Local storage fetch
+    // Local storage fetch (sitka_all_harian_reports)
     try {
       const rawLocal = localStorage.getItem('sitka_all_harian_reports');
       if (rawLocal) {
@@ -100,45 +100,67 @@ const DashboardOrtu = () => {
       }
     } catch (e) {}
 
+    // Local storage fetch (sitka_rekap_data fallback)
+    try {
+      const rawRekap = localStorage.getItem('sitka_rekap_data');
+      if (rawRekap) {
+        const parsedRekap = JSON.parse(rawRekap);
+        if (Array.isArray(parsedRekap)) {
+          parsedRekap.forEach(r => {
+            const rName = (r.nama || r.nama_siswa || '').toLowerCase().trim();
+            if (rName === cleanChild && (!r.label || !r.label.includes('Semester'))) {
+              const exists = combinedHarian.some(c => c.tanggal === r.tanggal);
+              if (!exists) {
+                combinedHarian.push({
+                  tanggal: r.tanggal,
+                  nama_siswa: r.nama,
+                  status_kondisi: r.label || 'Bahagia',
+                  emoji: r.emoji || '😊',
+                  catatan_anekdot: r.catatan || '',
+                  input_oleh_guru: `Wali Kelas ${r.kelompok || ''}`
+                });
+              }
+            }
+          });
+        }
+      }
+    } catch (e) {}
+
     setCatatanHarian(combinedHarian);
   };
 
   // KALKULASI DUAL DIMENSI HITUNGAN 4 EMOJI UNTUK GRAFIK BATANG HARIAN
-  // Grafik perlahan naik sesuai skala banyaknya input anekdot siswa tersebut
+  // Grafik perlahan naik secara akurat sesuai presisi input anekdot Guru (Bahagia, Tenang, Sedih, Istimewa)
   const emojiChartData = useMemo(() => {
     let bahagiaCount = 0;
-    let aktifCount = 0;
-    let fokusCount = 0;
+    let tenangCount = 0;
+    let sedihCount = 0;
     let istimewaCount = 0;
 
     if (catatanHarian.length > 0) {
       catatanHarian.forEach(rec => {
-        const cond = (rec.status_kondisi || '').toLowerCase();
+        const cond = (rec.status_kondisi || rec.label || '').toLowerCase();
         const em = rec.emoji || '';
 
         if (cond.includes('bahagia') || cond.includes('senang') || em === '😊') {
           bahagiaCount++;
-        } else if (cond.includes('aktif') || cond.includes('kreatif') || em === '⚡' || em === '🎨') {
-          aktifCount++;
-        } else if (cond.includes('fokus') || cond.includes('konsentrasi') || em === '🎯') {
-          fokusCount++;
-        } else {
+        } else if (cond.includes('tenang') || cond.includes('fokus') || cond.includes('baik') || em === '😐') {
+          tenangCount++;
+        } else if (cond.includes('sedih') || cond.includes('menangis') || em === '😢') {
+          sedihCount++;
+        } else if (cond.includes('istimewa') || cond.includes('aktif') || cond.includes('kreatif') || cond.includes('ceria') || em === '🌟' || em === '⚡') {
           istimewaCount++;
+        } else {
+          bahagiaCount++;
         }
       });
-    } else {
-      // Fallback visualisasi awal 0 entri
-      bahagiaCount = 1;
-      aktifCount = 1;
-      fokusCount = 0;
-      istimewaCount = 0;
     }
 
     return [
       { category: 'Bahagia 😊', jumlah: bahagiaCount, fill: '#6366f1' },
-      { category: 'Aktif ⚡', jumlah: aktifCount, fill: '#f59e0b' },
-      { category: 'Fokus 🎯', jumlah: fokusCount, fill: '#3b82f6' },
-      { category: 'Ceria 🌟', jumlah: istimewaCount, fill: '#10b981' },
+      { category: 'Tenang 😐', jumlah: tenangCount, fill: '#3b82f6' },
+      { category: 'Sedih 😢', jumlah: sedihCount, fill: '#f43f5e' },
+      { category: 'Istimewa 🌟', jumlah: istimewaCount, fill: '#f59e0b' },
     ];
   }, [catatanHarian]);
 
