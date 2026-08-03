@@ -536,8 +536,8 @@ const ProgressOrtu = () => {
       {/* ======================================================================= */}
       {currentView === 'menu' && (
         <div className="space-y-6">
-          {/* HEADER UTAMA SANGAT RAPI & MODERN */}
-          <div className="bg-[#0a1e36] text-white pt-7 pb-9 px-6 rounded-b-[2.5rem] shadow-lg relative overflow-hidden">
+          {/* HEADER UTAMA SEMPURNA & MODERN */}
+          <div className="bg-[#0a1e36] text-white pt-8 pb-10 px-6 rounded-b-[3rem] shadow-xl border-b border-white/10 relative overflow-hidden">
             <div className="max-w-3xl mx-auto relative z-10 space-y-4">
               
               {/* BAR ATAS HEADER ALIGNED RAPI */}
@@ -550,7 +550,7 @@ const ProgressOrtu = () => {
                 </button>
 
                 {/* CONTROL SLIDER AGE BRACKET NAVIGASI RAPI */}
-                <div className="flex items-center gap-1.5 bg-white/10 border border-white/15 px-2 py-1 rounded-2xl backdrop-blur-md">
+                <div className="flex items-center gap-1.5 bg-white/10 border border-white/15 px-2.5 py-1.5 rounded-2xl backdrop-blur-md">
                   <button 
                     onClick={handlePrevAge}
                     disabled={selectedAgeKeyIndex === 0}
@@ -577,7 +577,7 @@ const ProgressOrtu = () => {
 
               {/* JUDUL & BADGE LOCK STATUS */}
               <div className="pt-1 space-y-1.5 text-left">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-black tracking-widest uppercase bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full border border-amber-400/30">
                     SDIDTK • Kuesioner Ortu
                   </span>
@@ -605,7 +605,7 @@ const ProgressOrtu = () => {
             <div className="absolute -bottom-10 -right-10 w-60 h-60 bg-amber-400/10 rounded-full blur-3xl"></div>
           </div>
 
-          <div className="max-w-3xl mx-auto px-4 md:px-6 -mt-5 space-y-6">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 pt-2 space-y-6">
             
             {/* GRID 4 CATEGORY CARDS DENGAN KONDISI LOCK */}
             <div className="space-y-3">
@@ -756,8 +756,8 @@ const ProgressOrtu = () => {
       {/* ======================================================================= */}
       {currentView === 'detail' && (
         <div className="space-y-6">
-          {/* TOP BAR LAYAR DETAIL SANGAT RAPI */}
-          <div className="bg-[#0a1e36] text-white pt-7 pb-9 px-6 rounded-b-[2.5rem] shadow-lg relative overflow-hidden">
+          {/* TOP BAR LAYAR DETAIL SEMPURNA */}
+          <div className="bg-[#0a1e36] text-white pt-8 pb-10 px-6 rounded-b-[3rem] shadow-xl border-b border-white/10 relative overflow-hidden">
             <div className="max-w-3xl mx-auto relative z-10 space-y-4">
               <div className="flex items-center justify-between">
                 <button 
@@ -784,7 +784,7 @@ const ProgressOrtu = () => {
             <div className="absolute -bottom-10 -right-10 w-60 h-60 bg-teal-400/10 rounded-full blur-3xl"></div>
           </div>
 
-          <div className="max-w-3xl mx-auto px-4 md:px-6 -mt-5 space-y-5">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 pt-2 space-y-5">
             
             {/* COUNTER HEADER LAYAR DETAIL */}
             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3">
