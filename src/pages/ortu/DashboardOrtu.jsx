@@ -170,29 +170,70 @@ const DashboardOrtu = () => {
     ];
   }, [catatanHarian]);
 
-  // 2. CEK EVALUASI SEMESTER (KOSONGKAN JIKA GURU BELUM INPUT)
+  // 2. CEK EVALUASI SEMESTER (KOSONGKAN JIKA GURU BELUM INPUT, HITUNG SKOR RIIL JIKA SUDAH)
   const checkSemesterData = async (namaAnak) => {
     if (!namaAnak) return;
     const cleanChild = namaAnak.toLowerCase().trim();
     let semesterRecord = null;
 
+    // Cloud fetch Supabase
     try {
-      const rawSemester = localStorage.getItem('sitka_all_semester_reports');
-      if (rawSemester) {
-        const parsed = JSON.parse(rawSemester);
-        if (Array.isArray(parsed)) {
-          semesterRecord = parsed.find(s => (s.nama_siswa || s.namaSiswa || '').toLowerCase().trim() === cleanChild);
-        }
+      const { data, error } = await supabase
+        .from('nilai_semester')
+        .select('*');
+      if (!error && data) {
+        semesterRecord = data.find(s => {
+          if (!s.nama_siswa) return false;
+          const sName = s.nama_siswa.toLowerCase().trim();
+          return sName === cleanChild || sName.includes(cleanChild) || cleanChild.includes(sName);
+        });
       }
     } catch (e) { }
 
+    // Local storage fallback
+    if (!semesterRecord) {
+      try {
+        const rawSemester = localStorage.getItem('sitka_all_semester_reports');
+        if (rawSemester) {
+          const parsed = JSON.parse(rawSemester);
+          if (Array.isArray(parsed)) {
+            semesterRecord = parsed.find(s => {
+              const sName = (s.nama_siswa || s.namaSiswa || '').toLowerCase().trim();
+              return sName && (sName === cleanChild || sName.includes(cleanChild) || cleanChild.includes(sName));
+            });
+          }
+        }
+      } catch (e) { }
+    }
+
     if (semesterRecord) {
       setHasSemesterEvaluation(true);
+
+      // Hitung skor riil per domain dari skor_indikator input Guru
+      const skorInd = semesterRecord.skor_indikator || {};
+      const calculateDomainScore = (prefix) => {
+        const entries = Object.entries(skorInd).filter(([key]) => key.startsWith(prefix));
+        if (entries.length === 0) return 100;
+        const total = entries.reduce((acc, [, val]) => {
+          if (val === 'BSB') return acc + 100;
+          if (val === 'BSH') return acc + 75;
+          if (val === 'MM') return acc + 50;
+          if (val === 'BM') return acc + 25;
+          return acc;
+        }, 0);
+        return Math.round(total / entries.length);
+      };
+
+      const agamaScore = calculateDomainScore('nam_');
+      const motorikScore = calculateDomainScore('mot_');
+      const kognitifScore = calculateDomainScore('kog_');
+      const bahasaScore = Math.round((calculateDomainScore('bah_') + calculateDomainScore('se_')) / 2);
+
       setSemesterChartData([
-        { domain: '🌟 Agama & Moral', nilai: 100, label: '100% Sempurna (BSB)' },
-        { domain: '🏃 Motorik & Fisik', nilai: 100, label: '100% Sempurna (BSB)' },
-        { domain: '🧠 Kognitif', nilai: 100, label: '100% Sempurna (BSB)' },
-        { domain: '🗣️ Bahasa & Sosial', nilai: 100, label: '100% Sempurna (BSB)' },
+        { domain: '🌟 Agama & Moral', nilai: agamaScore, label: `${agamaScore}% Capaian` },
+        { domain: '🏃 Motorik & Fisik', nilai: motorikScore, label: `${motorikScore}% Capaian` },
+        { domain: '🧠 Kognitif', nilai: kognitifScore, label: `${kognitifScore}% Capaian` },
+        { domain: '🗣️ Bahasa & Sosial', nilai: bahasaScore, label: `${bahasaScore}% Capaian` },
       ]);
     } else {
       setHasSemesterEvaluation(false);

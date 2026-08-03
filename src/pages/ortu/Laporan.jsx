@@ -141,14 +141,17 @@ const Laporan = () => {
         guru: item.input_oleh_guru || `Wali Kelas ${parentData?.kelompok || 'A'}`
       }));
     } else {
-      return laporanSemester.map((item, index) => ({
-        id: `sem-${index}`,
-        tanggal: item.tanggal || 'Semester Ini',
-        tipe: `Semester ${item.semester || '1'}`,
-        status: '✨ 100% Sempurna (BSB)',
-        catatan: item.rekomendasi_guru || 'Ananda berkembang sangat baik dalam seluruh aspek perkembangan sesuai tahap usianya.',
-        guru: item.input_oleh_guru || `Wali Kelas ${parentData?.kelompok || 'A'}`
-      }));
+      return laporanSemester.map((item, index) => {
+        const hasRec = !!item.rekomendasi_guru;
+        return {
+          id: `sem-${index}`,
+          tanggal: item.tanggal || 'Semester Ini',
+          tipe: `Semester ${item.semester || '1'}`,
+          status: hasRec ? '✨ Evaluasi Terbit (BSB)' : '🔒 Nilai Terrekam',
+          catatan: item.rekomendasi_guru || 'Ananda berkembang sangat baik dalam seluruh aspek perkembangan sesuai tahap usianya.',
+          guru: item.input_oleh_guru || `Wali Kelas ${parentData?.kelompok || 'A'}`
+        };
+      });
     }
   }, [filterPeriode, laporanHarian, laporanSemester, parentData]);
 
