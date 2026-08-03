@@ -69,7 +69,7 @@ const DashboardOrtu = () => {
 
     let combinedHarian = [];
 
-    // Cloud fetch
+    // Cloud fetch dari Supabase
     try {
       const { data, error } = await supabase
         .from('nilai_harian')
@@ -77,7 +77,11 @@ const DashboardOrtu = () => {
         .order('tanggal', { ascending: false });
 
       if (!error && data) {
-        combinedHarian = data.filter(d => d.nama_siswa && d.nama_siswa.toLowerCase().trim() === cleanChild);
+        combinedHarian = data.filter(d => {
+          if (!d.nama_siswa) return false;
+          const sName = d.nama_siswa.toLowerCase().trim();
+          return sName === cleanChild || sName.includes(cleanChild) || cleanChild.includes(sName);
+        });
       }
     } catch (err) {
       console.warn("Gagal menarik cloud harian ortu:", err);
@@ -91,8 +95,8 @@ const DashboardOrtu = () => {
         if (Array.isArray(parsed)) {
           parsed.forEach(p => {
             const pName = (p.nama_siswa || p.namaSiswa || '').toLowerCase().trim();
-            if (pName === cleanChild) {
-              const exists = combinedHarian.some(c => c.tanggal === p.tanggal);
+            if (pName && (pName === cleanChild || pName.includes(cleanChild) || cleanChild.includes(pName))) {
+              const exists = combinedHarian.some(c => (c.tanggal === p.tanggal && (c.nama_siswa || '').toLowerCase().trim() === pName));
               if (!exists) combinedHarian.push(p);
             }
           });
@@ -108,11 +112,11 @@ const DashboardOrtu = () => {
         if (Array.isArray(parsedRekap)) {
           parsedRekap.forEach(r => {
             const rName = (r.nama || r.nama_siswa || '').toLowerCase().trim();
-            if (rName === cleanChild && (!r.label || !r.label.includes('Semester'))) {
+            if (rName && (rName === cleanChild || rName.includes(cleanChild) || cleanChild.includes(rName)) && (!r.label || !r.label.includes('Semester'))) {
               const exists = combinedHarian.some(c => c.tanggal === r.tanggal);
               if (!exists) {
                 combinedHarian.push({
-                  tanggal: r.tanggal,
+                  tanggal: r.tanggal || 'Hari Ini',
                   nama_siswa: r.nama,
                   status_kondisi: r.label || 'Bahagia',
                   emoji: r.emoji || '😊',
@@ -452,8 +456,14 @@ const DashboardOrtu = () => {
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
-              <p className="text-slate-400 font-bold text-xs italic">Opsi pemantauan harian akan muncul ketika Wali Kelas menerbitkan catatan untuk ananda.</p>
+            <div className="p-10 text-center bg-slate-50 rounded-[2.5rem] border border-dashed border-slate-200 space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto shadow-2xs">
+                <BookOpen size={28} />
+              </div>
+              <h4 className="font-black text-[#0a1e36] text-base">Belum Ada Catatan Anekdot Harian</h4>
+              <p className="text-xs text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
+                Wali Kelas belum menginput catatan harian untuk <span className="font-bold text-slate-600">{parentData?.nama_anak || parentData?.namaAnak || 'ananda'}</span>. Jurnal ini akan otomatis terupdate secara real-time setiap kali Guru menginput anekdot harian baru.
+              </p>
             </div>
           )}
         </div>
