@@ -226,8 +226,8 @@ const DashboardGuru = () => {
             </div>
           </div>
 
-          <div className="h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-72 w-full pt-2 min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={domainClassData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
@@ -265,8 +265,8 @@ const DashboardGuru = () => {
             </div>
           </div>
 
-          <div className="h-72 w-full pt-2 flex flex-col items-center justify-center">
-            <ResponsiveContainer width="100%" height="80%">
+          <div className="h-72 w-full pt-2 flex flex-col items-center justify-center min-w-0">
+            <ResponsiveContainer width="100%" height="80%" minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={statusClassData}
@@ -312,8 +312,8 @@ const DashboardGuru = () => {
           </div>
         </div>
 
-        <div className="h-60 w-full pt-2">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-60 w-full pt-2 min-w-0">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart data={dataAnekdotHarian}>
               <XAxis dataKey="kondisi" stroke="#94a3b8" fontSize={12} tickLine={false} />
               <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />

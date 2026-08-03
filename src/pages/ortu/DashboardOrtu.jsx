@@ -312,8 +312,8 @@ const DashboardOrtu = () => {
           </div>
 
           {/* BAR CHART GRAFIK HARIAN 4 EMOJI */}
-          <div className="h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 w-full pt-2 min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={emojiChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="category" stroke="#94a3b8" fontSize={11} fontWeight="bold" tickLine={false} />
@@ -358,7 +358,7 @@ const DashboardOrtu = () => {
           </div>
 
           {/* BAR CHART GRAFIK SEMESTER */}
-          <div className="h-64 w-full pt-2 relative">
+          <div className="h-64 w-full pt-2 relative min-w-0">
             {!hasSemesterEvaluation && (
               <div className="absolute inset-0 z-10 bg-white/75 backdrop-blur-[1px] rounded-2xl flex flex-col items-center justify-center p-6 text-center space-y-2 border border-dashed border-slate-200">
                 <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
@@ -371,7 +371,7 @@ const DashboardOrtu = () => {
               </div>
             )}
 
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={semesterChartData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="domain" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
@@ -396,8 +396,8 @@ const DashboardOrtu = () => {
           <h3 className="text-base font-bold text-[#0a1e36] mb-4 flex items-center gap-2">
             <Calendar className="text-teal-600" size={18} /> Kehadiran Bulanan
           </h3>
-          <div className="h-52 w-full">
-            <ResponsiveContainer>
+          <div className="h-52 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie data={attendanceData} innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value">
                   {attendanceData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}

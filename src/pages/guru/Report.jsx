@@ -675,12 +675,12 @@ const ReportGuru = () => {
               ))}
             </div>
 
-            {/* BLUR OVERLAY & TOMBOL NAVIGASI LIHAT SISWA LAINNYA */}
+            {/* GRADIENT OPACITY FADE OVERLAY & TOMBOL NAVIGASI LIHAT SISWA LAINNYA */}
             {filteredReports.length > 2 && (
               <div className={`transition-all duration-500 ${
                 !showAllOverviewStudents 
-                  ? 'backdrop-blur-md bg-gradient-to-t from-slate-100/95 via-slate-100/80 to-transparent pt-24 pb-6 -mt-28 relative z-10 flex flex-col items-center justify-end rounded-b-[2.5rem]' 
-                  : 'pt-6 flex justify-center'
+                  ? 'bg-gradient-to-t from-slate-100 via-slate-100/90 to-transparent pt-24 pb-6 -mt-28 relative z-10 flex flex-col items-center justify-end rounded-b-[2.5rem] opacity-100' 
+                  : 'pt-6 flex justify-center opacity-100'
               }`}>
                 <button
                   type="button"
@@ -731,7 +731,7 @@ const ReportGuru = () => {
             {selectedStudent && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* 1. RADARCHART: KESEIMBANGAN DOMAIN SISWA */}
-                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3">
+                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3 min-w-0">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Sparkles size={16} className="text-purple-600" /> Radar Keseimbangan 4 Domain
@@ -741,8 +741,8 @@ const ReportGuru = () => {
                     </span>
                   </div>
 
-                  <div className="h-64 w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-64 w-full flex items-center justify-center min-w-0">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
                         <PolarGrid stroke="#cbd5e1" />
                         <PolarAngleAxis dataKey="domain" tick={{ fill: '#475569', fontSize: 10, fontWeight: 'bold' }} />
@@ -758,7 +758,7 @@ const ReportGuru = () => {
                 </div>
 
                 {/* 2. LINECHART: TREN PROGRES BULANAN SISWA */}
-                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3">
+                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3 min-w-0">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <TrendingUp size={16} className="text-emerald-600" /> Tren Progres Bulanan Milestone
@@ -768,8 +768,8 @@ const ReportGuru = () => {
                     </span>
                   </div>
 
-                  <div className="h-64 w-full pt-2">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-64 w-full pt-2 min-w-0">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <LineChart data={lineTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                         <XAxis dataKey="bulan" stroke="#94a3b8" fontSize={10} fontWeight="bold" tickLine={false} />
