@@ -559,7 +559,7 @@ const ProgressOrtu = () => {
       {currentView === 'menu' && (
         <div className="space-y-6">
           {/* HEADER UTAMA SEMPURNA & MODERN */}
-          <div className="bg-[#0a1e36] text-white pt-8 pb-10 px-6 rounded-b-[3rem] shadow-xl border-b border-white/10 relative overflow-hidden">
+          <div className="bg-[#0a1e36] text-white p-8 rounded-[2.5rem] shadow-xl border border-white/10 relative overflow-hidden">
             <div className="max-w-3xl mx-auto relative z-10 space-y-4">
               
               {/* BAR ATAS HEADER ALIGNED RAPI */}
@@ -779,7 +779,7 @@ const ProgressOrtu = () => {
       {currentView === 'detail' && (
         <div className="space-y-6">
           {/* TOP BAR LAYAR DETAIL SEMPURNA */}
-          <div className="bg-[#0a1e36] text-white pt-8 pb-10 px-6 rounded-b-[3rem] shadow-xl border-b border-white/10 relative overflow-hidden">
+          <div className="bg-[#0a1e36] text-white p-8 rounded-[2.5rem] shadow-xl border border-white/10 relative overflow-hidden">
             <div className="max-w-3xl mx-auto relative z-10 space-y-4">
               <div className="flex items-center justify-between">
                 <button 
