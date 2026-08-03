@@ -2,11 +2,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import { 
   ClipboardCheck, Search, User, ArrowUpRight, 
-  CheckCircle2, Clock, AlertCircle, Layers, ChevronDown, ChevronUp,
+  CheckCircle2, Clock, AlertCircle, Layers, ChevronDown, ChevronUp, Lock,
   Database, Sparkles, BarChart3, TrendingUp, BookOpen,
   Award, Eye, Filter, Heart, Activity, FileText, Video, Calendar, UserCheck
 } from 'lucide-react';
@@ -74,25 +74,21 @@ const ReportGuru = () => {
     ];
   }, [selectedStudent]);
 
-  // Data LineChart: Tren Progres Bulanan Siswa (Tanpa Data Dummy)
-  const lineTrendData = useMemo(() => {
+  // Data BarChart: Grafik Capaian Semester Siswa
+  const studentSemesterChartData = useMemo(() => {
     if (!selectedStudent || !selectedStudent.hasSemester) {
       return [
-        { bulan: 'Bulan 1', persentase: 0 },
-        { bulan: 'Bulan 2', persentase: 0 },
-        { bulan: 'Bulan 3', persentase: 0 },
-        { bulan: 'Bulan 4', persentase: 0 },
-        { bulan: 'Bulan 5', persentase: 0 },
-        { bulan: 'Bulan 6', persentase: 0 },
+        { domain: 'Agama & Moral', nilai: 0, label: '0% (Kosong)' },
+        { domain: 'Motorik & Fisik', nilai: 0, label: '0% (Kosong)' },
+        { domain: 'Kognitif', nilai: 0, label: '0% (Kosong)' },
+        { domain: 'Bahasa & Sosial', nilai: 0, label: '0% (Kosong)' },
       ];
     }
     return [
-      { bulan: 'Bulan 1', persentase: 60 },
-      { bulan: 'Bulan 2', persentase: 70 },
-      { bulan: 'Bulan 3', persentase: 80 },
-      { bulan: 'Bulan 4', persentase: 88 },
-      { bulan: 'Bulan 5', persentase: 95 },
-      { bulan: 'Bulan 6', persentase: 100 },
+      { domain: 'Agama & Moral', nilai: 100, label: '100% Sempurna (BSB)' },
+      { domain: 'Motorik & Fisik', nilai: 100, label: '100% Sempurna (BSB)' },
+      { domain: 'Kognitif', nilai: 100, label: '100% Sempurna (BSB)' },
+      { domain: 'Bahasa & Sosial', nilai: 100, label: '100% Sempurna (BSB)' },
     ];
   }, [selectedStudent]);
 
@@ -885,29 +881,45 @@ const ReportGuru = () => {
                   </div>
                 </div>
 
-                {/* 2. LINECHART: TREN PROGRES BULANAN SISWA */}
+                {/* 2. BARCHART: GRAFIK CAPAIAN SEMESTER SISWA */}
                 <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3 min-w-0">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <TrendingUp size={16} className="text-emerald-600" /> Tren Progres Bulanan Milestone
+                      <Award size={16} className="text-purple-600" /> Grafik Capaian Semester Siswa
                     </span>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
-                      Bulan 1 - Bulan 6
+                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                      selectedStudent.hasSemester 
+                      ? 'text-purple-700 bg-purple-100' 
+                      : 'text-slate-500 bg-slate-200'
+                    }`}>
+                      {selectedStudent.hasSemester ? '✨ 100% Sempurna' : '🔒 Belum Ada Nilai'}
                     </span>
                   </div>
 
-                  <div className="h-64 w-full pt-2 min-w-0">
+                  <div className="h-64 w-full pt-2 relative min-w-0">
+                    {!selectedStudent.hasSemester && (
+                      <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-[1px] rounded-2xl flex flex-col items-center justify-center p-6 text-center space-y-2 border border-dashed border-slate-200">
+                        <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                          <Lock size={20} />
+                        </div>
+                        <h4 className="font-black text-slate-800 text-xs">Grafik Semester Masih Kosong</h4>
+                        <p className="text-[10px] text-slate-400 max-w-xs">
+                          Wali Kelas belum menginput nilai evaluasi semester untuk ananda. Grafik akan otomatis 100% sempurna saat nilai diterbitkan.
+                        </p>
+                      </div>
+                    )}
+
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <LineChart data={lineTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }}>
+                      <BarChart data={studentSemesterChartData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="bulan" stroke="#94a3b8" fontSize={10} fontWeight="bold" tickLine={false} />
+                        <XAxis dataKey="domain" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
                         <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} unit="%" tickLine={false} />
                         <Tooltip 
-                          formatter={(val) => [`${val}%`, 'Capaian Milestone']}
+                          formatter={(val, name, item) => [item.payload.label, 'Capaian Semester']}
                           contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
                         />
-                        <Line type="monotone" dataKey="persentase" stroke="#10b981" strokeWidth={3} dot={{ r: 5, fill: '#10b981' }} activeDot={{ r: 8 }} />
-                      </LineChart>
+                        <Bar dataKey="nilai" fill={selectedStudent.hasSemester ? '#8b5cf6' : '#cbd5e1'} radius={[12, 12, 0, 0]} />
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
