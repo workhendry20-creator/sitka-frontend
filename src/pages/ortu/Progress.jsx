@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, Save, Sparkles, Upload, X, Baby, Calendar, 
   Image as ImageIcon, CheckCircle2, Circle, Clock, ChevronDown, 
   ChevronUp, Activity, Palette, MessageSquare, HeartHandshake,
-  Camera, Check, AlertCircle, Shirt, BookOpen, Layers, Eye
+  Camera, Check, AlertCircle, Shirt, BookOpen, Layers, Lock, Unlock
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -311,6 +311,16 @@ const ProgressOrtu = () => {
   const currentAgeKey = AGE_KEYS[selectedAgeKeyIndex];
   const currentAgeData = PERKEMBANGAN_DATA[currentAgeKey] || PERKEMBANGAN_DATA["24_36_bulan"];
 
+  // HITUNG USIA SEBENARNYA ANAK DARI DB UNTUK FUNGSI LOCKING
+  const actualChildAgeKey = useMemo(() => {
+    if (!activeChild) return "24_36_bulan";
+    const dob = activeChild.date_of_birth || activeChild.tanggal_lahir_anak || activeChild.tgl_lahir_anak || activeChild.tgl_lahir;
+    return getAgeCategoryKey(dob || activeChild.usia);
+  }, [activeChild]);
+
+  // STATUS STATUS TERKUNCI (LOCK) JIKA PILIHAN USIA BERBEDA DENGAN USIA SEBENARNYA ANAK
+  const isAgeLocked = currentAgeKey !== actualChildAgeKey;
+
   // NAVIGASI PANAH USIA [<] [>]
   const handlePrevAge = () => {
     if (selectedAgeKeyIndex > 0) {
@@ -339,6 +349,15 @@ const ProgressOrtu = () => {
 
   // HANDLER MASUK KE LAYAR DETAIL CATEGORY
   const handleOpenDetailView = (catKey) => {
+    if (isAgeLocked) {
+      return Swal.fire({
+        icon: 'info',
+        title: 'Rentang Usia Terkunci 🔒',
+        html: `<p class="text-xs text-slate-600">Rentang <b>${currentAgeData.label}</b> hanya dapat dilihat untuk riwayat. Pengisian hanya diperbolehkan pada usia aktif ananda (<b>${PERKEMBANGAN_DATA[actualChildAgeKey]?.label}</b>).</p>`,
+        confirmButtonColor: '#0a1e36',
+        customClass: { popup: 'rounded-[2.5rem]' }
+      });
+    }
     setSelectedCategoryKey(catKey);
     setExpandedAccordion(null);
     setCurrentView('detail');
@@ -346,13 +365,21 @@ const ProgressOrtu = () => {
 
   // HANDLER PENILAIAN FREKUENSI STATUS ("belum_pernah" | "terkadang" | "sering")
   const handleSelectStatus = async (itemId, newStatus) => {
+    if (isAgeLocked) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Tidak Dapat Mengisi',
+        text: 'Modul ini terkunci karena belum/tidak sesuai usia aktif ananda.',
+        confirmButtonColor: '#0a1e36'
+      });
+    }
+
     const updatedStatuses = {
       ...itemStatuses,
       [itemId]: newStatus
     };
     setItemStatuses(updatedStatuses);
 
-    // UX Automation: Saat 'sering' diklik, tutup accordion dengan animasi halus setelah 300ms
     if (newStatus === 'sering') {
       setTimeout(() => {
         setExpandedAccordion(prev => (prev === itemId ? null : prev));
@@ -417,6 +444,15 @@ const ProgressOrtu = () => {
 
   // SIMPAN & SINKRONISASI LAPORAN ORTU
   const handleSaveReport = () => {
+    if (isAgeLocked) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Tidak Dapat Mengirim',
+        text: 'Laporan hanya dapat dikirim pada rentang usia aktif ananda.',
+        confirmButtonColor: '#0a1e36'
+      });
+    }
+
     const childKey = activeChild?.nisn || activeChild?.nama_anak || activeChild?.namaAnak || 'default_child';
     const childName = activeChild?.nama_anak || activeChild?.namaAnak || "Si Kecil";
 
@@ -500,65 +536,90 @@ const ProgressOrtu = () => {
       {/* ======================================================================= */}
       {currentView === 'menu' && (
         <div className="space-y-6">
-          {/* HEADER UTAMA BERSIH & MODERN */}
-          <div className="bg-[#0a1e36] text-white pt-8 pb-10 px-6 rounded-b-[3rem] shadow-xl relative overflow-hidden">
+          {/* HEADER UTAMA SANGAT RAPI & MODERN */}
+          <div className="bg-[#0a1e36] text-white pt-7 pb-9 px-6 rounded-b-[2.5rem] shadow-lg relative overflow-hidden">
             <div className="max-w-3xl mx-auto relative z-10 space-y-4">
-              <div className="flex items-center justify-between">
+              
+              {/* BAR ATAS HEADER ALIGNED RAPI */}
+              <div className="flex items-center justify-between gap-3">
                 <button 
                   onClick={() => navigate('/ortu/dashboard')}
-                  className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all border border-white/10 flex items-center gap-2 text-xs font-bold"
+                  className="px-3.5 py-2 bg-white/10 hover:bg-white/20 rounded-2xl transition-all border border-white/10 flex items-center gap-2 text-xs font-bold text-slate-100"
                 >
-                  <ChevronLeft size={18} /> Dashboard
+                  <ChevronLeft size={16} /> Dashboard
                 </button>
 
-                {/* NAVIGASI PANAH KELOMPOK USIA [<] "X - Y Bulan" [>] */}
-                <div className="flex items-center gap-2 bg-white/10 border border-white/20 px-3 py-1.5 rounded-2xl">
+                {/* CONTROL SLIDER AGE BRACKET NAVIGASI RAPI */}
+                <div className="flex items-center gap-1.5 bg-white/10 border border-white/15 px-2 py-1 rounded-2xl backdrop-blur-md">
                   <button 
                     onClick={handlePrevAge}
                     disabled={selectedAgeKeyIndex === 0}
-                    className="p-1 text-amber-300 disabled:opacity-30 hover:bg-white/10 rounded-lg transition-all"
+                    className="p-1 text-amber-300 disabled:opacity-20 hover:bg-white/10 rounded-xl transition-all"
                   >
                     <ChevronLeft size={18} />
                   </button>
 
-                  <span className="text-xs font-black tracking-wider text-amber-300 px-2 min-w-[110px] text-center">
-                    {currentAgeData.label}
-                  </span>
+                  <div className="px-2 min-w-[115px] text-center">
+                    <span className="text-xs font-black tracking-wider text-amber-300 block">
+                      {currentAgeData.label}
+                    </span>
+                  </div>
 
                   <button 
                     onClick={handleNextAge}
                     disabled={selectedAgeKeyIndex === AGE_KEYS.length - 1}
-                    className="p-1 text-amber-300 disabled:opacity-30 hover:bg-white/10 rounded-lg transition-all"
+                    className="p-1 text-amber-300 disabled:opacity-20 hover:bg-white/10 rounded-xl transition-all"
                   >
                     <ChevronRight size={18} />
                   </button>
                 </div>
               </div>
 
-              <div className="pt-2 space-y-1">
-                <span className="text-[10px] font-black tracking-widest uppercase bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full border border-amber-400/30">
-                  SDIDTK • Kuesioner Ortu
-                </span>
+              {/* JUDUL & BADGE LOCK STATUS */}
+              <div className="pt-1 space-y-1.5 text-left">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black tracking-widest uppercase bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full border border-amber-400/30">
+                    SDIDTK • Kuesioner Ortu
+                  </span>
+                  
+                  {isAgeLocked ? (
+                    <span className="text-[10px] font-black tracking-widest uppercase bg-rose-500/20 text-rose-300 px-3 py-1 rounded-full border border-rose-500/30 flex items-center gap-1">
+                      <Lock size={12} /> Terkunci (Riwayat Usia)
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-black tracking-widest uppercase bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                      <Unlock size={12} /> Usia Aktif Ananda
+                    </span>
+                  )}
+                </div>
+
                 <h1 className="text-2xl md:text-3xl font-black italic tracking-tight">
                   Tahapan Perkembangan
                 </h1>
                 <p className="text-xs text-indigo-200 opacity-90 max-w-lg leading-relaxed">
-                  Pilih domain perkembangan di bawah ini untuk mengisi dan memantau kemandirian ananda.
+                  Pilih domain perkembangan di bawah ini untuk mengisi pencapaian kemandirian ananda.
                 </p>
               </div>
+
             </div>
             <div className="absolute -bottom-10 -right-10 w-60 h-60 bg-amber-400/10 rounded-full blur-3xl"></div>
           </div>
 
-          <div className="max-w-3xl mx-auto px-4 md:px-6 -mt-6 space-y-6">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 -mt-5 space-y-6">
             
-            {/* GRID 4 CATEGORY CARDS */}
+            {/* GRID 4 CATEGORY CARDS DENGAN KONDISI LOCK */}
             <div className="space-y-3">
               <div className="flex justify-between items-center px-1">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
                   Domain Perkembangan (Usia {currentAgeData.label}):
                 </h3>
-                <span className="text-[10px] font-bold text-teal-600">Klik kartu untuk detail</span>
+                {isAgeLocked ? (
+                  <span className="text-[10px] font-bold text-rose-500 flex items-center gap-1">
+                    <Lock size={12} /> Mode Terkunci
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-teal-600">Klik kartu untuk mengisi</span>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-3.5">
@@ -573,17 +634,25 @@ const ProgressOrtu = () => {
                     <div
                       key={config.key}
                       onClick={() => handleOpenDetailView(config.key)}
-                      className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-teal-200 transition-all cursor-pointer group flex items-center justify-between"
+                      className={`bg-white p-5 rounded-2xl border shadow-sm transition-all flex items-center justify-between relative overflow-hidden ${
+                        isAgeLocked 
+                        ? 'border-slate-200 bg-slate-50/70 opacity-80 cursor-not-allowed' 
+                        : 'border-slate-100 hover:shadow-md hover:border-teal-200 cursor-pointer group'
+                      }`}
                     >
                       {/* LEFT: ICON KATEGORI LINGKARAN PASTEL */}
                       <div className="flex items-center gap-4">
-                        <div className={`w-14 h-14 rounded-2xl ${config.bgColor} ${config.iconColor} flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}>
+                        <div className={`w-14 h-14 rounded-2xl ${
+                          isAgeLocked ? 'bg-slate-200 text-slate-500' : `${config.bgColor} ${config.iconColor}`
+                        } flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}>
                           <CategoryIcon size={26} />
                         </div>
 
                         {/* CENTER: NAMA KATEGORI */}
                         <div className="text-left">
-                          <h4 className="font-bold text-slate-800 text-base group-hover:text-teal-700 transition-colors">
+                          <h4 className={`font-bold text-base transition-colors ${
+                            isAgeLocked ? 'text-slate-500' : 'text-slate-800 group-hover:text-teal-700'
+                          }`}>
                             {config.title}
                           </h4>
                           <span className="text-[10px] font-medium text-slate-400">
@@ -592,18 +661,24 @@ const ProgressOrtu = () => {
                         </div>
                       </div>
 
-                      {/* RIGHT: PROGRES DINAMIS X/Y SELESAI + CHEVRON RIGHT */}
+                      {/* RIGHT: PROGRES / LOCK BADGE */}
                       <div className="flex items-center gap-3">
-                        <span className={`text-xs font-black px-3.5 py-1.5 rounded-full ${
-                          seringCount === total && total > 0
-                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                          : 'bg-teal-50 text-teal-700 border border-teal-100'
-                        }`}>
-                          {seringCount}/{total} Selesai
-                        </span>
+                        {isAgeLocked ? (
+                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-200 text-slate-600 flex items-center gap-1 border border-slate-300">
+                            <Lock size={12} /> Terkunci
+                          </span>
+                        ) : (
+                          <span className={`text-xs font-black px-3.5 py-1.5 rounded-full ${
+                            seringCount === total && total > 0
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                            : 'bg-teal-50 text-teal-700 border border-teal-100'
+                          }`}>
+                            {seringCount}/{total} Selesai
+                          </span>
+                        )}
                         
                         <div className="w-8 h-8 rounded-xl bg-slate-50 group-hover:bg-teal-50 text-slate-400 group-hover:text-teal-600 flex items-center justify-center transition-colors">
-                          <ChevronRight size={20} />
+                          {isAgeLocked ? <Lock size={16} className="text-slate-400" /> : <ChevronRight size={20} />}
                         </div>
                       </div>
                     </div>
@@ -621,23 +696,26 @@ const ProgressOrtu = () => {
 
               <textarea 
                 rows={3}
+                disabled={isAgeLocked}
                 value={ceritaMomen}
                 onChange={(e) => setCeritaMomen(e.target.value)}
-                placeholder="Contoh: Ananda minggu ini sudah dapat meloncat jauh dan mau bercerita..."
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-teal-600 outline-none"
+                placeholder={isAgeLocked ? "Pengisian terkunci untuk usia riwayat..." : "Contoh: Ananda minggu ini sudah dapat meloncat jauh dan mau bercerita..."}
+                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-teal-600 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
 
               <div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Foto / Video Kegiatan (Opsional)</p>
                 {mediaPreview ? (
                   <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-black/5 max-h-56">
-                    <button
-                      type="button"
-                      onClick={handleRemoveMedia}
-                      className="absolute top-3 right-3 p-2 bg-black/60 hover:bg-black text-white rounded-full transition-all z-10"
-                    >
-                      <X size={16} />
-                    </button>
+                    {!isAgeLocked && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveMedia}
+                        className="absolute top-3 right-3 p-2 bg-black/60 hover:bg-black text-white rounded-full transition-all z-10"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
                     {mediaType === 'video' ? (
                       <video src={mediaPreview} controls className="w-full max-h-56 object-contain"></video>
                     ) : (
@@ -645,23 +723,27 @@ const ProgressOrtu = () => {
                     )}
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center p-6 bg-slate-50 hover:bg-slate-100/80 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer transition-all">
+                  <label className={`flex flex-col items-center justify-center p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl transition-all ${
+                    isAgeLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-100/80 cursor-pointer'
+                  }`}>
                     <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mb-2">
                       <Camera size={24} />
                     </div>
                     <span className="text-xs font-bold text-slate-700">Unggah Foto atau Video Singkat</span>
                     <span className="text-[10px] text-slate-400">Maksimal 10MB</span>
-                    <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" />
+                    <input type="file" disabled={isAgeLocked} accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" />
                   </label>
                 )}
               </div>
 
               <button
                 type="button"
+                disabled={isAgeLocked}
                 onClick={handleSaveReport}
-                className="w-full py-4 bg-[#0a1e36] text-amber-400 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg hover:bg-slate-900 active:scale-98 transition-all flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#0a1e36] text-amber-400 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg hover:bg-slate-900 active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save size={18} /> Simpan & Kirim Laporan ke Guru
+                {isAgeLocked ? <Lock size={18} /> : <Save size={18} />}
+                {isAgeLocked ? 'Pengisian Terkunci Sesuai Usia' : 'Simpan & Kirim Laporan ke Guru'}
               </button>
             </div>
 
@@ -674,18 +756,18 @@ const ProgressOrtu = () => {
       {/* ======================================================================= */}
       {currentView === 'detail' && (
         <div className="space-y-6">
-          {/* TOP BAR LAYAR DETAIL */}
-          <div className="bg-[#0a1e36] text-white pt-8 pb-10 px-6 rounded-b-[3rem] shadow-xl relative overflow-hidden">
+          {/* TOP BAR LAYAR DETAIL SANGAT RAPI */}
+          <div className="bg-[#0a1e36] text-white pt-7 pb-9 px-6 rounded-b-[2.5rem] shadow-lg relative overflow-hidden">
             <div className="max-w-3xl mx-auto relative z-10 space-y-4">
               <div className="flex items-center justify-between">
                 <button 
                   onClick={() => setCurrentView('menu')}
-                  className="px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-2xl transition-all border border-white/10 flex items-center gap-2 text-xs font-bold text-amber-300"
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-2xl transition-all border border-white/10 flex items-center gap-2 text-xs font-bold text-amber-300"
                 >
-                  <ChevronLeft size={18} /> Kembali ke Menu
+                  <ChevronLeft size={16} /> Kembali ke Menu
                 </button>
 
-                <span className="text-xs font-black bg-teal-500/20 text-teal-300 px-3.5 py-1.5 rounded-full border border-teal-500/30">
+                <span className="text-xs font-black bg-teal-500/20 text-teal-300 px-3.5 py-1 rounded-full border border-teal-500/30">
                   {currentAgeData.label}
                 </span>
               </div>
@@ -702,7 +784,7 @@ const ProgressOrtu = () => {
             <div className="absolute -bottom-10 -right-10 w-60 h-60 bg-teal-400/10 rounded-full blur-3xl"></div>
           </div>
 
-          <div className="max-w-3xl mx-auto px-4 md:px-6 -mt-6 space-y-5">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 -mt-5 space-y-5">
             
             {/* COUNTER HEADER LAYAR DETAIL */}
             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3">
@@ -715,7 +797,6 @@ const ProgressOrtu = () => {
                 </span>
               </div>
 
-              {/* PROGRESS BAR */}
               <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 shadow-inner">
                 <div 
                   className="bg-teal-500 h-full rounded-full transition-all duration-500"
@@ -763,7 +844,6 @@ const ProgressOrtu = () => {
                       : 'border-slate-100 hover:border-slate-200'
                     }`}
                   >
-                    {/* TOP BAR: ICON STATUS (KIRI) | JUDUL INDIKATOR | CHEVRON ICON (KANAN) */}
                     <div 
                       onClick={() => setExpandedAccordion(prev => (prev === item.id ? null : item.id))}
                       className="p-5 flex items-center justify-between gap-4 cursor-pointer select-none group"
@@ -797,7 +877,6 @@ const ProgressOrtu = () => {
                       </div>
                     </div>
 
-                    {/* DROPDOWN CONTENT: PILIHAN RADIO / PILL BUTTONS */}
                     {isExpanded && (
                       <div className="px-5 pb-5 pt-2 bg-slate-50/70 border-t border-slate-100 space-y-3 text-left animate-in slide-in-from-top-2 duration-300">
                         <p className="text-xs font-bold text-slate-600">
@@ -805,7 +884,6 @@ const ProgressOrtu = () => {
                         </p>
 
                         <div className="grid grid-cols-3 gap-2.5">
-                          {/* OPSI 1: BELUM PERNAH */}
                           <button
                             type="button"
                             onClick={() => handleSelectStatus(item.id, "belum_pernah")}
@@ -819,7 +897,6 @@ const ProgressOrtu = () => {
                             <span>Belum Pernah</span>
                           </button>
 
-                          {/* OPSI 2: TERKADANG */}
                           <button
                             type="button"
                             onClick={() => handleSelectStatus(item.id, "terkadang")}
@@ -833,7 +910,6 @@ const ProgressOrtu = () => {
                             <span>Terkadang</span>
                           </button>
 
-                          {/* OPSI 3: SERING */}
                           <button
                             type="button"
                             onClick={() => handleSelectStatus(item.id, "sering")}
@@ -854,7 +930,6 @@ const ProgressOrtu = () => {
               })}
             </div>
 
-            {/* BOT BAR KEMBALI */}
             <div className="pt-4">
               <button
                 type="button"
