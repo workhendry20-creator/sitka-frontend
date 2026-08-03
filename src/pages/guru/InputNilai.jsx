@@ -561,11 +561,14 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
         try {
           const { error: errSem } = await supabase
             .from('nilai_semester')
-            .upsert([payloadSemester], { onConflict: 'nisn, semester' });
+            .upsert([payloadSemester]);
           if (errSem) console.warn("Supabase semester warning:", errSem.message);
         } catch (e) {
           console.warn("Cloud Supabase semester offline/fallback.");
         }
+
+        // 🔥 BROADCAST DISPATCH SEMESTER EVENT UNTUK LIVE SYNC DASBOARD ORTU & REPORT GURU
+        window.dispatchEvent(new CustomEvent('sitka_semester_updated', { detail: payloadSemester }));
 
       } else {
         const payloadHarian = anekdotSiswa.map(s => ({
@@ -611,11 +614,14 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
         try {
           const { error: errHar } = await supabase
             .from('nilai_harian')
-            .upsert(payloadHarian, { onConflict: 'nisn, tanggal' });
+            .upsert(payloadHarian);
           if (errHar) console.warn("Supabase harian warning:", errHar.message);
         } catch (e) {
           console.warn("Cloud Supabase harian offline/fallback.");
         }
+
+        // 🔥 BROADCAST DISPATCH HARIAN EVENT UNTUK LIVE SYNC DASBOARD ORTU & REPORT GURU
+        window.dispatchEvent(new CustomEvent('sitka_harian_updated', { detail: payloadHarian }));
       }
 
       // =======================================================================

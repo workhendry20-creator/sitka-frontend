@@ -34,6 +34,32 @@ const DashboardOrtu = () => {
       fetchCatatanAnekdot(childName);
       checkSemesterData(childName);
     }
+
+    const handleHarianLiveUpdate = (e) => {
+      const session = localStorage.getItem('user_session');
+      if (session) {
+        const u = JSON.parse(session);
+        const childName = u.nama_anak || u.namaAnak || u.nama_siswa;
+        fetchCatatanAnekdot(childName);
+      }
+    };
+
+    const handleSemesterLiveUpdate = (e) => {
+      const session = localStorage.getItem('user_session');
+      if (session) {
+        const u = JSON.parse(session);
+        const childName = u.nama_anak || u.namaAnak || u.nama_siswa;
+        checkSemesterData(childName);
+      }
+    };
+
+    window.addEventListener('sitka_harian_updated', handleHarianLiveUpdate);
+    window.addEventListener('sitka_semester_updated', handleSemesterLiveUpdate);
+
+    return () => {
+      window.removeEventListener('sitka_harian_updated', handleHarianLiveUpdate);
+      window.removeEventListener('sitka_semester_updated', handleSemesterLiveUpdate);
+    };
   }, []);
 
   // 1. TERIKAT REALTIME DENGAN INPUT HARIAN GURU (SUPABASE + LOCALSTORAGE)

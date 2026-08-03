@@ -89,6 +89,17 @@ const ReportGuru = () => {
   // --- AMBIL DATA PROGRESS SISWA DARI SUPABASE & LOCALSTORAGE ORTU ---
   useEffect(() => {
     fetchProgressSiswa();
+
+    const handleHarianUpdated = () => fetchProgressSiswa();
+    const handleSemesterUpdated = () => fetchProgressSiswa();
+
+    window.addEventListener('sitka_harian_updated', handleHarianUpdated);
+    window.addEventListener('sitka_semester_updated', handleSemesterUpdated);
+
+    return () => {
+      window.removeEventListener('sitka_harian_updated', handleHarianUpdated);
+      window.removeEventListener('sitka_semester_updated', handleSemesterUpdated);
+    };
   }, [selectedKelompok]);
 
   const fetchProgressSiswa = async () => {
