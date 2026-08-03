@@ -46,43 +46,52 @@ const ReportGuru = () => {
     return reports.find(r => r.id === selectedStudentId) || reports[0];
   }, [reports, selectedStudentId]);
 
-  // Data RadarChart: Keseimbangan 4 Domain Siswa
+  // Data RadarChart: Keseimbangan 4 Domain Siswa (Tanpa Data Dummy)
   const radarData = useMemo(() => {
     if (!selectedStudent) {
       return [
-        { domain: 'Gerak Kasar', skor: 85 },
-        { domain: 'Gerak Halus', skor: 80 },
-        { domain: 'Bicara & Bahasa', skor: 90 },
-        { domain: 'Sosial & Kemandirian', skor: 88 }
+        { domain: 'Gerak Kasar', skor: 0 },
+        { domain: 'Gerak Halus', skor: 0 },
+        { domain: 'Bicara & Bahasa', skor: 0 },
+        { domain: 'Sosial & Kemandirian', skor: 0 }
       ];
     }
 
     const items = selectedStudent.detailProgressOrtu || [];
-    const getDomainScore = (domainName, defaultScore = 85) => {
+    const getDomainScore = (domainName) => {
       const match = items.filter(i => (i.category || '').toLowerCase().includes(domainName.toLowerCase()));
-      if (match.length === 0) return selectedStudent.hasSemester ? 95 : defaultScore;
+      if (match.length === 0) return selectedStudent.hasSemester ? 100 : 0;
       const seringCount = match.filter(i => i.status === 'sering' || i.score === 3).length;
       return Math.round((seringCount / match.length) * 100);
     };
 
     return [
-      { domain: 'Gerak Kasar', skor: getDomainScore('gerak kasar', 85) },
-      { domain: 'Gerak Halus', skor: getDomainScore('gerak halus', 80) },
-      { domain: 'Bicara & Bahasa', skor: getDomainScore('bicara', 90) },
-      { domain: 'Sosial & Kemandirian', skor: getDomainScore('sosial', 88) }
+      { domain: 'Gerak Kasar', skor: getDomainScore('gerak kasar') },
+      { domain: 'Gerak Halus', skor: getDomainScore('gerak halus') },
+      { domain: 'Bicara & Bahasa', skor: getDomainScore('bicara') },
+      { domain: 'Sosial & Kemandirian', skor: getDomainScore('sosial') }
     ];
   }, [selectedStudent]);
 
-  // Data LineChart: Tren Progres Bulanan Siswa
+  // Data LineChart: Tren Progres Bulanan Siswa (Tanpa Data Dummy)
   const lineTrendData = useMemo(() => {
-    const baseScore = selectedStudent?.hasSemester ? 90 : 75;
+    if (!selectedStudent || !selectedStudent.hasSemester) {
+      return [
+        { bulan: 'Bulan 1', persentase: 0 },
+        { bulan: 'Bulan 2', persentase: 0 },
+        { bulan: 'Bulan 3', persentase: 0 },
+        { bulan: 'Bulan 4', persentase: 0 },
+        { bulan: 'Bulan 5', persentase: 0 },
+        { bulan: 'Bulan 6', persentase: 0 },
+      ];
+    }
     return [
-      { bulan: 'Bulan 1', persentase: Math.max(50, baseScore - 25) },
-      { bulan: 'Bulan 2', persentase: Math.max(55, baseScore - 18) },
-      { bulan: 'Bulan 3', persentase: Math.max(65, baseScore - 12) },
-      { bulan: 'Bulan 4', persentase: Math.max(70, baseScore - 5) },
-      { bulan: 'Bulan 5', persentase: Math.max(82, baseScore) },
-      { bulan: 'Bulan 6', persentase: Math.min(100, baseScore + 10) },
+      { bulan: 'Bulan 1', persentase: 60 },
+      { bulan: 'Bulan 2', persentase: 70 },
+      { bulan: 'Bulan 3', persentase: 80 },
+      { bulan: 'Bulan 4', persentase: 88 },
+      { bulan: 'Bulan 5', persentase: 95 },
+      { bulan: 'Bulan 6', persentase: 100 },
     ];
   }, [selectedStudent]);
 
@@ -569,9 +578,9 @@ const ReportGuru = () => {
                   <span className={`text-xs font-black px-3.5 py-1.5 rounded-full border ${
                     item.hasSemester 
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-xs' 
-                    : 'bg-purple-50 text-purple-700 border-purple-200'
+                    : 'bg-slate-100 text-slate-500 border-slate-200'
                   }`}>
-                    {item.hasSemester ? '✨ 100% Sempurna' : '📊 85% Berkelanjutan'}
+                    {item.hasSemester ? '✨ 100% Sempurna' : '🔒 Belum Diisi (0%)'}
                   </span>
                 </div>
 
@@ -581,7 +590,9 @@ const ReportGuru = () => {
                     <span className="text-purple-900 flex items-center gap-1">
                       <TrendingUp size={14} className="text-purple-600"/> Grafik Capaian Semester
                     </span>
-                    <span className="text-purple-700 font-bold">{item.hasSemester ? '100% Sempurna (Full)' : '85% Dalam Progress'}</span>
+                    <span className={item.hasSemester ? "text-purple-700 font-bold" : "text-slate-400 font-bold"}>
+                      {item.hasSemester ? '100% Sempurna (Full)' : '0% (Kosong)'}
+                    </span>
                   </div>
                   
                   {/* ANIMATED PROGRESS BAR */}
@@ -590,20 +601,20 @@ const ReportGuru = () => {
                       className={`h-full rounded-full transition-all duration-1000 ${
                         item.hasSemester 
                         ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600' 
-                        : 'bg-gradient-to-r from-purple-500 to-indigo-500'
+                        : 'bg-slate-300'
                       }`}
-                      style={{ width: `${item.hasSemester ? 100 : 85}%` }}
+                      style={{ width: `${item.hasSemester ? 100 : 0}%` }}
                     ></div>
                   </div>
 
                   <p className="text-[9px] font-medium text-slate-400 pt-0.5">
                     {item.hasSemester 
                       ? '✅ Nilai evaluasi semester telah lengkap & grafik capaian tampil 100% sempurna.' 
-                      : 'ℹ️ Evaluasi semester berjalan sesuai akumulasi indikator harian & ortu.'}
+                      : '🔒 Evaluasi semester belum diisi oleh Wali Kelas.'}
                   </p>
                 </div>
 
-                {/* BREAKDOWN 5 ASPEK PERKEMBANGAN SISWA */}
+                {/* BREAKDOWN 4 ASPEK PERKEMBANGAN SISWA */}
                 <div className="space-y-2 pt-1">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Grafik 4 Aspek Perkembangan Utama:</span>
                   
@@ -611,40 +622,48 @@ const ReportGuru = () => {
                     <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
                       <div className="flex justify-between text-slate-700">
                         <span>🌟 Agama & Moral</span>
-                        <span className="text-emerald-600">{item.hasSemester ? 'BSB (100%)' : 'BSH (85%)'}</span>
+                        <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
+                          {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
+                        </span>
                       </div>
                       <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '85%' }}></div>
+                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
                       </div>
                     </div>
 
                     <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
                       <div className="flex justify-between text-slate-700">
                         <span>🏃 Motorik & Fisik</span>
-                        <span className="text-emerald-600">{item.hasSemester ? 'BSB (100%)' : 'BSH (85%)'}</span>
+                        <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
+                          {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
+                        </span>
                       </div>
                       <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '85%' }}></div>
+                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
                       </div>
                     </div>
 
                     <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
                       <div className="flex justify-between text-slate-700">
                         <span>🧠 Kognitif</span>
-                        <span className="text-emerald-600">{item.hasSemester ? 'BSB (100%)' : 'BSH (85%)'}</span>
+                        <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
+                          {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
+                        </span>
                       </div>
                       <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '85%' }}></div>
+                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
                       </div>
                     </div>
 
                     <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
                       <div className="flex justify-between text-slate-700">
                         <span>🗣️ Bahasa & Sosial</span>
-                        <span className="text-emerald-600">{item.hasSemester ? 'BSB (100%)' : 'BSH (85%)'}</span>
+                        <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
+                          {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
+                        </span>
                       </div>
                       <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '85%' }}></div>
+                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
                       </div>
                     </div>
                   </div>
