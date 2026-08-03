@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ClipboardCheck, Calendar, Users, 
-  Save, User, Download, FileText, ChevronDown, BookOpen
+  Save, User, Download, FileText, ChevronDown, BookOpen, Sparkles, Bot
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
@@ -508,9 +508,12 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
   const updateSkorSemesterSiswa = (siswaId, indikatorId, skor) => {
     setAnekdotSiswa(prev => prev.map(s => {
       if (s.id === siswaId) {
+        const newNilai = { ...s.nilaiSemester, [indikatorId]: skor };
+        const autoAiText = dapatkanRekomendasiAI(newNilai);
         return {
           ...s,
-          nilaiSemester: { ...s.nilaiSemester, [indikatorId]: skor }
+          nilaiSemester: newNilai,
+          rekomendasi: autoAiText || s.rekomendasi
         };
       }
       return s;
@@ -534,13 +537,16 @@ const dapatkanKategoriUsiaSesuaiAngka = (usiaInput) => {
         const targetSiswa = anekdotSiswa.find(s => s.id === parseInt(selectedSiswaId));
         if (!targetSiswa) throw new Error("Siswa tidak ditemukan.");
 
+        const autoTextOnSave = dapatkanRekomendasiAI(targetSiswa.nilaiSemester || {});
+        const finalRekomendasiText = targetSiswa.rekomendasi || autoTextOnSave || `Ananda ${targetSiswa.nama} berkembang sangat baik dalam nilai agama, moral, motorik, kognitif, serta bahasa & sosial sesuai usia.`;
+
         const payloadSemester = {
           nisn: targetSiswa.nisn || "-",
           nama_siswa: targetSiswa.nama,
           kelompok: kelompok,
           tanggal: tanggal,
           semester: selectedSemester,
-          rekomendasi_guru: targetSiswa.rekomendasi || '',
+          rekomendasi_guru: finalRekomendasiText,
           skor_indikator: targetSiswa.nilaiSemester || {}, 
           input_oleh_guru: `Wali Kelas ${kelompok}`
         };
@@ -1033,17 +1039,47 @@ const parameterSiswaAktif = parameterAkademikBerdasarkanUsia[usiaSiswaAktif] || 
   })()}
 </div>
 
-                  {/* Catatan Rekomendasi */}
+                  {/* Catatan Rekomendasi Naive Bayes AI */}
                   <div className="space-y-2 pt-2">
-                    <label className="text-[10px] font-black text-[#0a1e36] uppercase tracking-wider block">
-                      Rekomendasi Pendidik / Catatan Akhir Semester untuk {currentSelectedSiswa?.nama}
-                    </label>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="text-[10px] font-black text-[#0a1e36] uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-purple-600" />
+                        Rekomendasi Pendidik / Catatan Akhir Semester untuk {currentSelectedSiswa?.nama}
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!currentSelectedSiswa) return;
+                          const aiText = dapatkanRekomendasiAI(currentSelectedSiswa.nilaiSemester || {});
+                          if (aiText) {
+                            updateSiswa(currentSelectedSiswa.id, 'rekomendasi', aiText);
+                            Swal.fire({
+                              icon: 'success',
+                              title: 'Catatan Naive Bayes AI Dihasilkan!',
+                              text: `Catatan rekomendasi semester untuk ${currentSelectedSiswa.nama} berhasil dikalkulasi otomatis berdasarkan indikator usianya.`,
+                              timer: 2000,
+                              showConfirmButton: false
+                            });
+                          } else {
+                            Swal.fire('Informasi', 'Silakan pilih minimal satu skala indikator penilaian di atas untuk menghasilkan catatan Naive Bayes AI.', 'info');
+                          }
+                        }}
+                        className="px-3.5 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-full text-[10px] font-black uppercase tracking-wider border border-purple-300 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0 self-start sm:self-auto"
+                      >
+                        <Bot size={14} className="text-purple-600" /> 🤖 Generate Naive Bayes AI
+                      </button>
+                    </div>
+
                     <textarea 
-                      placeholder="Alhamdulillah ananda berkembang sangat baik dalam nilai agama & moral. Ananda mulai menunjukkan kemandirian..."
+                      placeholder="Catatan Naive Bayes AI akan otomatis terisi saat Anda mengklik skala indikator penilaian di atas..."
                       value={currentSelectedSiswa?.rekomendasi || ""}
                       onChange={(e) => updateSiswa(currentSelectedSiswa.id, 'rekomendasi', e.target.value)}
-                      className="w-full p-4 bg-slate-50 border-none rounded-2xl text-xs font-medium italic outline-none focus:ring-2 focus:ring-indigo-500 min-h-[90px]"
+                      className="w-full p-4 bg-purple-50/50 border border-purple-100 rounded-2xl text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-purple-600 min-h-[110px] leading-relaxed shadow-inner"
                     />
+                    <p className="text-[10px] text-purple-700 font-bold italic flex items-center gap-1">
+                      ✨ <b>Terkalkulasi Otomatis (Teorema Naive Bayes PAUD)</b>: Catatan ini disintesis otomatis berdasarkan indikator usia {currentSelectedSiswa?.nama}. Pendidik dapat langsung menyimpan atau menyesuaikannya.
+                    </p>
                   </div>
 
                 </div>

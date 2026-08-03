@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
+import { dapatkanRekomendasiAI } from '../../utils/naiveBayes';
 
 const getEmojiForCondition = (statusKondisi = '', emoji = '') => {
   if (emoji && emoji.length > 0 && emoji !== '😊') return emoji;
@@ -317,7 +318,7 @@ const ReportGuru = () => {
           lastHarianCondition: `${lastEmoji} ${lastCondition}`,
           semesterScore: studentSemesterData?.rekomendasi_guru ? "BSB" : "BSH",
           hasSemester: !!studentSemesterData,
-          semesterRekomendasi: studentSemesterData?.rekomendasi_guru || "Memiliki kecerdasan sosial & kognitif yang sangat berkembang secara seimbang.",
+          semesterRekomendasi: studentSemesterData?.rekomendasi_guru || (studentSemesterData ? dapatkanRekomendasiAI(studentSemesterData.skor_indikator || {}) : "") || `Ananda ${siswa.nama} berkembang sangat baik dalam nilai agama, moral, motorik, kognitif, serta bahasa & sosial sesuai usianya.`,
           semesterSnapshot: studentSemesterData?.skor_indikator || {}
         };
       });
