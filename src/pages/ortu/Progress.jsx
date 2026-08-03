@@ -2,17 +2,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  ChevronLeft, Save, Sparkles, Upload, X, Baby, Calendar, 
+  ChevronLeft, ChevronRight, Save, Sparkles, Upload, X, Baby, Calendar, 
   Image as ImageIcon, CheckCircle2, Circle, Clock, ChevronDown, 
   ChevronUp, Activity, Palette, MessageSquare, HeartHandshake,
-  Camera, Check, AlertCircle
+  Camera, Check, AlertCircle, Shirt, BookOpen, Layers, Eye
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 // --- DATASET INDIKATOR PER KELOMPOK USIA (SDIDTK / BUKU KIA / PERKEMBANGAN.PDF) ---
 const PERKEMBANGAN_DATA = {
   "24_36_bulan": {
-    label: "Perkembangan 24-36 Bulan",
+    label: "24 - 36 Bulan",
     gerakKasar: {
       label: "Gerak Kasar",
       items: [
@@ -64,7 +64,7 @@ const PERKEMBANGAN_DATA = {
     }
   },
   "36_48_bulan": {
-    label: "Perkembangan 36-48 Bulan",
+    label: "36 - 48 Bulan",
     gerakKasar: {
       label: "Gerak Kasar",
       items: [
@@ -103,7 +103,7 @@ const PERKEMBANGAN_DATA = {
     }
   },
   "48_60_bulan": {
-    label: "Perkembangan 48-60 Bulan",
+    label: "48 - 60 Bulan",
     gerakKasar: {
       label: "Gerak Kasar",
       items: [
@@ -142,7 +142,7 @@ const PERKEMBANGAN_DATA = {
     }
   },
   "60_72_bulan": {
-    label: "Perkembangan 60-72+ Bulan",
+    label: "60 - 72+ Bulan",
     gerakKasar: {
       label: "Gerak Kasar",
       items: [
@@ -179,18 +179,56 @@ const PERKEMBANGAN_DATA = {
   }
 };
 
-const TAB_CATEGORIES = [
-  { key: "gerakKasar", label: "Gerak Kasar", icon: Activity },
-  { key: "gerakHalus", label: "Gerak Halus", icon: Palette },
-  { key: "bicaraBahasa", label: "Bicara & Bahasa", icon: MessageSquare },
-  { key: "sosialKemandirian", label: "Sosial & Kemandirian", icon: HeartHandshake },
+const AGE_KEYS = ["24_36_bulan", "36_48_bulan", "48_60_bulan", "60_72_bulan"];
+
+// CONFIG KATEGORI MENU DENGAN IKON TERSPESIFIKASI
+const CATEGORY_CONFIG = [
+  { 
+    key: "gerakKasar", 
+    title: "Gerak Kasar", 
+    icon: Activity, 
+    bgColor: "bg-[#e6f4f1]", 
+    iconColor: "text-[#0d9488]", 
+    borderColor: "border-[#ccece6]",
+    badgeBg: "bg-[#0d9488]/10 text-[#0d9488]"
+  },
+  { 
+    key: "gerakHalus", 
+    title: "Gerak Halus", 
+    icon: Layers, 
+    bgColor: "bg-[#eef2ff]", 
+    iconColor: "text-[#4f46e5]", 
+    borderColor: "border-[#e0e7ff]",
+    badgeBg: "bg-[#4f46e5]/10 text-[#4f46e5]"
+  },
+  { 
+    key: "bicaraBahasa", 
+    title: "Bicara & Bahasa", 
+    icon: BookOpen, 
+    bgColor: "bg-[#fdf4ff]", 
+    iconColor: "text-[#c026d3]", 
+    borderColor: "border-[#fae8ff]",
+    badgeBg: "bg-[#c026d3]/10 text-[#c026d3]"
+  },
+  { 
+    key: "sosialKemandirian", 
+    title: "Sosial & Kemandirian", 
+    icon: Shirt, 
+    bgColor: "bg-[#fff1f2]", 
+    iconColor: "text-[#e11d48]", 
+    borderColor: "border-[#ffe4e6]",
+    badgeBg: "bg-[#e11d48]/10 text-[#e11d48]"
+  },
 ];
 
 const ProgressOrtu = () => {
   const navigate = useNavigate();
   const [activeChild, setActiveChild] = useState(null);
-  const [selectedAgeKey, setSelectedAgeKey] = useState("24_36_bulan");
-  const [activeTab, setActiveTab] = useState("gerakKasar");
+  
+  // 2-View Navigation State: 'menu' | 'detail'
+  const [currentView, setCurrentView] = useState('menu');
+  const [selectedAgeKeyIndex, setSelectedAgeKeyIndex] = useState(0); // Index in AGE_KEYS
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState("gerakKasar");
   
   // Status storage per item: { [itemId]: "belum_pernah" | "terkadang" | "sering" }
   const [itemStatuses, setItemStatuses] = useState({});
@@ -210,7 +248,6 @@ const ProgressOrtu = () => {
   const fetchActiveChild = async () => {
     let childData = null;
 
-    // 1. Coba fetch dari API endpoint /api/children/active
     try {
       const res = await fetch('/api/children/active');
       if (res.ok) {
@@ -221,7 +258,6 @@ const ProgressOrtu = () => {
       console.warn("API /api/children/active offline/fallback ke session lokal.");
     }
 
-    // 2. Fallback ke session/localStorage
     if (!childData) {
       try {
         const saved = localStorage.getItem('user_session');
@@ -232,12 +268,11 @@ const ProgressOrtu = () => {
     if (childData) {
       setActiveChild(childData);
       
-      // 3. Hitung Usia dalam bulan berdasarkan date_of_birth / tanggal_lahir
       const dob = childData.date_of_birth || childData.tanggal_lahir_anak || childData.tgl_lahir_anak || childData.tgl_lahir;
-      const ageKey = getAgeCategoryKey(dob || childData.usia);
-      setSelectedAgeKey(ageKey);
+      const calculatedAgeKey = getAgeCategoryKey(dob || childData.usia);
+      const ageIdx = AGE_KEYS.indexOf(calculatedAgeKey);
+      if (ageIdx >= 0) setSelectedAgeKeyIndex(ageIdx);
 
-      // Load status terimpan
       const childKey = childData.nisn || childData.nama_anak || childData.namaAnak || 'default_child';
       try {
         const savedStatuses = localStorage.getItem(`sitka_perkembangan_statuses_${childKey}`);
@@ -248,7 +283,6 @@ const ProgressOrtu = () => {
     }
   };
 
-  // HELPER KALKULASI USIA BULAN KE KATEGORI
   const getAgeCategoryKey = (birthDateOrAge) => {
     if (!birthDateOrAge) return "24_36_bulan";
 
@@ -268,38 +302,46 @@ const ProgressOrtu = () => {
       }
     }
 
-    // Usia 24-35 Bulan -> "24_36_bulan"
-    // Usia 36-47 Bulan -> "36_48_bulan"
-    // Usia 48-59 Bulan -> "48_60_bulan"
-    // Usia >= 60 Bulan -> "60_72_bulan"
     if (ageInMonths < 36) return "24_36_bulan";
     if (ageInMonths < 48) return "36_48_bulan";
     if (ageInMonths < 60) return "48_60_bulan";
     return "60_72_bulan";
   };
 
-  // DATASET USIA DARI DATABASE
-  const currentAgeData = useMemo(() => {
-    return PERKEMBANGAN_DATA[selectedAgeKey] || PERKEMBANGAN_DATA["24_36_bulan"];
-  }, [selectedAgeKey]);
+  const currentAgeKey = AGE_KEYS[selectedAgeKeyIndex];
+  const currentAgeData = PERKEMBANGAN_DATA[currentAgeKey] || PERKEMBANGAN_DATA["24_36_bulan"];
 
-  // ACTIVE CATEGORY OBJECT
-  const activeCategory = useMemo(() => {
-    return currentAgeData[activeTab] || { label: "Kategori", items: [] };
-  }, [currentAgeData, activeTab]);
+  // NAVIGASI PANAH USIA [<] [>]
+  const handlePrevAge = () => {
+    if (selectedAgeKeyIndex > 0) {
+      setSelectedAgeKeyIndex(prev => prev - 1);
+    }
+  };
 
-  const activeItems = activeCategory.items || [];
-  const totalItems = activeItems.length;
+  const handleNextAge = () => {
+    if (selectedAgeKeyIndex < AGE_KEYS.length - 1) {
+      setSelectedAgeKeyIndex(prev => prev + 1);
+    }
+  };
 
-  const seringCount = useMemo(() => {
-    return activeItems.filter(item => (itemStatuses[item.id] || item.status) === 'sering').length;
-  }, [activeItems, itemStatuses]);
+  // ACTIVE CATEGORY FOR DETAIL VIEW
+  const activeCategoryObject = useMemo(() => {
+    return currentAgeData[selectedCategoryKey] || { label: "Kategori", items: [] };
+  }, [currentAgeData, selectedCategoryKey]);
 
-  const progressPercent = totalItems > 0 ? Math.round((seringCount / totalItems) * 100) : 0;
+  const activeCategoryItems = activeCategoryObject.items || [];
+  const activeCategoryTotal = activeCategoryItems.length;
+  const activeCategorySering = useMemo(() => {
+    return activeCategoryItems.filter(item => (itemStatuses[item.id] || item.status) === 'sering').length;
+  }, [activeCategoryItems, itemStatuses]);
 
-  // HANDLER ACCORDION TOGGLE
-  const toggleAccordion = (id) => {
-    setExpandedAccordion(prev => (prev === id ? null : id));
+  const activeCategoryPercent = activeCategoryTotal > 0 ? Math.round((activeCategorySering / activeCategoryTotal) * 100) : 0;
+
+  // HANDLER MASUK KE LAYAR DETAIL CATEGORY
+  const handleOpenDetailView = (catKey) => {
+    setSelectedCategoryKey(catKey);
+    setExpandedAccordion(null);
+    setCurrentView('detail');
   };
 
   // HANDLER PENILAIAN FREKUENSI STATUS ("belum_pernah" | "terkadang" | "sering")
@@ -310,7 +352,7 @@ const ProgressOrtu = () => {
     };
     setItemStatuses(updatedStatuses);
 
-    // UX AUTOMATION: Saat opsi "sering" diklik, tutup accordion dengan transisi halus
+    // UX Automation: Saat 'sering' diklik, tutup accordion dengan animasi halus setelah 300ms
     if (newStatus === 'sering') {
       setTimeout(() => {
         setExpandedAccordion(prev => (prev === itemId ? null : prev));
@@ -319,12 +361,10 @@ const ProgressOrtu = () => {
 
     const childKey = activeChild?.nisn || activeChild?.nama_anak || activeChild?.namaAnak || 'default_child';
 
-    // 1. Simpan ke LocalStorage
     try {
       localStorage.setItem(`sitka_perkembangan_statuses_${childKey}`, JSON.stringify(updatedStatuses));
     } catch (e) {}
 
-    // 2. Kirim pembaruan status ke database API endpoint /api/progress/update
     try {
       await fetch('/api/progress/update', {
         method: 'POST',
@@ -375,7 +415,7 @@ const ProgressOrtu = () => {
     setMediaType(null);
   };
 
-  // SIMPAN & SINKRONISASI KE REPORT GURU
+  // SIMPAN & SINKRONISASI LAPORAN ORTU
   const handleSaveReport = () => {
     const childKey = activeChild?.nisn || activeChild?.nama_anak || activeChild?.namaAnak || 'default_child';
     const childName = activeChild?.nama_anak || activeChild?.namaAnak || "Si Kecil";
@@ -412,7 +452,7 @@ const ProgressOrtu = () => {
       id: `rep_${Date.now()}`,
       namaSiswa: childName,
       namaOrtu: activeChild?.nama || `Orang Tua dari ${childName}`,
-      usiaTahun: selectedAgeKey === '24_36_bulan' ? 3 : selectedAgeKey === '36_48_bulan' ? 4 : selectedAgeKey === '48_60_bulan' ? 5 : 6,
+      usiaTahun: selectedAgeKeyIndex === 0 ? 3 : selectedAgeKeyIndex === 1 ? 4 : selectedAgeKeyIndex === 2 ? 5 : 6,
       usiaLabel: currentAgeData.label,
       totalSkor: totalPercent,
       tanggal: new Date().toLocaleDateString('id-ID', { 
@@ -453,315 +493,382 @@ const ProgressOrtu = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-left pb-28 animate-in fade-in duration-500">
+    <div className="min-h-screen bg-[#f8fafc] text-left pb-28 animate-in fade-in duration-300 font-sans">
       
-      {/* HEADER UTAMA */}
-      <div className="bg-[#0a1e36] text-white pt-8 pb-10 px-6 rounded-b-[3rem] shadow-xl relative overflow-hidden">
-        <div className="max-w-4xl mx-auto relative z-10 space-y-4">
-          <div className="flex items-center justify-between">
-            <button 
-              onClick={() => navigate('/ortu/dashboard')}
-              className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all border border-white/10 flex items-center gap-2 text-xs font-bold"
-            >
-              <ChevronLeft size={18} /> Kembali
-            </button>
-
-            {/* AGE SELECTOR */}
-            <div className="relative">
-              <select
-                value={selectedAgeKey}
-                onChange={(e) => setSelectedAgeKey(e.target.value)}
-                className="pl-4 pr-8 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-black appearance-none cursor-pointer outline-none text-amber-300"
-              >
-                <option value="24_36_bulan" className="text-[#0a1e36]">Perkembangan 24-36 Bulan</option>
-                <option value="36_48_bulan" className="text-[#0a1e36]">Perkembangan 36-48 Bulan</option>
-                <option value="48_60_bulan" className="text-[#0a1e36]">Perkembangan 48-60 Bulan</option>
-                <option value="60_72_bulan" className="text-[#0a1e36]">Perkembangan 60-72+ Bulan</option>
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-white/60"/>
-            </div>
-          </div>
-
-          <div className="pt-2 space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 border border-amber-400/30 rounded-full text-amber-300 text-[10px] font-black uppercase tracking-widest">
-              <Baby size={12} /> {currentAgeData.label}
-            </div>
-            <h1 className="text-2xl md:text-3xl font-black italic tracking-tight">
-              Kuesioner Perkembangan Si Kecil
-            </h1>
-            <p className="text-xs text-indigo-200 opacity-90 max-w-lg leading-relaxed">
-              Pantau stimulasi & pencapaian kemandirian ananda berbasis acuan SDIDTK / Buku KIA secara mudah.
-            </p>
-          </div>
-        </div>
-        <div className="absolute -bottom-10 -right-10 w-60 h-60 bg-amber-400/10 rounded-full blur-3xl"></div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 md:px-6 -mt-6 space-y-6">
-        
-        {/* COUNTER HEADER */}
-        <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b pb-4">
-            <div>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Kelompok Usia Aktif</span>
-              <h3 className="text-base font-black text-[#0a1e36]">
-                {currentAgeData.label}
-              </h3>
-            </div>
-            
-            <div className="bg-emerald-50 border border-emerald-100 px-4 py-2.5 rounded-2xl text-left md:text-right">
-              <span className="text-[9px] font-black text-emerald-600 uppercase tracking-wider block">Counter Progres Selesai</span>
-              <p className="text-sm font-black text-emerald-950">
-                Tahapan Perkembangan {activeCategory.label}: <span className="text-emerald-600 font-extrabold text-base">{seringCount}</span> dari {totalItems} Selesai
-              </p>
-            </div>
-          </div>
-
-          {/* DYNAMIC PROGRESS BAR */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-wider">
-              <span>Capaian Kategori {activeCategory.label}</span>
-              <span className="text-emerald-600 font-bold">{progressPercent}% Mandiri (Sering)</span>
-            </div>
-            <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 shadow-inner">
-              <div 
-                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        {/* NAVIGATION TABS (HORIZONTAL SCROLL BAR) */}
-        <div className="bg-white p-2 rounded-[2.5rem] border border-slate-100 shadow-sm overflow-x-auto scrollbar-none">
-          <div className="flex items-center gap-2 min-w-max">
-            {TAB_CATEGORIES.map((tab) => {
-              const TabIcon = tab.icon;
-              const isActive = activeTab === tab.key;
-              const catItems = currentAgeData[tab.key]?.items || [];
-              const catSering = catItems.filter(i => (itemStatuses[i.id] || i.status) === 'sering').length;
-
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => {
-                    setActiveTab(tab.key);
-                    setExpandedAccordion(null);
-                  }}
-                  className={`px-5 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2.5 shrink-0 ${
-                    isActive 
-                    ? 'bg-[#0a1e36] text-amber-400 shadow-md shadow-blue-950/20' 
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                  }`}
+      {/* ======================================================================= */}
+      {/* VIEW 1: LAYAR UTAMA (CATEGORY MENU VIEW) */}
+      {/* ======================================================================= */}
+      {currentView === 'menu' && (
+        <div className="space-y-6">
+          {/* HEADER UTAMA BERSIH & MODERN */}
+          <div className="bg-[#0a1e36] text-white pt-8 pb-10 px-6 rounded-b-[3rem] shadow-xl relative overflow-hidden">
+            <div className="max-w-3xl mx-auto relative z-10 space-y-4">
+              <div className="flex items-center justify-between">
+                <button 
+                  onClick={() => navigate('/ortu/dashboard')}
+                  className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all border border-white/10 flex items-center gap-2 text-xs font-bold"
                 >
-                  <TabIcon size={16} className={isActive ? 'text-amber-400' : 'text-slate-400'} />
-                  <span>{tab.label}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {catSering}/{catItems.length}
+                  <ChevronLeft size={18} /> Dashboard
+                </button>
+
+                {/* NAVIGASI PANAH KELOMPOK USIA [<] "X - Y Bulan" [>] */}
+                <div className="flex items-center gap-2 bg-white/10 border border-white/20 px-3 py-1.5 rounded-2xl">
+                  <button 
+                    onClick={handlePrevAge}
+                    disabled={selectedAgeKeyIndex === 0}
+                    className="p-1 text-amber-300 disabled:opacity-30 hover:bg-white/10 rounded-lg transition-all"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  <span className="text-xs font-black tracking-wider text-amber-300 px-2 min-w-[110px] text-center">
+                    {currentAgeData.label}
                   </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* ACCORDION CARD COMPONENT LIST */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center px-2">
-            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-              Daftar Indikator ({activeCategory.label}):
-            </h4>
-            <span className="text-[10px] font-bold text-slate-400">Klik kartu untuk memilih frekuensi</span>
-          </div>
-
-          {activeItems.map((item, index) => {
-            const currentStatus = itemStatuses[item.id] || item.status || "belum_pernah";
-            const isExpanded = expandedAccordion === item.id;
-
-            // LOGIKA IKON VISUAL SISI KIRI CARD:
-            // - "sering": Lingkaran Ceklis HIJAU (CheckCircle2). Dihitung +1 di counter header.
-            // - "terkadang": Lingkaran KUNING/ORANYE (Clock).
-            // - "belum_pernah": Lingkaran ABU-ABU netral (Circle).
-            const renderStatusIcon = () => {
-              if (currentStatus === 'sering') {
-                return (
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 shadow-2xs">
-                    <CheckCircle2 size={20} className="fill-emerald-600 text-white" />
-                  </div>
-                );
-              }
-              if (currentStatus === 'terkadang') {
-                return (
-                  <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
-                    <Clock size={18} />
-                  </div>
-                );
-              }
-              return (
-                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
-                  <Circle size={18} className="text-slate-400" />
+                  <button 
+                    onClick={handleNextAge}
+                    disabled={selectedAgeKeyIndex === AGE_KEYS.length - 1}
+                    className="p-1 text-amber-300 disabled:opacity-30 hover:bg-white/10 rounded-lg transition-all"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
                 </div>
-              );
-            };
-
-            return (
-              <div 
-                key={item.id}
-                className={`bg-white rounded-[2rem] border transition-all overflow-hidden ${
-                  isExpanded 
-                  ? 'border-indigo-300 shadow-md ring-2 ring-indigo-500/10' 
-                  : currentStatus === 'sering'
-                  ? 'border-emerald-100 hover:border-emerald-200'
-                  : 'border-slate-100 hover:border-slate-200'
-                }`}
-              >
-                {/* TOP BAR: ICON STATUS (KIRI) | JUDUL INDIKATOR | CHEVRON ICON (KANAN) */}
-                <div 
-                  onClick={() => toggleAccordion(item.id)}
-                  className="p-5 flex items-center justify-between gap-4 cursor-pointer select-none group"
-                >
-                  <div className="flex items-center gap-3.5">
-                    {renderStatusIcon()}
-                    <div className="text-left">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
-                        Indikator #{index + 1}
-                      </span>
-                      <h5 className="font-bold text-slate-800 text-sm leading-snug group-hover:text-indigo-600 transition-colors">
-                        {item.title}
-                      </h5>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-xl hidden sm:inline-block ${
-                      currentStatus === 'sering'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : currentStatus === 'terkadang'
-                      ? 'bg-amber-100 text-amber-700'
-                      : 'bg-slate-100 text-slate-500'
-                    }`}>
-                      {currentStatus === 'sering' ? 'Sering' : currentStatus === 'terkadang' ? 'Terkadang' : 'Belum Pernah'}
-                    </span>
-                    
-                    <div className="w-8 h-8 rounded-xl bg-slate-50 group-hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors">
-                      {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </div>
-                  </div>
-                </div>
-
-                {/* DROPDOWN CONTENT: PILIHAN RADIO / PILL BUTTONS */}
-                {isExpanded && (
-                  <div className="px-5 pb-5 pt-2 bg-slate-50/70 border-t border-slate-100 space-y-3 text-left animate-in slide-in-from-top-2 duration-300">
-                    <p className="text-xs font-bold text-slate-600">
-                      Seberapa sering anak melakukan hal ini?
-                    </p>
-
-                    <div className="grid grid-cols-3 gap-2.5">
-                      {/* OPSI 1: BELUM PERNAH */}
-                      <button
-                        type="button"
-                        onClick={() => handleSelectStatus(item.id, "belum_pernah")}
-                        className={`p-3 rounded-2xl font-black text-xs flex flex-col items-center gap-1.5 border transition-all ${
-                          currentStatus === 'belum_pernah'
-                          ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        <Circle size={16} />
-                        <span>Belum Pernah</span>
-                      </button>
-
-                      {/* OPSI 2: TERKADANG */}
-                      <button
-                        type="button"
-                        onClick={() => handleSelectStatus(item.id, "terkadang")}
-                        className={`p-3 rounded-2xl font-black text-xs flex flex-col items-center gap-1.5 border transition-all ${
-                          currentStatus === 'terkadang'
-                          ? 'bg-amber-500 text-white border-amber-500 shadow-sm shadow-amber-200'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-700'
-                        }`}
-                      >
-                        <Clock size={16} />
-                        <span>Terkadang</span>
-                      </button>
-
-                      {/* OPSI 3: SERING */}
-                      <button
-                        type="button"
-                        onClick={() => handleSelectStatus(item.id, "sering")}
-                        className={`p-3 rounded-2xl font-black text-xs flex flex-col items-center gap-1.5 border transition-all ${
-                          currentStatus === 'sering'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-200'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700'
-                        }`}
-                      >
-                        <CheckCircle2 size={16} />
-                        <span>Sering</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
-            );
-          })}
-        </div>
 
-        {/* UPLOAD MEDIA & CATATAN MOMEN UNIK (OPSIONAL) */}
-        <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4 text-left">
-          <div>
-            <h4 className="font-black text-[#0a1e36] text-base">Cerita Momen Unik Si Kecil Minggu Ini (Opsional)</h4>
-            <p className="text-xs text-slate-400 font-medium">Bunda dapat membagikan cerita singkat atau mengunggah dokumentasi foto/video untuk Wali Kelas.</p>
+              <div className="pt-2 space-y-1">
+                <span className="text-[10px] font-black tracking-widest uppercase bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full border border-amber-400/30">
+                  SDIDTK • Kuesioner Ortu
+                </span>
+                <h1 className="text-2xl md:text-3xl font-black italic tracking-tight">
+                  Tahapan Perkembangan
+                </h1>
+                <p className="text-xs text-indigo-200 opacity-90 max-w-lg leading-relaxed">
+                  Pilih domain perkembangan di bawah ini untuk mengisi dan memantau kemandirian ananda.
+                </p>
+              </div>
+            </div>
+            <div className="absolute -bottom-10 -right-10 w-60 h-60 bg-amber-400/10 rounded-full blur-3xl"></div>
           </div>
 
-          <textarea 
-            rows={3}
-            value={ceritaMomen}
-            onChange={(e) => setCeritaMomen(e.target.value)}
-            placeholder="Contoh: Ananda minggu ini sudah mau makan sendiri menggunakan sendok tanpa tumpah..."
-            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-indigo-600 outline-none"
-          />
+          <div className="max-w-3xl mx-auto px-4 md:px-6 -mt-6 space-y-6">
+            
+            {/* GRID 4 CATEGORY CARDS */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center px-1">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                  Domain Perkembangan (Usia {currentAgeData.label}):
+                </h3>
+                <span className="text-[10px] font-bold text-teal-600">Klik kartu untuk detail</span>
+              </div>
 
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Dokumentasi Foto / Video Kegiatan (Opsional)</p>
-            {mediaPreview ? (
-              <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-black/5 max-h-56">
-                <button
-                  type="button"
-                  onClick={handleRemoveMedia}
-                  className="absolute top-3 right-3 p-2 bg-black/60 hover:bg-black text-white rounded-full transition-all z-10"
-                >
-                  <X size={16} />
-                </button>
-                {mediaType === 'video' ? (
-                  <video src={mediaPreview} controls className="w-full max-h-56 object-contain"></video>
+              <div className="grid grid-cols-1 gap-3.5">
+                {CATEGORY_CONFIG.map((config) => {
+                  const CategoryIcon = config.icon;
+                  const catData = currentAgeData[config.key] || { items: [] };
+                  const items = catData.items || [];
+                  const total = items.length;
+                  const seringCount = items.filter(i => (itemStatuses[i.id] || i.status) === 'sering').length;
+
+                  return (
+                    <div
+                      key={config.key}
+                      onClick={() => handleOpenDetailView(config.key)}
+                      className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-teal-200 transition-all cursor-pointer group flex items-center justify-between"
+                    >
+                      {/* LEFT: ICON KATEGORI LINGKARAN PASTEL */}
+                      <div className="flex items-center gap-4">
+                        <div className={`w-14 h-14 rounded-2xl ${config.bgColor} ${config.iconColor} flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}>
+                          <CategoryIcon size={26} />
+                        </div>
+
+                        {/* CENTER: NAMA KATEGORI */}
+                        <div className="text-left">
+                          <h4 className="font-bold text-slate-800 text-base group-hover:text-teal-700 transition-colors">
+                            {config.title}
+                          </h4>
+                          <span className="text-[10px] font-medium text-slate-400">
+                            {total} Poin Indikator Perkembangan
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* RIGHT: PROGRES DINAMIS X/Y SELESAI + CHEVRON RIGHT */}
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-black px-3.5 py-1.5 rounded-full ${
+                          seringCount === total && total > 0
+                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                          : 'bg-teal-50 text-teal-700 border border-teal-100'
+                        }`}>
+                          {seringCount}/{total} Selesai
+                        </span>
+                        
+                        <div className="w-8 h-8 rounded-xl bg-slate-50 group-hover:bg-teal-50 text-slate-400 group-hover:text-teal-600 flex items-center justify-center transition-colors">
+                          <ChevronRight size={20} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* UPLOAD DOKUMENTASI & MOMEN UNIK (OPSIONAL) */}
+            <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-4 text-left">
+              <div>
+                <h4 className="font-black text-[#0a1e36] text-base">Cerita Momen Unik Si Kecil (Opsional)</h4>
+                <p className="text-xs text-slate-400 font-medium">Bunda dapat mengunggah momen perkembangan menarik untuk Wali Kelas.</p>
+              </div>
+
+              <textarea 
+                rows={3}
+                value={ceritaMomen}
+                onChange={(e) => setCeritaMomen(e.target.value)}
+                placeholder="Contoh: Ananda minggu ini sudah dapat meloncat jauh dan mau bercerita..."
+                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-teal-600 outline-none"
+              />
+
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Foto / Video Kegiatan (Opsional)</p>
+                {mediaPreview ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-black/5 max-h-56">
+                    <button
+                      type="button"
+                      onClick={handleRemoveMedia}
+                      className="absolute top-3 right-3 p-2 bg-black/60 hover:bg-black text-white rounded-full transition-all z-10"
+                    >
+                      <X size={16} />
+                    </button>
+                    {mediaType === 'video' ? (
+                      <video src={mediaPreview} controls className="w-full max-h-56 object-contain"></video>
+                    ) : (
+                      <img src={mediaPreview} alt="Preview" className="w-full max-h-56 object-cover" />
+                    )}
+                  </div>
                 ) : (
-                  <img src={mediaPreview} alt="Preview" className="w-full max-h-56 object-cover" />
+                  <label className="flex flex-col items-center justify-center p-6 bg-slate-50 hover:bg-slate-100/80 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer transition-all">
+                    <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mb-2">
+                      <Camera size={24} />
+                    </div>
+                    <span className="text-xs font-bold text-slate-700">Unggah Foto atau Video Singkat</span>
+                    <span className="text-[10px] text-slate-400">Maksimal 10MB</span>
+                    <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" />
+                  </label>
                 )}
               </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center p-6 bg-slate-50 hover:bg-slate-100/80 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2">
-                  <Camera size={24} />
-                </div>
-                <span className="text-xs font-bold text-slate-700">Unggah Foto atau Video Singkat</span>
-                <span className="text-[10px] text-slate-400">Maksimal ukuran file 10MB</span>
-                <input type="file" accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" />
-              </label>
-            )}
+
+              <button
+                type="button"
+                onClick={handleSaveReport}
+                className="w-full py-4 bg-[#0a1e36] text-amber-400 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg hover:bg-slate-900 active:scale-98 transition-all flex items-center justify-center gap-2"
+              >
+                <Save size={18} /> Simpan & Kirim Laporan ke Guru
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================================= */}
+      {/* VIEW 2: LAYAR DETAIL (SECTION ACCORDION VIEW) */}
+      {/* ======================================================================= */}
+      {currentView === 'detail' && (
+        <div className="space-y-6">
+          {/* TOP BAR LAYAR DETAIL */}
+          <div className="bg-[#0a1e36] text-white pt-8 pb-10 px-6 rounded-b-[3rem] shadow-xl relative overflow-hidden">
+            <div className="max-w-3xl mx-auto relative z-10 space-y-4">
+              <div className="flex items-center justify-between">
+                <button 
+                  onClick={() => setCurrentView('menu')}
+                  className="px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-2xl transition-all border border-white/10 flex items-center gap-2 text-xs font-bold text-amber-300"
+                >
+                  <ChevronLeft size={18} /> Kembali ke Menu
+                </button>
+
+                <span className="text-xs font-black bg-teal-500/20 text-teal-300 px-3.5 py-1.5 rounded-full border border-teal-500/30">
+                  {currentAgeData.label}
+                </span>
+              </div>
+
+              <div className="pt-1 text-left space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 block">
+                  Detail Kategori Perkembangan
+                </span>
+                <h2 className="text-2xl md:text-3xl font-black italic tracking-tight">
+                  {activeCategoryObject.label}
+                </h2>
+              </div>
+            </div>
+            <div className="absolute -bottom-10 -right-10 w-60 h-60 bg-teal-400/10 rounded-full blur-3xl"></div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSaveReport}
-            className="w-full py-4 bg-[#0a1e36] text-amber-400 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg hover:bg-slate-900 active:scale-98 transition-all flex items-center justify-center gap-2"
-          >
-            <Save size={18} /> Simpan & Kirim Laporan Perkembangan
-          </button>
-        </div>
+          <div className="max-w-3xl mx-auto px-4 md:px-6 -mt-6 space-y-5">
+            
+            {/* COUNTER HEADER LAYAR DETAIL */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                  Tahapan Perkembangan {activeCategoryObject.label}:
+                </span>
+                <span className="text-xs font-black text-teal-600 bg-teal-50 px-3 py-1 rounded-full">
+                  {activeCategorySering} dari {activeCategoryTotal} Selesai
+                </span>
+              </div>
 
-      </div>
+              {/* PROGRESS BAR */}
+              <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 shadow-inner">
+                <div 
+                  className="bg-teal-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${activeCategoryPercent}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* LIST ACCORDION CARDS */}
+            <div className="space-y-3">
+              {activeCategoryItems.map((item, index) => {
+                const currentStatus = itemStatuses[item.id] || item.status || "belum_pernah";
+                const isExpanded = expandedAccordion === item.id;
+
+                const renderStatusIcon = () => {
+                  if (currentStatus === 'sering') {
+                    return (
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 shadow-2xs">
+                        <CheckCircle2 size={20} className="fill-emerald-600 text-white" />
+                      </div>
+                    );
+                  }
+                  if (currentStatus === 'terkadang') {
+                    return (
+                      <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+                        <Clock size={18} />
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+                      <Circle size={18} className="text-slate-400" />
+                    </div>
+                  );
+                };
+
+                return (
+                  <div 
+                    key={item.id}
+                    className={`bg-white rounded-2xl border transition-all overflow-hidden ${
+                      isExpanded 
+                      ? 'border-teal-300 shadow-md ring-2 ring-teal-500/10' 
+                      : currentStatus === 'sering'
+                      ? 'border-emerald-100 hover:border-emerald-200'
+                      : 'border-slate-100 hover:border-slate-200'
+                    }`}
+                  >
+                    {/* TOP BAR: ICON STATUS (KIRI) | JUDUL INDIKATOR | CHEVRON ICON (KANAN) */}
+                    <div 
+                      onClick={() => setExpandedAccordion(prev => (prev === item.id ? null : item.id))}
+                      className="p-5 flex items-center justify-between gap-4 cursor-pointer select-none group"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        {renderStatusIcon()}
+                        <div className="text-left">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
+                            Indikator #{index + 1}
+                          </span>
+                          <h5 className="font-bold text-slate-800 text-sm leading-snug group-hover:text-teal-700 transition-colors">
+                            {item.title}
+                          </h5>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-xl hidden sm:inline-block ${
+                          currentStatus === 'sering'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : currentStatus === 'terkadang'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {currentStatus === 'sering' ? 'Sering' : currentStatus === 'terkadang' ? 'Terkadang' : 'Belum Pernah'}
+                        </span>
+                        
+                        <div className="w-8 h-8 rounded-xl bg-slate-50 group-hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors">
+                          {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DROPDOWN CONTENT: PILIHAN RADIO / PILL BUTTONS */}
+                    {isExpanded && (
+                      <div className="px-5 pb-5 pt-2 bg-slate-50/70 border-t border-slate-100 space-y-3 text-left animate-in slide-in-from-top-2 duration-300">
+                        <p className="text-xs font-bold text-slate-600">
+                          Seberapa sering anak melakukan hal ini?
+                        </p>
+
+                        <div className="grid grid-cols-3 gap-2.5">
+                          {/* OPSI 1: BELUM PERNAH */}
+                          <button
+                            type="button"
+                            onClick={() => handleSelectStatus(item.id, "belum_pernah")}
+                            className={`p-3 rounded-2xl font-black text-xs flex flex-col items-center gap-1.5 border transition-all ${
+                              currentStatus === 'belum_pernah'
+                              ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            <Circle size={16} />
+                            <span>Belum Pernah</span>
+                          </button>
+
+                          {/* OPSI 2: TERKADANG */}
+                          <button
+                            type="button"
+                            onClick={() => handleSelectStatus(item.id, "terkadang")}
+                            className={`p-3 rounded-2xl font-black text-xs flex flex-col items-center gap-1.5 border transition-all ${
+                              currentStatus === 'terkadang'
+                              ? 'bg-amber-500 text-white border-amber-500 shadow-sm shadow-amber-200'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-700'
+                            }`}
+                          >
+                            <Clock size={16} />
+                            <span>Terkadang</span>
+                          </button>
+
+                          {/* OPSI 3: SERING */}
+                          <button
+                            type="button"
+                            onClick={() => handleSelectStatus(item.id, "sering")}
+                            className={`p-3 rounded-2xl font-black text-xs flex flex-col items-center gap-1.5 border transition-all ${
+                              currentStatus === 'sering'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-200'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700'
+                            }`}
+                          >
+                            <CheckCircle2 size={16} />
+                            <span>Sering</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* BOT BAR KEMBALI */}
+            <div className="pt-4">
+              <button
+                type="button"
+                onClick={() => setCurrentView('menu')}
+                className="w-full py-4 bg-white text-slate-700 border border-slate-200 rounded-2xl font-bold text-xs uppercase tracking-wider hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+              >
+                <ChevronLeft size={16} /> Kembali ke Menu Kategori Utama
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
