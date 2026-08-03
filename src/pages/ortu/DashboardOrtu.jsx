@@ -1,12 +1,12 @@
 // src/pages/ortu/DashboardOrtu.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ResponsiveContainer, PieChart, Pie, Cell, Tooltip, 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend 
+import {
+  ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
 } from 'recharts';
-import { 
-  Star, Calendar, BookOpen, Megaphone, School, Baby, 
+import {
+  Star, Calendar, BookOpen, Megaphone, School, Baby,
   TrendingUp, BarChart3, Smile, Award, Lock, Sparkles, AlertCircle, ArrowRight, FileText
 } from 'lucide-react';
 import { supabase } from '../../utils/supabaseClient';
@@ -104,7 +104,7 @@ const DashboardOrtu = () => {
           });
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // Local storage fetch (sitka_rekap_data fallback)
     try {
@@ -130,7 +130,7 @@ const DashboardOrtu = () => {
           });
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     setCatatanHarian(combinedHarian);
   };
@@ -184,7 +184,7 @@ const DashboardOrtu = () => {
           semesterRecord = parsed.find(s => (s.nama_siswa || s.namaSiswa || '').toLowerCase().trim() === cleanChild);
         }
       }
-    } catch (e) {}
+    } catch (e) { }
 
     if (semesterRecord) {
       setHasSemesterEvaluation(true);
@@ -224,22 +224,62 @@ const DashboardOrtu = () => {
 
   const formatIndoDate = (isoString) => {
     if (!isoString) return '-';
-    return new Date(isoString).toLocaleString('id-ID', { 
-      day: 'numeric', 
-      month: 'short', 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(isoString).toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
-  const attendanceData = [
-    { name: 'Hadir', value: 90 }, { name: 'Izin', value: 5 }, { name: 'Alpa', value: 5 },
-  ];
-  const COLORS = ['#0d9488', '#f59e0b', '#ef4444'];
+  // KALKULASI KEHADIRAN BULANAN REAL DARI ENTRI HARIAN GURU (TANPA DUMMY DATA)
+  const realAttendanceData = useMemo(() => {
+    if (!catatanHarian || catatanHarian.length === 0) {
+      return {
+        hasData: false,
+        totalHari: 0,
+        data: [
+          { name: 'Belum Ada Data', value: 1, color: '#cbd5e1' }
+        ]
+      };
+    }
+
+    let hadirCount = 0;
+    let izinCount = 0;
+    let alpaCount = 0;
+
+    catatanHarian.forEach(rec => {
+      const cond = (rec.status_kondisi || rec.label || '').toLowerCase();
+      const cat = (rec.catatan_anekdot || rec.catatan || '').toLowerCase();
+
+      if (cond.includes('izin') || cond.includes('sakit') || cat.includes('izin') || cat.includes('sakit')) {
+        izinCount++;
+      } else if (cond.includes('alpa') || cond.includes('tanpa keterangan') || cat.includes('alpa')) {
+        alpaCount++;
+      } else {
+        // Setiap kali guru menginput catatan/kondisi harian anak di sekolah = Anak HADIR
+        hadirCount++;
+      }
+    });
+
+    const list = [];
+    if (hadirCount > 0) list.push({ name: 'Hadir', value: hadirCount, color: '#0d9488' });
+    if (izinCount > 0) list.push({ name: 'Izin / Sakit', value: izinCount, color: '#f59e0b' });
+    if (alpaCount > 0) list.push({ name: 'Alpa', value: alpaCount, color: '#ef4444' });
+
+    return {
+      hasData: true,
+      totalHari: catatanHarian.length,
+      hadirCount,
+      izinCount,
+      alpaCount,
+      data: list
+    };
+  }, [catatanHarian]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 text-left">
-      
+
       {/* WELCOME HEADER */}
       <div className="bg-[#0a1e36] p-8 md:p-10 rounded-[3rem] text-white relative overflow-hidden shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -249,7 +289,7 @@ const DashboardOrtu = () => {
               Berikut adalah pemantauan grafik perkembangan <span className="text-amber-400 font-bold">{parentData?.nama_anak || 'Anak Anda'}</span> secara harian & semester.
             </p>
           </div>
-          
+
           <div className="flex flex-wrap gap-3">
             <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/10 flex items-center gap-3">
               <Baby size={20} className="text-amber-400" />
@@ -301,7 +341,7 @@ const DashboardOrtu = () => {
       {/* SECTION GRAFIK 1: GRAFIK BATANG ANEKDOT HARIAN (4 EMOJI) & GRAFIK SEMESTER */}
       {/* ======================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* GRAFIK 1: GRAFIK BATANG ANEKDOT HARIAN (4 EMOJI - PERLAHAN NAIK SESUAI SKALA INPUT) */}
         <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4 text-left">
           <div className="flex items-center justify-between">
@@ -324,7 +364,7 @@ const DashboardOrtu = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="category" stroke="#94a3b8" fontSize={11} fontWeight="bold" tickLine={false} />
                 <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
-                <Tooltip 
+                <Tooltip
                   formatter={(val, name, item) => [`${val} Catatan Anekdot`, item.payload.category]}
                   contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
                 />
@@ -351,7 +391,7 @@ const DashboardOrtu = () => {
               </div>
               <p className="text-xs font-medium text-slate-400">Rapor evaluasi capaian semester dari Pendidik</p>
             </div>
-            
+
             {hasSemesterEvaluation ? (
               <span className="text-[10px] font-black bg-purple-50 text-purple-700 px-3 py-1 rounded-full border border-purple-200">
                 ✨ 100% Terisi
@@ -382,7 +422,7 @@ const DashboardOrtu = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="domain" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
                 <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} unit="%" tickLine={false} />
-                <Tooltip 
+                <Tooltip
                   formatter={(val, name, item) => [item.payload.label, 'Capaian']}
                   contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
                 />
@@ -396,30 +436,72 @@ const DashboardOrtu = () => {
 
       {/* KEHADIRAN BULANAN & JURNAL HARIAN */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* GRAFIK LINGKARAN KEHADIRAN */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col items-center">
-          <h3 className="text-base font-bold text-[#0a1e36] mb-4 flex items-center gap-2">
-            <Calendar className="text-teal-600" size={18} /> Kehadiran Bulanan
-          </h3>
-          <div className="h-52 w-full min-w-0">
+
+        {/* GRAFIK LINGKARAN KEHADIRAN (MURNI DATA RIIL) */}
+        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col items-center justify-between text-center relative space-y-3">
+          <div className="w-full flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-black text-[#0a1e36] flex items-center gap-2">
+              <Calendar className="text-teal-600" size={18} /> Kehadiran Bulanan
+            </h3>
+            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+              realAttendanceData.hasData 
+              ? 'bg-teal-50 text-teal-700 border border-teal-200' 
+              : 'bg-slate-100 text-slate-500 border border-slate-200'
+            }`}>
+              {realAttendanceData.hasData ? `✨ ${realAttendanceData.totalHari} Hari Terkalkulasi` : '🔒 Belum Ada Data'}
+            </span>
+          </div>
+
+          <div className="h-52 w-full min-w-0 relative flex items-center justify-center">
+            {!realAttendanceData.hasData && (
+              <div className="absolute inset-0 z-10 bg-white/85 backdrop-blur-[1px] rounded-2xl flex flex-col items-center justify-center p-4 text-center space-y-1.5 border border-dashed border-slate-200">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                  <Lock size={20} />
+                </div>
+                <h4 className="font-black text-slate-800 text-xs">Belum Ada Data Presensi</h4>
+                <p className="text-[10px] text-slate-400 max-w-[180px] leading-tight">
+                  Presensi akan terkalkulasi otomatis secara real-time dari entri harian Wali Kelas.
+                </p>
+              </div>
+            )}
+
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <PieChart>
-                <Pie data={attendanceData} innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value">
-                  {attendanceData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                <Pie 
+                  data={realAttendanceData.data} 
+                  innerRadius={50} 
+                  outerRadius={70} 
+                  paddingAngle={realAttendanceData.hasData ? 5 : 0} 
+                  dataKey="value"
+                >
+                  {realAttendanceData.data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
                 </Pie>
-                <Tooltip />
+                {realAttendanceData.hasData && (
+                  <Tooltip 
+                    formatter={(val, name) => [`${val} Hari`, name]}
+                    contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
+                  />
+                )}
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex gap-4 mt-2">
-            {attendanceData.map((d, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{backgroundColor: COLORS[i]}}></div>
-                <span className="text-xs font-bold text-slate-500">{d.name}</span>
-              </div>
-            ))}
-          </div>
+
+          {realAttendanceData.hasData ? (
+            <div className="flex flex-wrap justify-center gap-2 text-xs font-bold pt-1">
+              {realAttendanceData.data.map((d, i) => (
+                <div key={i} className="flex items-center gap-1.5 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }}></div>
+                  <span className="text-slate-600">{d.name}: <b className="text-slate-900">{d.value} Hari</b></span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[10px] text-slate-400 font-medium italic pt-1">
+              💡 Grafik donut kehadiran akan otomatis terisi saat Guru mencatat aktivitas harian.
+            </p>
+          )}
         </div>
 
         {/* CATATAN HARIAN TERBARU (BUKU PENGHUBUNG) - MAX 3 ENTRI DENGAN NAVIGASI LAPORAN */}
@@ -428,27 +510,18 @@ const DashboardOrtu = () => {
             <h3 className="text-base font-bold text-[#0a1e36] flex items-center gap-2">
               <BookOpen className="text-indigo-600" size={18} /> Jurnal Cerdas & Catatan Anekdot Harian
             </h3>
-
-            <button
-              type="button"
-              onClick={() => navigate('/ortu/laporan')}
-              className="text-xs font-black text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-all cursor-pointer group self-start sm:self-auto"
-            >
-              <FileText size={14} className="text-indigo-500" /> Lihat Catatan Lengkap <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-            </button>
           </div>
-          
+
           {catatanHarian.length > 0 ? (
             <div className="space-y-4">
               {catatanHarian.slice(0, 3).map((catatan, i) => (
                 <div key={i} className="p-5 bg-slate-50 rounded-[2rem] border border-slate-100 flex flex-col md:flex-row md:items-start justify-between gap-4 hover:bg-white hover:shadow-md transition-all">
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2.5 mb-2">
-                      <span className={`text-[10px] font-black px-3 py-1 rounded-xl uppercase tracking-widest ${
-                        ['Bahagia', 'Senang', 'Ceria'].includes(catatan.status_kondisi) ? 'bg-indigo-100 text-indigo-700' :
+                      <span className={`text-[10px] font-black px-3 py-1 rounded-xl uppercase tracking-widest ${['Bahagia', 'Senang', 'Ceria'].includes(catatan.status_kondisi) ? 'bg-indigo-100 text-indigo-700' :
                         ['Tenang', 'Baik'].includes(catatan.status_kondisi) ? 'bg-emerald-100 text-emerald-700' :
-                        ['Kreatif', 'Aktif'].includes(catatan.status_kondisi) ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
-                      }`}>
+                          ['Kreatif', 'Aktif'].includes(catatan.status_kondisi) ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                        }`}>
                         {catatan.emoji || '😊'} {catatan.status_kondisi || 'Kondisi Baik'}
                       </span>
                       <div className="flex items-center gap-1 text-slate-400">
@@ -473,7 +546,7 @@ const DashboardOrtu = () => {
                   onClick={() => navigate('/ortu/laporan')}
                   className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-2 border border-indigo-100 shadow-2xs hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  <FileText size={14} /> Lihat Catatan Lengkap di Fitur Laporan <ArrowRight size={14} />
+                  <FileText size={14} /> Lihat Catatan Lengkap Lainnya <ArrowRight size={14} />
                 </button>
               </div>
             </div>
