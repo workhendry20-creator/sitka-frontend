@@ -555,10 +555,10 @@ const ReportGuru = () => {
             </div>
           </div>
 
-          {/* GRID GRAFIK SEMESTER PER SISWA DENGAN BLUR OVERLAY & NAVIGASI EXPAND */}
-          <div className="relative">
+          {/* GRID GRAFIK SEMESTER PER SISWA (TERLIMIT 2 ANANDAKU DAHULU AGAR BEBAS SCROLL) */}
+          <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {(showAllOverviewStudents ? filteredReports : filteredReports.slice(0, 2)).map((item) => (
+              {filteredReports.slice(0, 2).map((item) => (
                 <div 
                   key={item.id} 
                   className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5 text-left hover:shadow-xl transition-all group relative overflow-hidden"
@@ -567,13 +567,13 @@ const ReportGuru = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center font-black text-lg shadow-2xs">
-                        {item.namaSiswa.substring(0, 1)}
+                        {(item.namaSiswa || 'S').substring(0, 1)}
                       </div>
                       <div>
                         <h4 className="font-black text-[#0a1e36] text-base group-hover:text-purple-600 transition-colors">
-                          {item.namaSiswa}
+                          {item.namaSiswa || 'Siswa'}
                         </h4>
-                        <p className="text-[10px] font-bold text-slate-400">{item.nisn} • Usia {item.usiaTahun} Thn</p>
+                        <p className="text-[10px] font-bold text-slate-400">{item.nisn || '-'} • Usia {item.usiaTahun || 5} Thn</p>
                       </div>
                     </div>
                     
@@ -675,29 +675,157 @@ const ReportGuru = () => {
               ))}
             </div>
 
-            {/* GRADIENT OPACITY FADE OVERLAY & TOMBOL NAVIGASI LIHAT SISWA LAINNYA */}
+            {/* SISWA TAMBAHAN (DROPDOWN KE BAWAH TANPA PINDAH HALAMAN & BISA DITUTUP) */}
             {filteredReports.length > 2 && (
-              <div className={`transition-all duration-500 ${
-                !showAllOverviewStudents 
-                  ? 'bg-gradient-to-t from-slate-100 via-slate-100/90 to-transparent pt-24 pb-6 -mt-28 relative z-10 flex flex-col items-center justify-end rounded-b-[2.5rem] opacity-100' 
-                  : 'pt-6 flex justify-center opacity-100'
-              }`}>
-                <button
-                  type="button"
-                  onClick={() => setShowAllOverviewStudents(!showAllOverviewStudents)}
-                  className="px-8 py-4 bg-[#0a1e36] hover:bg-indigo-900 text-white rounded-full text-xs font-black uppercase tracking-widest shadow-2xl flex items-center gap-2.5 border border-white/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                >
-                  {!showAllOverviewStudents ? (
-                    <>
+              <>
+                {!showAllOverviewStudents ? (
+                  <div className="bg-gradient-to-t from-slate-100 via-slate-100/90 to-transparent pt-24 pb-4 -mt-24 relative z-10 flex flex-col items-center justify-end rounded-b-[2.5rem]">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setShowAllOverviewStudents(true);
+                      }}
+                      className="px-8 py-4 bg-[#0a1e36] hover:bg-indigo-900 text-white rounded-full text-xs font-black uppercase tracking-widest shadow-2xl flex items-center gap-2.5 border border-white/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    >
                       <Eye size={16} className="text-purple-400" /> Lihat Siswa Lainnya ({filteredReports.length - 2} Anak) <ChevronDown size={16} />
-                    </>
-                  ) : (
-                    <>
-                      <ChevronUp size={16} className="text-purple-400" /> Sembunyikan Siswa Lainnya <ChevronUp size={16} />
-                    </>
-                  )}
-                </button>
-              </div>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {filteredReports.slice(2).map((item) => (
+                        <div 
+                          key={item.id} 
+                          className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-5 text-left hover:shadow-xl transition-all group relative overflow-hidden"
+                        >
+                          {/* HEADER SISWA */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center font-black text-lg shadow-2xs">
+                                {(item.namaSiswa || 'S').substring(0, 1)}
+                              </div>
+                              <div>
+                                <h4 className="font-black text-[#0a1e36] text-base group-hover:text-purple-600 transition-colors">
+                                  {item.namaSiswa || 'Siswa'}
+                                </h4>
+                                <p className="text-[10px] font-bold text-slate-400">{item.nisn || '-'} • Usia {item.usiaTahun || 5} Thn</p>
+                              </div>
+                            </div>
+                            
+                            <span className={`text-xs font-black px-3.5 py-1.5 rounded-full border ${
+                              item.hasSemester 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-xs' 
+                              : 'bg-slate-100 text-slate-500 border-slate-200'
+                            }`}>
+                              {item.hasSemester ? '✨ 100% Sempurna' : '🔒 Belum Diisi (0%)'}
+                            </span>
+                          </div>
+
+                          {/* GRAFIK SEMESTER VISUAL UTAMA */}
+                          <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                              <span className="text-purple-900 flex items-center gap-1">
+                                <TrendingUp size={14} className="text-purple-600"/> Grafik Capaian Semester
+                              </span>
+                              <span className={item.hasSemester ? "text-purple-700 font-bold" : "text-slate-400 font-bold"}>
+                                {item.hasSemester ? '100% Sempurna (Full)' : '0% (Kosong)'}
+                              </span>
+                            </div>
+                            
+                            {/* ANIMATED PROGRESS BAR */}
+                            <div className="w-full bg-slate-200 h-4 rounded-full overflow-hidden p-0.5 shadow-inner">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-1000 ${
+                                  item.hasSemester 
+                                  ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600' 
+                                  : 'bg-slate-300'
+                                }`}
+                                style={{ width: `${item.hasSemester ? 100 : 0}%` }}
+                              ></div>
+                            </div>
+
+                            <p className="text-[9px] font-medium text-slate-400 pt-0.5">
+                              {item.hasSemester 
+                                ? '✅ Nilai evaluasi semester telah lengkap & grafik capaian tampil 100% sempurna.' 
+                                : '🔒 Evaluasi semester belum diisi oleh Wali Kelas.'}
+                            </p>
+                          </div>
+
+                          {/* BREAKDOWN 4 ASPEK PERKEMBANGAN SISWA */}
+                          <div className="space-y-2 pt-1">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Grafik 4 Aspek Perkembangan Utama:</span>
+                            
+                            <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
+                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                                <div className="flex justify-between text-slate-700">
+                                  <span>🌟 Agama & Moral</span>
+                                  <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
+                                    {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
+                                </div>
+                              </div>
+
+                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                                <div className="flex justify-between text-slate-700">
+                                  <span>🏃 Motorik & Fisik</span>
+                                  <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
+                                    {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
+                                </div>
+                              </div>
+
+                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                                <div className="flex justify-between text-slate-700">
+                                  <span>🧠 Kognitif</span>
+                                  <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
+                                    {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
+                                </div>
+                              </div>
+
+                              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                                <div className="flex justify-between text-slate-700">
+                                  <span>🗣️ Bahasa & Sosial</span>
+                                  <span className={item.hasSemester ? "text-emerald-600" : "text-slate-400"}>
+                                    {item.hasSemester ? 'BSB (100%)' : '0% (Belum Diisi)'}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: item.hasSemester ? '100%' : '0%' }}></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-center pt-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setShowAllOverviewStudents(false);
+                        }}
+                        className="px-8 py-4 bg-[#0a1e36] hover:bg-indigo-900 text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl flex items-center gap-2.5 border border-white/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                      >
+                        <ChevronUp size={16} className="text-purple-400" /> Sembunyikan Siswa Lainnya <ChevronUp size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
