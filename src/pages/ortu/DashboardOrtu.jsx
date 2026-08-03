@@ -1,16 +1,18 @@
 // src/pages/ortu/DashboardOrtu.jsx
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend 
 } from 'recharts';
 import { 
   Star, Calendar, BookOpen, Megaphone, School, Baby, 
-  TrendingUp, BarChart3, Smile, Award, Lock, Sparkles, AlertCircle 
+  TrendingUp, BarChart3, Smile, Award, Lock, Sparkles, AlertCircle, ArrowRight, FileText
 } from 'lucide-react';
 import { supabase } from '../../utils/supabaseClient';
 
 const DashboardOrtu = () => {
+  const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState([]);
   const [loadingBroadcast, setLoadingBroadcast] = useState(true);
   const [parentData, setParentData] = useState(null);
@@ -420,15 +422,25 @@ const DashboardOrtu = () => {
           </div>
         </div>
 
-        {/* CATATAN HARIAN TERBARU (BUKU PENGHUBUNG) */}
-        <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-          <h3 className="text-base font-bold text-[#0a1e36] mb-6 flex items-center gap-2">
-            <BookOpen className="text-indigo-600" size={18} /> Jurnal Cerdas & Catatan Anekdot Harian
-          </h3>
+        {/* CATATAN HARIAN TERBARU (BUKU PENGHUBUNG) - MAX 3 ENTRI DENGAN NAVIGASI LAPORAN */}
+        <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <h3 className="text-base font-bold text-[#0a1e36] flex items-center gap-2">
+              <BookOpen className="text-indigo-600" size={18} /> Jurnal Cerdas & Catatan Anekdot Harian
+            </h3>
+
+            <button
+              type="button"
+              onClick={() => navigate('/ortu/laporan')}
+              className="text-xs font-black text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-all cursor-pointer group self-start sm:self-auto"
+            >
+              <FileText size={14} className="text-indigo-500" /> Lihat Catatan Lengkap <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
           
           {catatanHarian.length > 0 ? (
             <div className="space-y-4">
-              {catatanHarian.map((catatan, i) => (
+              {catatanHarian.slice(0, 3).map((catatan, i) => (
                 <div key={i} className="p-5 bg-slate-50 rounded-[2rem] border border-slate-100 flex flex-col md:flex-row md:items-start justify-between gap-4 hover:bg-white hover:shadow-md transition-all">
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2.5 mb-2">
@@ -454,6 +466,16 @@ const DashboardOrtu = () => {
                   </div>
                 </div>
               ))}
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => navigate('/ortu/laporan')}
+                  className="w-full py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-2 border border-indigo-100 shadow-2xs hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <FileText size={14} /> Lihat Catatan Lengkap di Fitur Laporan <ArrowRight size={14} />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="p-10 text-center bg-slate-50 rounded-[2.5rem] border border-dashed border-slate-200 space-y-3">
@@ -464,6 +486,13 @@ const DashboardOrtu = () => {
               <p className="text-xs text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
                 Wali Kelas belum menginput catatan harian untuk <span className="font-bold text-slate-600">{parentData?.nama_anak || parentData?.namaAnak || 'ananda'}</span>. Jurnal ini akan otomatis terupdate secara real-time setiap kali Guru menginput anekdot harian baru.
               </p>
+              <button
+                type="button"
+                onClick={() => navigate('/ortu/laporan')}
+                className="mt-2 px-5 py-2.5 bg-white text-indigo-600 border border-slate-200 hover:border-indigo-300 rounded-full font-black text-xs uppercase tracking-wider transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
+              >
+                <FileText size={14} /> Buka Fitur Laporan <ArrowRight size={14} />
+              </button>
             </div>
           )}
         </div>
