@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   ClipboardCheck, Calendar, Users,
-  Save, User, Download, FileText, ChevronDown, BookOpen, Sparkles, Bot
+  Save, User, Download, FileText, ChevronDown, BookOpen, Sparkles, Bot, Eye
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
-import { dapatkanRekomendasiAI } from '../../utils/naiveBayes'; // 👈 Tambahkan ini, Senior
+import { dapatkanRekomendasiAI } from '../../utils/naiveBayes';
+import RaporOfficialPDF, { generateRaporPDF } from '../../components/RaporOfficialPDF';
+import RaporPreviewModal from '../../components/RaporPreviewModal';
 
 const InputNilai = () => {
   // --- STATE UTAMA ---
@@ -24,6 +26,38 @@ const InputNilai = () => {
   const [rekapData, setRekapData] = useState([]);
 
   const [selectedRekapDetail, setSelectedRekapDetail] = useState(null);
+
+  // State untuk Template Engine Rapor Official PDF & Preview Modal
+  const [pdfDataToRender, setPdfDataToRender] = useState(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+
+  const currentSelectedSiswa = anekdotSiswa.find(s => 
+    selectedSiswaId && (s.id == selectedSiswaId || s.id === parseInt(selectedSiswaId) || s.nama === selectedSiswaId)
+  );
+
+  const handleOpenPreviewModal = () => {
+    const targetSiswa = currentSelectedSiswa || (anekdotSiswa.length > 0 ? anekdotSiswa[0] : null);
+
+    if (!targetSiswa) {
+      return Swal.fire('Data Siswa Kosong', 'Silakan pilih anak didik dari dropdown terlebih dahulu.', 'warning');
+    }
+
+    const autoTextOnSave = dapatkanRekomendasiAI(targetSiswa.nilaiSemester || {});
+    const finalRekomendasiText = targetSiswa.rekomendasi || autoTextOnSave || `Ananda ${targetSiswa.nama} berkembang sangat baik.`;
+
+    const reportObj = {
+      namaSiswa: targetSiswa.nama,
+      nisn: targetSiswa.nisn || "-",
+      kelompok: kelompok,
+      semester: selectedSemester,
+      skorIndikator: targetSiswa.nilaiSemester || {},
+      catatanGuru: finalRekomendasiText
+    };
+
+    setPreviewData(reportObj);
+    setIsPreviewModalOpen(true);
+  };
 
   // --- PARAMETER ADAPTIF: BERDASARKAN RENTANG USIA ANAK (DOKUMEN PAUD RESMI) ---
   const parameterAkademikBerdasarkanUsia = {
@@ -520,6 +554,55 @@ const InputNilai = () => {
     }));
   };
 
+  const handleSaveAndDownloadPDF = async () => {
+    if (!selectedSiswaId) {
+      return Swal.fire('Pilih Siswa', 'Silakan pilih siswa terlebih dahulu.', 'warning');
+    }
+
+    const targetSiswa = anekdotSiswa.find(s => s.id === parseInt(selectedSiswaId));
+    if (!targetSiswa) return Swal.fire('Error', 'Siswa tidak ditemukan.', 'error');
+
+    // 1. Simpan ke Supabase & LocalStorage terlebih dahulu
+    await handleSaveToRekap();
+
+    // 2. Siapkan data PDF
+    const autoTextOnSave = dapatkanRekomendasiAI(targetSiswa.nilaiSemester || {});
+    const finalRekomendasiText = targetSiswa.rekomendasi || autoTextOnSave || `Ananda ${targetSiswa.nama} berkembang sangat baik.`;
+
+    const reportObj = {
+      namaSiswa: targetSiswa.nama,
+      nisn: targetSiswa.nisn || "-",
+      kelompok: kelompok,
+      semester: selectedSemester,
+      skorIndikator: targetSiswa.nilaiSemester || {},
+      catatanGuru: finalRekomendasiText
+    };
+
+    setPdfDataToRender(reportObj);
+
+    Swal.fire({
+      title: 'Mencetak PDF Rapor Official...',
+      text: 'Menyiapkan halaman dokumen A4 sesuai template resmi PAUD.',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
+    setTimeout(async () => {
+      try {
+        await generateRaporPDF(reportObj);
+        Swal.fire({
+          icon: 'success',
+          title: 'PDF Rapor Berhasil Diunduh! 📄',
+          text: `Dokumen Rapor Official untuk ${targetSiswa.nama} tersimpan dengan sukses di Supabase & Komputer Anda.`,
+          confirmButtonColor: '#0a1e36'
+        });
+      } catch (err) {
+        console.error("Gagal mengunduh PDF:", err);
+        Swal.fire('Gagal Export PDF', err.message || 'Terjadi kesalahan saat mengunduh PDF.', 'error');
+      }
+    }, 500);
+  };
+
   const handleSaveToRekap = async () => {
     if (inputType === 'Semester' && !selectedSiswaId) {
       return Swal.fire('Form Belum Lengkap', 'Silakan pilih nama anak didik terlebih dahulu.', 'warning');
@@ -698,8 +781,6 @@ const InputNilai = () => {
     a.download = `Rekap_Nilai_SITKA_${tanggal}.csv`;
     a.click();
   };
-
-  const currentSelectedSiswa = anekdotSiswa.find(s => s.id === parseInt(selectedSiswaId));
 
   const dapatkanDaftarParameterSiswaTerpilih = () => {
     if (!detailSiswaSemesterTerpilih) return [];
@@ -1084,18 +1165,32 @@ const InputNilai = () => {
                       className="w-full p-4 bg-purple-50/50 border border-purple-100 rounded-2xl text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-purple-600 min-h-[110px] leading-relaxed shadow-inner"
                     />
                     <p className="text-[10px] text-purple-700 font-bold italic flex items-center gap-1">
-                      ✨ <b>Terkalkulasi Otomatis (Teorema Naive Bayes PAUD)</b>: Catatan ini disintesis otomatis berdasarkan indikator usia {currentSelectedSiswa?.nama}. Pendidik dapat langsung menyimpan atau menyesuaikannya.
+                      ✨ <b>Terkalkulasi Otomatis (Teorema Naive Bayes PAUD)</b>: Catatan ini disintesis otomatis berdasarkan indikator usia {currentSelectedSiswa?.nama}. Pendidik dapat langsung menyesuaikannya.
                     </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <button
+                        onClick={handleSaveToRekap}
+                        className="py-4 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                      >
+                        <Save size={16} /> Simpan Ke Rekap
+                      </button>
+
+                      <button
+                        onClick={handleOpenPreviewModal}
+                        className="py-4 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-amber-600 shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                      >
+                        <Eye size={16} /> 👁️ Preview Rapor
+                      </button>
+
+                      <button
+                        onClick={handleSaveAndDownloadPDF}
+                        className="py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                      >
+                        <FileText size={16} /> 📄 Unduh PDF Official
+                      </button>
+                    </div>
                   </div>
-
                 </div>
-
-                <button
-                  onClick={handleSaveToRekap}
-                  className="w-full py-5 bg-emerald-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  <Save size={16} /> Simpan Rapot Semester {currentSelectedSiswa?.nama} Ke Rekap
-                </button>
               </div>
             ) : (
               <div className="bg-white p-16 rounded-[3rem] text-center border border-dashed border-slate-200">
@@ -1206,6 +1301,11 @@ const InputNilai = () => {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* ELEMEN TEMPLATE RAPOR PDF OFFICIAL */}
+      <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
+        <RaporOfficialPDF data={pdfDataToRender} />
       </div>
     </div>
   );

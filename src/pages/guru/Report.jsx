@@ -13,6 +13,8 @@ import {
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
 import { dapatkanRekomendasiAI } from '../../utils/naiveBayes';
+import RaporOfficialPDF, { generateRaporPDF } from '../../components/RaporOfficialPDF';
+import RaporPreviewModal from '../../components/RaporPreviewModal';
 
 const getEmojiForCondition = (statusKondisi = '', emoji = '') => {
   if (emoji && emoji.length > 0 && emoji !== '😊') return emoji;
@@ -27,12 +29,69 @@ const getEmojiForCondition = (statusKondisi = '', emoji = '') => {
 };
 
 const ReportGuru = () => {
-  // Mode Tab: 'overview' | 'harian' | 'ortu' | 'semester'
+  // Mode Tab: 'overview' | 'grafik' | 'harian' | 'ortu' | 'semester'
   const [activeTab, setActiveTab] = useState('overview'); 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedKelompok, setSelectedKelompok] = useState("Kelompok A"); 
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [pdfModalData, setPdfModalData] = useState(null);
+
+  // State untuk Rapor Preview Modal
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [previewModalData, setPreviewModalData] = useState(null);
+
+  const handleOpenPreviewReport = (item) => {
+    const reportObj = {
+      namaSiswa: item.namaSiswa,
+      nisn: item.nisn || "-",
+      kelompok: selectedKelompok,
+      semester: "2",
+      skorIndikator: item.semesterSnapshot || {},
+      catatanGuru: item.semesterRekomendasi || ""
+    };
+    setPreviewModalData(reportObj);
+    setIsPreviewModalOpen(true);
+  };
+
+  const handleDownloadPDFReport = async (item) => {
+    Swal.fire({
+      title: 'Mencetak Rapor PDF Official...',
+      text: `Menyiapkan berkas Rapor PAUD untuk ${item.namaSiswa || 'Siswa'}.`,
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading(); }
+    });
+
+    const reportObj = {
+      namaSiswa: item.namaSiswa,
+      nisn: item.nisn || "-",
+      kelompok: selectedKelompok,
+      semester: "2",
+      skorIndikator: item.semesterSnapshot || {},
+      catatanGuru: item.semesterRekomendasi || ""
+    };
+
+    setPdfModalData(reportObj);
+
+    setTimeout(async () => {
+      try {
+        await generateRaporPDF(reportObj);
+        Swal.fire({
+          icon: 'success',
+          title: 'PDF Rapor Terunduh! 📄',
+          text: `Dokumen Rapor Official untuk ${item.namaSiswa} berhasil diunduh.`,
+          confirmButtonColor: '#0a1e36'
+        });
+      } catch (err) {
+        console.error("Gagal cetak PDF:", err);
+        Swal.fire('Gagal Export PDF', err.message || 'Terjadi kesalahan saat mengunduh PDF.', 'error');
+      }
+    }, 400);
+  };
+
+  // Filter & Sort State untuk Tab Grafik Multi-Siswa (Konsep 1)
+  const [filterStatusGrafik, setFilterStatusGrafik] = useState('semua');
+  const [sortGrafik, setSortGrafik] = useState('terendah');
 
   // Big Data Storage States
   const [harianData, setHarianData] = useState([]);
@@ -442,6 +501,94 @@ const ReportGuru = () => {
 
   const filteredReports = reports.filter(d => d.namaSiswa.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  // --- HELPER & METRIKS KHUSUS KONSEP 1: GRAFIK MULTI-SISWA ---
+  const getStudentGrafikMetrics = (item) => {
+    const items = item.detailProgressOrtu || [];
+    const getDomainScore = (domainName) => {
+      const match = items.filter(i => (i.category || '').toLowerCase().includes(domainName.toLowerCase()));
+      if (match.length === 0) {
+        if (item.hasSemester) {
+          if (domainName.includes('kasar')) return item.domainScores?.motorikScore ?? 85;
+          if (domainName.includes('halus')) return item.domainScores?.motorikScore ?? 80;
+          if (domainName.includes('bicara')) return item.domainScores?.bahasaScore ?? 90;
+          if (domainName.includes('sosial')) return item.domainScores?.kognitifScore ?? 85;
+        }
+        return 0;
+      }
+      const seringCount = match.filter(i => i.status === 'sering' || i.score === 3).length;
+      return Math.round((seringCount / match.length) * 100);
+    };
+
+    const gk = getDomainScore('gerak kasar');
+    const gh = getDomainScore('gerak halus');
+    const bb = getDomainScore('bicara');
+    const sk = getDomainScore('sosial');
+
+    const rawAvg = Math.round((gk + gh + bb + sk) / 4);
+    const totalAvg = (rawAvg === 0 && item.avgSemester > 0) ? item.avgSemester : rawAvg;
+
+    let statusKey = 'sesuai';
+    let statusText = 'Sesuai Usia';
+    let statusBadgeClass = 'bg-emerald-500 text-white shadow-emerald-500/20';
+    let cardBorder = 'border-slate-100 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-500/5';
+
+    if (totalAvg < 50) {
+      statusKey = 'intervensi';
+      statusText = 'Perlu Intervensi';
+      statusBadgeClass = 'bg-rose-500 text-white shadow-rose-500/20';
+      cardBorder = 'border-rose-100 hover:border-rose-300 hover:shadow-xl hover:shadow-rose-500/5';
+    } else if (totalAvg >= 50 && totalAvg < 75) {
+      statusKey = 'berkembang';
+      statusText = 'Mulai Berkembang';
+      statusBadgeClass = 'bg-amber-500 text-white shadow-amber-500/20';
+      cardBorder = 'border-amber-100 hover:border-amber-300 hover:shadow-xl hover:shadow-amber-500/5';
+    }
+
+    return { 
+      gk: gk || (item.avgSemester || 0), 
+      gh: gh || (item.avgSemester || 0), 
+      bb: bb || (item.avgSemester || 0), 
+      sk: sk || (item.avgSemester || 0), 
+      totalAvg, 
+      statusKey, 
+      statusText, 
+      statusBadgeClass, 
+      cardBorder 
+    };
+  };
+
+  const grafikReports = useMemo(() => {
+    let list = filteredReports.map(item => {
+      const metrics = getStudentGrafikMetrics(item);
+      return { ...item, metrics };
+    });
+
+    if (filterStatusGrafik !== 'semua') {
+      list = list.filter(item => item.metrics.statusKey === filterStatusGrafik);
+    }
+
+    if (sortGrafik === 'terendah') {
+      list.sort((a, b) => a.metrics.totalAvg - b.metrics.totalAvg);
+    } else if (sortGrafik === 'tertinggi') {
+      list.sort((a, b) => b.metrics.totalAvg - a.metrics.totalAvg);
+    } else if (sortGrafik === 'nama') {
+      list.sort((a, b) => a.namaSiswa.localeCompare(b.namaSiswa));
+    }
+
+    return list;
+  }, [filteredReports, filterStatusGrafik, sortGrafik]);
+
+  const statsGrafikCounts = useMemo(() => {
+    let sesuai = 0, berkembang = 0, intervensi = 0;
+    reports.forEach(item => {
+      const m = getStudentGrafikMetrics(item);
+      if (m.statusKey === 'sesuai') sesuai++;
+      else if (m.statusKey === 'berkembang') berkembang++;
+      else if (m.statusKey === 'intervensi') intervensi++;
+    });
+    return { sesuai, berkembang, intervensi, total: reports.length };
+  }, [reports]);
+
   return (
     <div className="space-y-8 pb-20 text-left animate-in fade-in duration-700">
       
@@ -491,6 +638,16 @@ const ReportGuru = () => {
             }`}
           >
             <Database size={15} /> Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('grafik')}
+            className={`px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 ${
+              activeTab === 'grafik' 
+              ? 'bg-indigo-600 text-white shadow-md' 
+              : 'text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            <TrendingUp size={15} /> Grafik Progress
           </button>
           <button
             onClick={() => setActiveTab('harian')}
@@ -900,7 +1057,300 @@ const ReportGuru = () => {
                 </div>
               </div>
             )}
+
+            {/* ACTION BUTTONS UNTUK PROFIL SISWA TERPILIH */}
+            {selectedStudent && (
+              <div className="flex flex-wrap justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenPreviewReport(selectedStudent)}
+                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-bold text-xs flex items-center gap-2 shadow-sm transition-all"
+                >
+                  <Eye size={16} /> 👁️ Preview Rapor {selectedStudent.namaSiswa}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPDFReport(selectedStudent)}
+                  className="px-5 py-2.5 bg-[#0a1e36] text-amber-400 hover:bg-indigo-900 rounded-2xl font-bold text-xs flex items-center gap-2 shadow-sm transition-all"
+                >
+                  <FileText size={16} /> 📄 Unduh PDF
+                </button>
+              </div>
+            )}
           </div>
+        </div>
+      )}
+
+      {/* ----------------- TAB GRAFIK MULTI-SISWA (KONSEP 1: GRID CARD ANALYTICS) ----------------- */}
+      {activeTab === 'grafik' && (
+        <div className="space-y-6 animate-in fade-in duration-500">
+          
+          {/* BANNER REKAP STATISTIK KELAS */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div 
+              onClick={() => setFilterStatusGrafik('semua')}
+              className={`p-5 rounded-3xl border transition-all cursor-pointer ${
+                filterStatusGrafik === 'semua' 
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20' 
+                : 'bg-white border-slate-100 text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-black uppercase tracking-widest ${filterStatusGrafik === 'semua' ? 'text-indigo-200' : 'text-slate-400'}`}>Total Siswa</span>
+                <UserCheck size={18} className={filterStatusGrafik === 'semua' ? 'text-indigo-200' : 'text-indigo-600'} />
+              </div>
+              <p className="text-3xl font-black mt-2">{statsGrafikCounts.total} Anak</p>
+              <p className={`text-[10px] font-bold mt-1 ${filterStatusGrafik === 'semua' ? 'text-indigo-200' : 'text-slate-400'}`}>{selectedKelompok}</p>
+            </div>
+
+            <div 
+              onClick={() => setFilterStatusGrafik('sesuai')}
+              className={`p-5 rounded-3xl border transition-all cursor-pointer ${
+                filterStatusGrafik === 'sesuai' 
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-600/20' 
+                : 'bg-white border-slate-100 text-slate-700 hover:border-emerald-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-black uppercase tracking-widest ${filterStatusGrafik === 'sesuai' ? 'text-emerald-200' : 'text-emerald-500'}`}>Sesuai Usia</span>
+                <CheckCircle2 size={18} className={filterStatusGrafik === 'sesuai' ? 'text-emerald-200' : 'text-emerald-500'} />
+              </div>
+              <p className={`text-3xl font-black mt-2 ${filterStatusGrafik === 'sesuai' ? 'text-white' : 'text-emerald-600'}`}>{statsGrafikCounts.sesuai} Anak</p>
+              <p className={`text-[10px] font-bold mt-1 ${filterStatusGrafik === 'sesuai' ? 'text-emerald-200' : 'text-emerald-600'}`}>🟢 Progress Optima (&gt; 75%)</p>
+            </div>
+
+            <div 
+              onClick={() => setFilterStatusGrafik('berkembang')}
+              className={`p-5 rounded-3xl border transition-all cursor-pointer ${
+                filterStatusGrafik === 'berkembang' 
+                ? 'bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20' 
+                : 'bg-white border-slate-100 text-slate-700 hover:border-amber-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-black uppercase tracking-widest ${filterStatusGrafik === 'berkembang' ? 'text-amber-100' : 'text-amber-500'}`}>Mulai Berkembang</span>
+                <Clock size={18} className={filterStatusGrafik === 'berkembang' ? 'text-amber-100' : 'text-amber-500'} />
+              </div>
+              <p className={`text-3xl font-black mt-2 ${filterStatusGrafik === 'berkembang' ? 'text-white' : 'text-amber-600'}`}>{statsGrafikCounts.berkembang} Anak</p>
+              <p className={`text-[10px] font-bold mt-1 ${filterStatusGrafik === 'berkembang' ? 'text-amber-100' : 'text-amber-600'}`}>🟡 Butuh Stimulasi Tambahan</p>
+            </div>
+
+            <div 
+              onClick={() => setFilterStatusGrafik('intervensi')}
+              className={`p-5 rounded-3xl border transition-all cursor-pointer ${
+                filterStatusGrafik === 'intervensi' 
+                ? 'bg-rose-600 text-white border-rose-600 shadow-lg shadow-rose-600/20' 
+                : 'bg-white border-slate-100 text-slate-700 hover:border-rose-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-black uppercase tracking-widest ${filterStatusGrafik === 'intervensi' ? 'text-rose-200' : 'text-rose-500'}`}>Perlu Intervensi</span>
+                <AlertCircle size={18} className={filterStatusGrafik === 'intervensi' ? 'text-rose-200' : 'text-rose-500'} />
+              </div>
+              <p className={`text-3xl font-black mt-2 ${filterStatusGrafik === 'intervensi' ? 'text-white' : 'text-rose-600'}`}>{statsGrafikCounts.intervensi} Anak</p>
+              <p className={`text-[10px] font-bold mt-1 ${filterStatusGrafik === 'intervensi' ? 'text-rose-200' : 'text-rose-500'}`}>🔴 Perhatian Khusus (&lt; 50%)</p>
+            </div>
+          </div>
+
+          {/* CONTROL BAR: FILTER & URUTKAN */}
+          <div className="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
+              <span className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 whitespace-nowrap">
+                <Filter size={14} /> Filter Status:
+              </span>
+              {[
+                { key: 'semua', label: 'Semua Status' },
+                { key: 'sesuai', label: '🟢 Sesuai Usia' },
+                { key: 'berkembang', label: '🟡 Mulai Berkembang' },
+                { key: 'intervensi', label: '🔴 Perlu Intervensi' }
+              ].map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setFilterStatusGrafik(f.key)}
+                  className={`px-3.5 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all ${
+                    filterStatusGrafik === f.key
+                    ? 'bg-[#0a1e36] text-white shadow-sm'
+                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+              <span className="text-xs font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Urutkan:</span>
+              <select
+                value={sortGrafik}
+                onChange={(e) => setSortGrafik(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold px-3 py-2 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600"
+              >
+                <option value="terendah">Capaian Terendah → Tertinggi</option>
+                <option value="tertinggi">Capaian Tertinggi → Terendah</option>
+                <option value="nama">Nama Siswa (A - Z)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* GRID KARTU ANALYTICS SISWA */}
+          {grafikReports.length === 0 ? (
+            <div className="bg-white p-12 rounded-[2.5rem] border border-slate-100 text-center space-y-3">
+              <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                <User size={32} />
+              </div>
+              <h4 className="font-black text-[#0a1e36] text-base">Siswa Tidak Ditemukan</h4>
+              <p className="text-xs text-slate-400 font-medium max-w-sm mx-auto">
+                Tidak ada data siswa yang cocok dengan filter atau pencarian saat ini di {selectedKelompok}.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {grafikReports.map((item) => {
+                const { gk, gh, bb, sk, totalAvg, statusText, statusBadgeClass, cardBorder } = item.metrics;
+                return (
+                  <div
+                    key={item.id}
+                    className={`bg-white p-6 rounded-[2.5rem] border ${cardBorder} shadow-sm transition-all duration-300 flex flex-col justify-between space-y-6 relative overflow-hidden group`}
+                  >
+                    {/* ACCENT LINE TOP */}
+                    <div className={`absolute top-0 left-0 right-0 h-1.5 ${statusBadgeClass}`}></div>
+
+                    {/* CARD HEADER */}
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-indigo-50 text-indigo-700 rounded-2xl flex items-center justify-center font-black text-lg border border-indigo-100 shadow-2xs">
+                            {(item.namaSiswa || 'S').substring(0, 1).toUpperCase()}
+                          </div>
+                          <div>
+                            <h4 className="font-black text-[#0a1e36] text-base group-hover:text-indigo-600 transition-colors line-clamp-1">
+                              {item.namaSiswa}
+                            </h4>
+                            <p className="text-[10px] font-bold text-slate-400">
+                              {item.nisn} • Usia {item.usiaTahun} Thn
+                            </p>
+                          </div>
+                        </div>
+
+                        <span className={`px-3 py-1 rounded-full font-black text-[10px] uppercase tracking-wider shrink-0 ${statusBadgeClass}`}>
+                          {statusText}
+                        </span>
+                      </div>
+
+                      {/* OVERALL PERCENTAGE GAUGE */}
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Ketercapaian Indikator</span>
+                          <div className="flex items-baseline gap-1 mt-0.5">
+                            <span className="text-2xl font-black text-[#0a1e36]">{totalAvg}%</span>
+                            <span className="text-[10px] font-bold text-slate-400">tercapai</span>
+                          </div>
+                        </div>
+
+                        {/* MINI CIRCLE INDICATOR */}
+                        <div className="w-12 h-12 relative flex items-center justify-center">
+                          <svg className="w-12 h-12 transform -rotate-90">
+                            <circle cx="24" cy="24" r="18" stroke="#e2e8f0" strokeWidth="4" fill="transparent" />
+                            <circle
+                              cx="24"
+                              cy="24"
+                              r="18"
+                              stroke={totalAvg < 50 ? '#f43f5e' : totalAvg < 75 ? '#f59e0b' : '#10b981'}
+                              strokeWidth="4"
+                              strokeDasharray={`${(totalAvg / 100) * 113} 113`}
+                              strokeLinecap="round"
+                              fill="transparent"
+                            />
+                          </svg>
+                          <Sparkles size={14} className="absolute text-slate-400" />
+                        </div>
+                      </div>
+
+                      {/* 4 DOMAIN PROGRESS BARS */}
+                      <div className="space-y-2.5 pt-1">
+                        {/* 1. GERAK KASAR */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span className="text-slate-600 flex items-center gap-1.5">
+                              <span>🏃</span> Gerak Kasar
+                            </span>
+                            <span className="text-teal-600 font-black">{gk}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-teal-500 rounded-full transition-all duration-500" style={{ width: `${gk}%` }}></div>
+                          </div>
+                        </div>
+
+                        {/* 2. GERAK HALUS */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span className="text-slate-600 flex items-center gap-1.5">
+                              <span>✍️</span> Gerak Halus
+                            </span>
+                            <span className="text-indigo-600 font-black">{gh}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${gh}%` }}></div>
+                          </div>
+                        </div>
+
+                        {/* 3. BICARA & BAHASA */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span className="text-slate-600 flex items-center gap-1.5">
+                              <span>🗣️</span> Bicara & Bahasa
+                            </span>
+                            <span className="text-purple-600 font-black">{bb}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-purple-500 rounded-full transition-all duration-500" style={{ width: `${bb}%` }}></div>
+                          </div>
+                        </div>
+
+                        {/* 4. SOSIAL & KEMANDIRIAN */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span className="text-slate-600 flex items-center gap-1.5">
+                              <span>🤝</span> Sosial & Mandiri
+                            </span>
+                            <span className="text-rose-600 font-black">{sk}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-rose-500 rounded-full transition-all duration-500" style={{ width: `${sk}%` }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CARD FOOTER & QUICK ACTION */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {item.statusOrtu === 'Sudah Mengisi' ? '✅ Laporan Ortu Terisi' : '⚠️ Laporan Ortu Belum'}
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenPreviewReport(item)}
+                          className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center gap-1 transition-all shadow-sm cursor-pointer"
+                        >
+                          <Eye size={13} /> Preview
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedStudentId(item.id);
+                            setActiveTab('overview');
+                          }}
+                          className="px-3 py-2 bg-[#0a1e36] text-amber-400 hover:bg-indigo-900 rounded-xl font-bold text-xs flex items-center gap-1 transition-all shadow-sm cursor-pointer"
+                        >
+                          Detail
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -1043,11 +1493,38 @@ const ReportGuru = () => {
                   <span className="text-[9px] font-black text-purple-900 uppercase tracking-widest block">Rekomendasi Perkembangan:</span>
                   <p className="italic font-medium text-slate-700 leading-relaxed">"{item.semesterRekomendasi}"</p>
                 </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={() => handleOpenPreviewReport(item)}
+                    className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                  >
+                    <Eye size={14} /> 👁️ Preview Rapor
+                  </button>
+                  <button
+                    onClick={() => handleDownloadPDFReport(item)}
+                    className="flex-1 py-2.5 bg-[#0a1e36] text-amber-400 hover:bg-purple-900 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                  >
+                    <FileText size={14} /> 📄 Unduh PDF
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* ELEMEN TERSEMBUNYI TEMPLATE RAPOR PDF OFFICIAL */}
+      <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
+        <RaporOfficialPDF data={pdfModalData} />
+      </div>
+
+      {/* MODAL PREVIEW RAPOR OFFICIAL */}
+      <RaporPreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        data={previewModalData}
+      />
 
     </div>
   );
