@@ -50,6 +50,7 @@ const Register = () => {
     namaAnak: '',
     kelompok: '',
     password: '',
+    confirmPassword: '',
   });
 
   const handleInputChange = (e) => {
@@ -62,6 +63,10 @@ const Register = () => {
     setLoading(true);
 
     try {
+      if (formData.password !== formData.confirmPassword) {
+        throw new Error('Konfirmasi Kata Sandi tidak cocok dengan Password Baru!');
+      }
+
       // 1. Siapkan payload data dasar
       let payload = {
         nama: formData.namaLengkap,
@@ -110,6 +115,7 @@ const Register = () => {
         namaAnak: '',
         kelompok: '',
         password: '',
+        confirmPassword: '',
       });
 
     } catch (error) {
@@ -246,6 +252,15 @@ const Register = () => {
               onChange={handleInputChange}
               type="password"
               placeholder="Password Baru" 
+            />
+
+            <InputField 
+              icon={Lock} 
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              type="password"
+              placeholder="Konfirmasi Password Baru" 
             />
           </div>
 
