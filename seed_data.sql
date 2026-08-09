@@ -1,4 +1,20 @@
 -- =======================================================================
+-- LANGKAH 0: PEMBERSIHAN DATA LAMA (STEP-BY-STEP DELETION)
+-- Jalankan bagian ini terlebih dahulu untuk mengosongkan tabel agar data 
+-- tidak tertimpa/bentrok/duplikat dengan data lama.
+-- =======================================================================
+DELETE FROM nilai_harian;
+DELETE FROM nilai_semester;
+DELETE FROM pengumuman;
+DELETE FROM users;
+
+-- Reset auto-increment sequence ID (opsional)
+ALTER SEQUENCE IF EXISTS nilai_harian_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS nilai_semester_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS pengumuman_id_seq RESTART WITH 1;
+ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1;
+
+-- =======================================================================
 -- SITKA PLATFORM - HIGHLY VARIED FULL DATABASE SEED SQL SCRIPT
 -- =======================================================================
 -- Skrip ini berisi data fiktif yang SANGAT VARIATIF untuk seluruh 26 anak
