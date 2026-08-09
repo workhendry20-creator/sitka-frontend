@@ -42,11 +42,10 @@ function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Cek otomatis data login dari local storage browser saat aplikasi dimuat
-    const savedSession = localStorage.getItem('user_session');
-    if (savedSession) {
-      setUserSession(JSON.parse(savedSession));
-    }
+    // Memastikan setiap kali aplikasi awal dibuka, selalu mulai dari halaman Login (tidak langsung masuk sistem secara otomatis)
+    localStorage.removeItem('user_session');
+    sessionStorage.removeItem('user_session');
+    setUserSession(null);
     setLoading(false);
   }, []);
 
