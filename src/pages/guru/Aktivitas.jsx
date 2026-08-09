@@ -4,6 +4,7 @@ import {
   Heart, MoreHorizontal, X, User, Check
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { supabase } from '../../utils/supabaseClient';
 
 const PostAktivitas = () => {
   const [postText, setPostText] = useState('');
@@ -79,6 +80,15 @@ const PostAktivitas = () => {
     const updatedPosts = [newPost, ...posts];
     setPosts(updatedPosts);
     localStorage.setItem('sitka_posts', JSON.stringify(updatedPosts));
+
+    // Sync to Supabase cloud pengumuman table
+    try {
+      supabase.from('pengumuman').insert([{
+        title: `Aktivitas: ${userSession.nama || 'Guru'}`,
+        content: postText || 'Kegiatan Aktivitas Siswa Hari Ini',
+        created_at: new Date().toISOString()
+      }]).then(() => {});
+    } catch (e) {}
 
     // 🔥 BROADCAST EVENT agar ortu yg sedang membuka halaman Aktivitas langsung update
     window.dispatchEvent(new CustomEvent('sitka_posts_updated', { detail: newPost }));

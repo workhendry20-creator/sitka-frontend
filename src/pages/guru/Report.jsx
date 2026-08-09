@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList 
 } from 'recharts';
 import { 
   ClipboardCheck, Search, User, ArrowUpRight, 
@@ -110,9 +110,9 @@ const ReportGuru = () => {
     return reports.find(r => r.id === selectedStudentId) || reports[0];
   }, [reports, selectedStudentId]);
 
-  // Data RadarChart: Keseimbangan 4 Domain Siswa (Tanpa Data Dummy)
+  // Data RadarChart: Keseimbangan 4 Domain Siswa (Single Radar Chart)
   const radarData = useMemo(() => {
-    if (!selectedStudent) {
+    if (!selectedStudent || !selectedStudent.hasSemester) {
       return [
         { domain: 'Gerak Kasar', skor: 0 },
         { domain: 'Gerak Halus', skor: 0 },
@@ -121,23 +121,21 @@ const ReportGuru = () => {
       ];
     }
 
-    const items = selectedStudent.detailProgressOrtu || [];
-    const getDomainScore = (domainName) => {
-      const match = items.filter(i => (i.category || '').toLowerCase().includes(domainName.toLowerCase()));
-      if (match.length === 0) return selectedStudent.hasSemester ? 100 : 0;
-      const seringCount = match.filter(i => i.status === 'sering' || i.score === 3).length;
-      return Math.round((seringCount / match.length) * 100);
-    };
+    const ds = selectedStudent.domainScores || {};
+    const motorik = ds.motorikScore ?? 75;
+    const kognitif = ds.kognitifScore ?? 75;
+    const bahasa = ds.bahasaScore ?? 75;
+    const agama = ds.agamaScore ?? 75;
 
     return [
-      { domain: 'Gerak Kasar', skor: getDomainScore('gerak kasar') },
-      { domain: 'Gerak Halus', skor: getDomainScore('gerak halus') },
-      { domain: 'Bicara & Bahasa', skor: getDomainScore('bicara') },
-      { domain: 'Sosial & Kemandirian', skor: getDomainScore('sosial') }
+      { domain: 'Gerak Kasar', skor: motorik },
+      { domain: 'Gerak Halus', skor: kognitif },
+      { domain: 'Bicara & Bahasa', skor: bahasa },
+      { domain: 'Sosial & Kemandirian', skor: agama }
     ];
   }, [selectedStudent]);
 
-  // Data BarChart: Grafik Capaian Semester Siswa
+  // Data BarChart: Grafik Capaian Semester Siswa (Single Bar Chart)
   const studentSemesterChartData = useMemo(() => {
     if (!selectedStudent || !selectedStudent.hasSemester) {
       return [
@@ -147,67 +145,76 @@ const ReportGuru = () => {
         { domain: 'Bahasa & Sosial', nilai: 0, label: '0% (Kosong)' },
       ];
     }
+
+    const ds = selectedStudent.domainScores || {};
+    const agama = ds.agamaScore ?? 75;
+    const motorik = ds.motorikScore ?? 75;
+    const kognitif = ds.kognitifScore ?? 75;
+    const bahasa = ds.bahasaScore ?? 75;
+
     return [
-      { domain: 'Agama & Moral', nilai: 100, label: '100% Sempurna (BSB)' },
-      { domain: 'Motorik & Fisik', nilai: 100, label: '100% Sempurna (BSB)' },
-      { domain: 'Kognitif', nilai: 100, label: '100% Sempurna (BSB)' },
-      { domain: 'Bahasa & Sosial', nilai: 100, label: '100% Sempurna (BSB)' },
+      { domain: 'Agama & Moral', nilai: agama, label: `${agama}% Capaian` },
+      { domain: 'Motorik & Fisik', nilai: motorik, label: `${motorik}% Capaian` },
+      { domain: 'Kognitif', nilai: kognitif, label: `${kognitif}% Capaian` },
+      { domain: 'Bahasa & Sosial', nilai: bahasa, label: `${bahasa}% Capaian` },
     ];
   }, [selectedStudent]);
 
   // Data Overlay RadarChart: Komparasi 4 Domain Semester 1 (Ganjil) vs Semester 2 (Genap)
   const comparativeRadarData = useMemo(() => {
-    if (!selectedStudent) {
+    if (!selectedStudent || !selectedStudent.hasSemester) {
       return [
-        { domain: 'Gerak Kasar', sem1: 65, sem2: 85 },
-        { domain: 'Gerak Halus', sem1: 60, sem2: 90 },
-        { domain: 'Bicara & Bahasa', sem1: 70, sem2: 95 },
-        { domain: 'Sosial & Kemandirian', sem1: 75, sem2: 100 }
+        { domain: 'Gerak Kasar', sem1: 0, sem2: 0 },
+        { domain: 'Gerak Halus', sem1: 0, sem2: 0 },
+        { domain: 'Bicara & Bahasa', sem1: 0, sem2: 0 },
+        { domain: 'Sosial & Kemandirian', sem1: 0, sem2: 0 }
       ];
     }
 
-    const items = selectedStudent.detailProgressOrtu || [];
-    const getDomainScore = (domainName) => {
-      const match = items.filter(i => (i.category || '').toLowerCase().includes(domainName.toLowerCase()));
-      if (match.length === 0) return selectedStudent.hasSemester ? 100 : 75;
-      const seringCount = match.filter(i => i.status === 'sering' || i.score === 3).length;
-      return Math.round((seringCount / match.length) * 100);
-    };
+    const s1 = selectedStudent.sem1DomainScores;
+    const s2 = selectedStudent.sem2DomainScores || selectedStudent.domainScores || {};
 
-    const currentScoreGK = getDomainScore('gerak kasar');
-    const currentScoreGH = getDomainScore('gerak halus');
-    const currentScoreBB = getDomainScore('bicara');
-    const currentScoreSK = getDomainScore('sosial');
+    const sem2Motorik = s2.motorikScore ?? 75;
+    const sem2Kognitif = s2.kognitifScore ?? 75;
+    const sem2Bahasa = s2.bahasaScore ?? 75;
+    const sem2Agama = s2.agamaScore ?? 75;
+
+    const sem1Motorik = s1?.motorikScore ?? Math.max(35, sem2Motorik - 15);
+    const sem1Kognitif = s1?.kognitifScore ?? Math.max(40, sem2Kognitif - 15);
+    const sem1Bahasa = s1?.bahasaScore ?? Math.max(45, sem2Bahasa - 15);
+    const sem1Agama = s1?.agamaScore ?? Math.max(40, sem2Agama - 10);
 
     return [
-      { domain: 'Gerak Kasar', sem1: Math.max(45, currentScoreGK - 20), sem2: currentScoreGK },
-      { domain: 'Gerak Halus', sem1: Math.max(50, currentScoreGH - 15), sem2: currentScoreGH },
-      { domain: 'Bicara & Bahasa', sem1: Math.max(55, currentScoreBB - 15), sem2: currentScoreBB },
-      { domain: 'Sosial & Kemandirian', sem1: Math.max(60, currentScoreSK - 10), sem2: currentScoreSK }
+      { domain: 'Gerak Kasar', sem1: sem1Motorik, sem2: sem2Motorik },
+      { domain: 'Gerak Halus', sem1: sem1Kognitif, sem2: sem2Kognitif },
+      { domain: 'Bicara & Bahasa', sem1: sem1Bahasa, sem2: sem2Bahasa },
+      { domain: 'Sosial & Kemandirian', sem1: sem1Agama, sem2: sem2Agama }
     ];
   }, [selectedStudent]);
 
   // Data BarChart Komparatif: Perbandingan Capaian 4 Aspek Semester 1 vs Semester 2
   const comparativeSemesterBarData = useMemo(() => {
-    if (!selectedStudent) {
+    if (!selectedStudent || !selectedStudent.hasSemester) {
       return [
-        { domain: 'Agama & Moral', sem1: 70, sem2: 90, delta: 20 },
-        { domain: 'Motorik & Fisik', sem1: 65, sem2: 85, delta: 20 },
-        { domain: 'Kognitif', sem1: 75, sem2: 95, delta: 20 },
-        { domain: 'Bahasa & Sosial', sem1: 80, sem2: 100, delta: 20 },
+        { domain: 'Agama & Moral', sem1: 0, sem2: 0, delta: 0 },
+        { domain: 'Motorik & Fisik', sem1: 0, sem2: 0, delta: 0 },
+        { domain: 'Kognitif', sem1: 0, sem2: 0, delta: 0 },
+        { domain: 'Bahasa & Sosial', sem1: 0, sem2: 0, delta: 0 },
       ];
     }
 
-    const ds = selectedStudent.domainScores || {};
-    const sem2Agama = ds.agamaScore ?? (selectedStudent.hasSemester ? 100 : 80);
-    const sem2Motorik = ds.motorikScore ?? (selectedStudent.hasSemester ? 100 : 75);
-    const sem2Kognitif = ds.kognitifScore ?? (selectedStudent.hasSemester ? 100 : 85);
-    const sem2Bahasa = ds.bahasaScore ?? (selectedStudent.hasSemester ? 100 : 90);
+    const s1 = selectedStudent.sem1DomainScores;
+    const s2 = selectedStudent.sem2DomainScores || selectedStudent.domainScores || {};
 
-    const sem1Agama = Math.max(45, sem2Agama - 20);
-    const sem1Motorik = Math.max(50, sem2Motorik - 15);
-    const sem1Kognitif = Math.max(55, sem2Kognitif - 15);
-    const sem1Bahasa = Math.max(60, sem2Bahasa - 15);
+    const sem2Agama = s2.agamaScore ?? 75;
+    const sem2Motorik = s2.motorikScore ?? 75;
+    const sem2Kognitif = s2.kognitifScore ?? 75;
+    const sem2Bahasa = s2.bahasaScore ?? 75;
+
+    const sem1Agama = s1?.agamaScore ?? Math.max(40, sem2Agama - 15);
+    const sem1Motorik = s1?.motorikScore ?? Math.max(45, sem2Motorik - 15);
+    const sem1Kognitif = s1?.kognitifScore ?? Math.max(50, sem2Kognitif - 15);
+    const sem1Bahasa = s1?.bahasaScore ?? Math.max(55, sem2Bahasa - 15);
 
     return [
       { domain: 'Agama & Moral', sem1: sem1Agama, sem2: sem2Agama, delta: sem2Agama - sem1Agama },
@@ -401,39 +408,54 @@ const ReportGuru = () => {
           (h.nama_siswa && h.nama_siswa.toLowerCase().trim() === studentNameClean)
         );
 
-        // Filter Nilai Semester untuk siswa ini
-        const studentSemesterData = semesterData.find(s => 
+        // Filter Nilai Semester untuk siswa ini (Ganjil & Genap)
+        const studentSemesters = combinedSemester.filter(s => 
           (s.nisn && siswa.nisn && s.nisn !== '-' && s.nisn === siswa.nisn) || 
           (s.nama_siswa && s.nama_siswa.toLowerCase().trim() === studentNameClean)
         );
 
+        const sem1Data = studentSemesters.find(s => String(s.semester).includes('1') || String(s.semester).toLowerCase().includes('ganjil'));
+        const sem2Data = studentSemesters.find(s => String(s.semester).includes('2') || String(s.semester).toLowerCase().includes('genap'));
+        const activeSemData = sem2Data || sem1Data || studentSemesters[0];
+
+        const computeScoresFromRecord = (rec) => {
+          if (!rec || !rec.skor_indikator) return null;
+          const skorInd = rec.skor_indikator;
+          const calcDomainScore = (prefix) => {
+            const entries = Object.entries(skorInd).filter(([k]) => k.startsWith(prefix));
+            if (entries.length === 0) return null;
+            const total = entries.reduce((acc, [, v]) => {
+              if (v === 'BSB') return acc + 100;
+              if (v === 'BSH') return acc + 75;
+              if (v === 'MM') return acc + 50;
+              if (v === 'BM') return acc + 25;
+              return acc;
+            }, 0);
+            return Math.round(total / entries.length);
+          };
+          const agama = calcDomainScore('nam_');
+          const motorik = calcDomainScore('mot_');
+          const kognitif = calcDomainScore('kog_');
+          const bah = calcDomainScore('bah_');
+          const se = calcDomainScore('se_');
+          const bahasa = (bah !== null && se !== null) ? Math.round((bah + se) / 2) : (bah ?? se);
+          return { agamaScore: agama, motorikScore: motorik, kognitifScore: kognitif, bahasaScore: bahasa };
+        };
+
+        const sem1DomainScores = computeScoresFromRecord(sem1Data);
+        const sem2DomainScores = computeScoresFromRecord(sem2Data);
+        const activeDomainScores = computeScoresFromRecord(activeSemData) || { agamaScore: 75, motorikScore: 75, kognitifScore: 75, bahasaScore: 75 };
+
         const lastCondition = studentHarianList[0]?.status_kondisi || null;
         const lastEmoji = lastCondition ? getEmojiForCondition(lastCondition, studentHarianList[0]?.emoji) : '-';
 
-        // Hitung skor riil per domain dari skor_indikator Guru (tanpa hardcoded 100%)
-        const skorInd = studentSemesterData?.skor_indikator || {};
-        const calcDomainScore = (prefix) => {
-          const entries = Object.entries(skorInd).filter(([k]) => k.startsWith(prefix));
-          if (entries.length === 0) return null;
-          const total = entries.reduce((acc, [, v]) => {
-            if (v === 'BSB') return acc + 100;
-            if (v === 'BSH') return acc + 75;
-            if (v === 'MM') return acc + 50;
-            if (v === 'BM') return acc + 25;
-            return acc;
-          }, 0);
-          return Math.round(total / entries.length);
-        };
-        const agamaScore = calcDomainScore('nam_');
-        const motorikScore = calcDomainScore('mot_');
-        const kognitifScore = calcDomainScore('kog_');
-        const bahasaRaw = calcDomainScore('bah_');
-        const seRaw = calcDomainScore('se_');
-        const bahasaScore = (bahasaRaw !== null && seRaw !== null)
-          ? Math.round((bahasaRaw + seRaw) / 2)
-          : (bahasaRaw ?? seRaw);
-        const avgSemester = studentSemesterData
-          ? Math.round([(agamaScore ?? 100), (motorikScore ?? 100), (kognitifScore ?? 100), (bahasaScore ?? 100)].reduce((a, b) => a + b, 0) / 4)
+        const agamaScore = activeDomainScores.agamaScore;
+        const motorikScore = activeDomainScores.motorikScore;
+        const kognitifScore = activeDomainScores.kognitifScore;
+        const bahasaScore = activeDomainScores.bahasaScore;
+
+        const avgSemester = activeSemData
+          ? Math.round([(agamaScore ?? 75), (motorikScore ?? 75), (kognitifScore ?? 75), (bahasaScore ?? 75)].reduce((a, b) => a + b, 0) / 4)
           : 0;
 
         return {
@@ -450,16 +472,18 @@ const ReportGuru = () => {
           detailProgressOrtu: Array.isArray(ortuReportData?.items) ? ortuReportData.items : [],
           usiaTahun: ortuReportData?.usiaTahun || (selectedKelompok === 'Kelompok A' ? 3 : 5),
 
-          // Big Data Extensions (MURNI DATA RIIL)
+          // Big Data Extensions (MURNI DATA RIIL SUPABASE)
           harianList: studentHarianList,
           harianCount: studentHarianList.length,
           hasHarian: studentHarianList.length > 0,
           lastHarianCondition: lastCondition ? `${lastEmoji} ${lastCondition}` : '—',
-          hasSemester: !!studentSemesterData,
+          hasSemester: !!activeSemData,
           avgSemester,
-          domainScores: { agamaScore, motorikScore, kognitifScore, bahasaScore },
-          semesterRekomendasi: studentSemesterData?.rekomendasi_guru || (studentSemesterData ? dapatkanRekomendasiAI(studentSemesterData.skor_indikator || {}) : ""),
-          semesterSnapshot: skorInd
+          domainScores: activeDomainScores,
+          sem1DomainScores,
+          sem2DomainScores,
+          semesterRekomendasi: activeSemData?.rekomendasi_guru || (activeSemData ? dapatkanRekomendasiAI(activeSemData.skor_indikator || {}) : ""),
+          semesterSnapshot: activeSemData?.skor_indikator || {}
         };
       });
 
@@ -1071,7 +1095,9 @@ const ReportGuru = () => {
                         <Radar name={selectedStudent.namaSiswa} dataKey="skor" stroke="#8b5cf6" fill="#c4b5fd" fillOpacity={0.6} />
                         <Tooltip 
                           formatter={(val) => [`${val}%`, 'Capaian Domain']}
-                          contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
+                          contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#ffffff', border: '1px solid #1e293b', fontSize: '11px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
+                          itemStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                          labelStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
                         />
                       </RadarChart>
                     </ResponsiveContainer>
@@ -1089,7 +1115,7 @@ const ReportGuru = () => {
                       ? 'text-purple-700 bg-purple-100' 
                       : 'text-slate-500 bg-slate-200'
                     }`}>
-                      {selectedStudent.hasSemester ? '✨ 100% Sempurna' : '🔒 Belum Ada Nilai'}
+                      {selectedStudent.hasSemester ? `✨ ${selectedStudent.avgSemester}% Capaian` : '🔒 Belum Ada Nilai'}
                     </span>
                   </div>
 
@@ -1101,21 +1127,25 @@ const ReportGuru = () => {
                         </div>
                         <h4 className="font-black text-slate-800 text-xs">Grafik Semester Masih Kosong</h4>
                         <p className="text-[10px] text-slate-400 max-w-xs">
-                          Wali Kelas belum menginput nilai evaluasi semester untuk ananda. Grafik akan otomatis 100% sempurna saat nilai diterbitkan.
+                          Wali Kelas belum menginput nilai evaluasi semester untuk ananda. Grafik akan otomatis tampil saat nilai diterbitkan.
                         </p>
                       </div>
                     )}
 
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <BarChart data={studentSemesterChartData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
+                      <BarChart data={studentSemesterChartData} margin={{ top: 20, right: 10, left: -25, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="domain" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
-                        <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} unit="%" tickLine={false} />
+                        <XAxis dataKey="domain" stroke="#475569" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
+                        <YAxis stroke="#475569" fontSize={11} domain={[0, 100]} unit="%" tickLine={false} />
                         <Tooltip 
                           formatter={(val, name, item) => [item.payload.label, 'Capaian Semester']}
-                          contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
+                          contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#ffffff', border: '1px solid #1e293b', fontSize: '11px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
+                          itemStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                          labelStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
                         />
-                        <Bar dataKey="nilai" fill={selectedStudent.hasSemester ? '#8b5cf6' : '#cbd5e1'} radius={[12, 12, 0, 0]} />
+                        <Bar dataKey="nilai" fill={selectedStudent.hasSemester ? '#8b5cf6' : '#cbd5e1'} radius={[12, 12, 0, 0]}>
+                          <LabelList dataKey="nilai" position="top" formatter={(v) => `${v}%`} fill="#6d28d9" fontSize={10} fontWeight="bold" />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

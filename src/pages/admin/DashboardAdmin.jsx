@@ -21,7 +21,7 @@ const DashboardAdmin = () => {
         const { count: guruCount } = await supabase
           .from('users')
           .select('*', { count: 'exact', head: true })
-          .eq('role', 'Guru');
+          .eq('role', 'guru');
         
         if (guruCount !== null) setTotalGuru(guruCount);
 

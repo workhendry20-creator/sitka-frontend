@@ -18,43 +18,89 @@ const Absensi = () => {
   const [daftarSiswa, setDaftarSiswa] = useState([]);
   
   // State untuk Rekapan (History)
-  const [rekapMingguan, setRekapMingguan] = useState([
-    { tanggal: '2026-05-18', kelompok: 'Kelompok A', hadir: 3, izin: 0, sakit: 0, alpa: 0 },
-    { tanggal: '2026-05-19', kelompok: 'Kelompok A', hadir: 3, izin: 0, sakit: 0, alpa: 0 },
-  ]);
+  const [rekapMingguan, setRekapMingguan] = useState([]);
 
-  // --- AMBIL DATA SISWA SECARA REALTIME DARI CLOUD ---
+  // --- AMBIL DATA SISWA & ATTENDANCE REKAP REALTIME DARI CLOUD ---
   useEffect(() => {
     fetchSiswaByKelompok();
-  }, [kelompok]);
+    fetchRekapHistory();
+  }, [kelompok, tanggal]);
 
   const fetchSiswaByKelompok = async () => {
     setLoading(true);
     try {
-      // 1. Ubah string UI "Kelompok A" -> "A" agar sinkron dengan isi data cloud kita
       const dbRombel = kelompok === 'Kelompok A' ? 'A' : 'B';
 
-      // 2. Alihkan target query dari tabel 'users' ke tabel 'siswa'
-      const { data, error } = await supabase
+      const { data: siswaData, error } = await supabase
         .from('siswa')
-        .select('id, nama')
+        .select('id, nama, nisn')
         .eq('rombel', dbRombel)
         .order('nama', { ascending: true });
 
       if (error) throw error;
 
-      // 3. Map data dari DB menggunakan properti 'nama' (bukan 'nama_anak' lagi)
-      const formattedSiswa = (data || []).map(siswa => ({
-        id: siswa.id,
-        nama: siswa.nama, // 👈 Ubah dari siswa.nama_anak menjadi siswa.nama
-        status: 'Hadir'
-      }));
+      // Check existing attendance records in nilai_harian for this date & kelompok
+      const { data: harianData } = await supabase
+        .from('nilai_harian')
+        .select('*')
+        .eq('kelompok', kelompok)
+        .eq('tanggal', tanggal);
+
+      const formattedSiswa = (siswaData || []).map(siswa => {
+        const existing = (harianData || []).find(h => 
+          (h.nisn && h.nisn === siswa.nisn) || 
+          (h.nama_siswa && h.nama_siswa.toLowerCase().trim() === siswa.nama.toLowerCase().trim())
+        );
+
+        let statusVal = 'Hadir';
+        if (existing) {
+          if (['Hadir', 'Izin', 'Sakit', 'Alpa'].includes(existing.status_kondisi)) {
+            statusVal = existing.status_kondisi;
+          }
+        }
+
+        return {
+          id: siswa.id,
+          nisn: siswa.nisn || `NISN-${siswa.id}`,
+          nama: siswa.nama,
+          status: statusVal
+        };
+      });
 
       setDaftarSiswa(formattedSiswa);
     } catch (err) {
       console.error("Gagal menarik data siswa untuk absensi:", err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRekapHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('nilai_harian')
+        .select('tanggal, kelompok, status_kondisi')
+        .eq('kelompok', kelompok)
+        .order('tanggal', { ascending: false });
+
+      if (!error && data) {
+        const grouped = {};
+        data.forEach(item => {
+          const key = `${item.tanggal}_${item.kelompok}`;
+          if (!grouped[key]) {
+            grouped[key] = { tanggal: item.tanggal, kelompok: item.kelompok, hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+          }
+          const st = item.status_kondisi || 'Hadir';
+          if (st === 'Hadir' || st.includes('😊') || st.includes('⚡') || st.includes('🎯') || st.includes('🌟')) grouped[key].hadir++;
+          else if (st === 'Izin') grouped[key].izin++;
+          else if (st === 'Sakit') grouped[key].sakit++;
+          else if (st === 'Alpa') grouped[key].alpa++;
+          else grouped[key].hadir++;
+        });
+        setRekapMingguan(Object.values(grouped));
+      }
+    } catch (e) {
+      console.error("Error fetching rekap history:", e);
     }
   };
 
@@ -66,27 +112,49 @@ const Absensi = () => {
     setDaftarSiswa(prev => prev.map(s => s.id === id ? { ...s, status: statusBaru } : s));
   };
 
-  const handleSimpan = () => {
+  const handleSimpan = async () => {
     if (daftarSiswa.length === 0) {
       return Swal.fire('Oops!', 'Tidak ada data siswa untuk disimpan.', 'warning');
     }
 
-    const stats = calculateStats();
-    const dataBaru = {
-      tanggal,
-      kelompok,
-      ...stats
-    };
-    
-    setRekapMingguan([dataBaru, ...rekapMingguan]);
-    
-    Swal.fire({
-      icon: 'success',
-      title: 'Absensi Disimpan',
-      text: `Rekap harian ${kelompok} otomatis diperbarui di riwayat bawah.`,
-      confirmButtonColor: '#10b981',
-      customClass: { popup: 'rounded-[2rem]' }
-    });
+    setLoading(true);
+    try {
+      const payloadAbsen = daftarSiswa.map(s => ({
+        nisn: s.nisn,
+        nama_siswa: s.nama,
+        kelompok: kelompok,
+        tanggal: tanggal,
+        status_kondisi: s.status,
+        catatan_anekdot: `Presensi tanggal ${tanggal}`,
+        input_oleh_guru: `Wali Kelas ${kelompok}`
+      }));
+
+      const { error } = await supabase
+        .from('nilai_harian')
+        .upsert(payloadAbsen);
+
+      if (error) throw error;
+
+      await fetchRekapHistory();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Absensi Disimpan ke Supabase',
+        text: `Presensi harian ${kelompok} berhasil diperbarui di database cloud.`,
+        confirmButtonColor: '#10b981',
+        customClass: { popup: 'rounded-[2rem]' }
+      });
+    } catch (err) {
+      console.error("Gagal simpan absensi ke Supabase:", err.message);
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Menyimpan',
+        text: err.message,
+        confirmButtonColor: '#ef4444'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const calculateStats = () => ({

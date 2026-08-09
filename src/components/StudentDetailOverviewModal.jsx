@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList
 } from 'recharts';
 
 const StudentDetailOverviewModal = ({
@@ -192,7 +192,9 @@ const StudentDetailOverviewModal = ({
                       <Radar name={namaSiswa} dataKey="skor" stroke="#8b5cf6" fill="#c4b5fd" fillOpacity={0.6} />
                       <Tooltip
                         formatter={(val) => [`${val}%`, 'Capaian Domain']}
-                        contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
+                        contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#ffffff', border: '1px solid #1e293b', fontSize: '11px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
+                        itemStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                        labelStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
                       />
                     </RadarChart>
                   </ResponsiveContainer>
@@ -209,7 +211,7 @@ const StudentDetailOverviewModal = ({
                     ? 'text-purple-700 bg-purple-50 border border-purple-100'
                     : 'text-slate-500 bg-slate-100'
                     }`}>
-                    {hasSemester ? '✨ 100% Sempurna' : '🔒 Belum Ada Nilai'}
+                    {hasSemester ? `✨ ${avgSemester}% Capaian` : '🔒 Belum Ada Nilai'}
                   </span>
                 </div>
 
@@ -227,15 +229,19 @@ const StudentDetailOverviewModal = ({
                   )}
 
                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <BarChart data={studentSemesterChartData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
+                    <BarChart data={studentSemesterChartData} margin={{ top: 20, right: 10, left: -25, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis dataKey="domain" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
-                      <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} unit="%" tickLine={false} />
+                      <XAxis dataKey="domain" stroke="#475569" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
+                      <YAxis stroke="#475569" fontSize={11} domain={[0, 100]} unit="%" tickLine={false} />
                       <Tooltip
                         formatter={(val, name, item) => [item.payload.label, 'Capaian Semester']}
-                        contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
+                        contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#ffffff', border: '1px solid #1e293b', fontSize: '11px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
+                        itemStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                        labelStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
                       />
-                      <Bar dataKey="nilai" fill={hasSemester ? '#8b5cf6' : '#cbd5e1'} radius={[12, 12, 0, 0]} />
+                      <Bar dataKey="nilai" fill={hasSemester ? '#8b5cf6' : '#cbd5e1'} radius={[12, 12, 0, 0]}>
+                        <LabelList dataKey="nilai" position="top" formatter={(v) => `${v}%`} fill="#6d28d9" fontSize={10} fontWeight="bold" />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -266,7 +272,9 @@ const StudentDetailOverviewModal = ({
                         <Radar name="Semester 2 (Genap)" dataKey="sem2" stroke="#10b981" fill="#34d399" fillOpacity={0.55} />
                         <Tooltip
                           formatter={(val, name) => [`${val}%`, name]}
-                          contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
+                          contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#ffffff', border: '1px solid #1e293b', fontSize: '11px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
+                          itemStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                          labelStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
                         />
                         <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px', fontWeight: 'bold' }} />
                       </RadarChart>
@@ -287,16 +295,22 @@ const StudentDetailOverviewModal = ({
 
                   <div className="h-72 w-full pt-2 relative min-w-0">
                     <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                      <BarChart data={barComparativeData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
+                      <BarChart data={barComparativeData} margin={{ top: 20, right: 10, left: -25, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="domain" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
-                        <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} unit="%" tickLine={false} />
+                        <XAxis dataKey="domain" stroke="#475569" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
+                        <YAxis stroke="#475569" fontSize={11} domain={[0, 100]} unit="%" tickLine={false} />
                         <Tooltip
                           formatter={(val, name) => [`${val}%`, name]}
-                          contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
+                          contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#ffffff', border: '1px solid #1e293b', fontSize: '11px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
+                          itemStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                          labelStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
                         />
-                        <Bar dataKey="sem1" name="Semester 1 (Ganjil)" fill="#6366f1" radius={[8, 8, 0, 0]} />
-                        <Bar dataKey="sem2" name="Semester 2 (Genap)" fill="#10b981" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="sem1" name="Semester 1 (Ganjil)" fill="#6366f1" radius={[8, 8, 0, 0]}>
+                          <LabelList dataKey="sem1" position="top" formatter={(v) => `${v}%`} fill="#4338ca" fontSize={9} fontWeight="bold" />
+                        </Bar>
+                        <Bar dataKey="sem2" name="Semester 2 (Genap)" fill="#10b981" radius={[8, 8, 0, 0]}>
+                          <LabelList dataKey="sem2" position="top" formatter={(v) => `${v}%`} fill="#047857" fontSize={9} fontWeight="bold" />
+                        </Bar>
                         <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px', fontWeight: 'bold' }} />
                       </BarChart>
                     </ResponsiveContainer>

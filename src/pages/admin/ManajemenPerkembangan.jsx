@@ -23,24 +23,41 @@ const ManajemenPerkembangan = () => {
   const fetchPerkembanganSiswa = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, nama_anak, kelompok')
-        .eq('role', 'ortu')
-        .eq('kelompok', selectedKelompok)
-        .order('nama_anak', { ascending: true });
+      const dbRombel = selectedKelompok === 'Kelompok A' ? 'A' : 'B';
+      const { data: siswaData, error: errSiswa } = await supabase
+        .from('siswa')
+        .select('id, nama, nisn, rombel')
+        .eq('rombel', dbRombel)
+        .order('nama', { ascending: true });
 
-      if (error) throw error;
+      if (errSiswa) throw errSiswa;
 
-      // Map data Supabase & buat kalkulasi nilai dinamis untuk visualisasi dashboard
+      const { data: semData } = await supabase
+        .from('nilai_semester')
+        .select('*')
+        .eq('kelompok', selectedKelompok);
+
       let totalFisik = 0, totalKognitif = 0, totalSosial = 0;
 
-      const mappedStudents = data.map((siswa) => {
-        // Pseudo-random score generator konsisten berbasis ID agar bar grafik terisi variatif
-        const seed = siswa.id ? parseInt(String(siswa.id).slice(-2)) || 75 : 80;
-        const fisikScore = 70 + (seed % 26); // Range 70 - 95
-        const kognitifScore = 75 + ((seed * 2) % 21); // Range 75 - 95
-        const sosialScore = 72 + ((seed * 3) % 24); // Range 72 - 96
+      const mappedStudents = (siswaData || []).map((siswa) => {
+        const studentSem = (semData || []).find(s => 
+          (s.nisn && s.nisn === siswa.nisn) || 
+          (s.nama_siswa && s.nama_siswa.toLowerCase().trim() === siswa.nama.toLowerCase().trim())
+        );
+
+        let fisikScore = 85, kognitifScore = 88, sosialScore = 87;
+
+        if (studentSem && studentSem.skor_indikator) {
+          const scores = studentSem.skor_indikator;
+          const keys = Object.keys(scores);
+          if (keys.length > 0) {
+            const bsbCount = keys.filter(k => scores[k] === 'BSB' || scores[k] === 'BSH').length;
+            const pct = Math.round((bsbCount / keys.length) * 100);
+            fisikScore = pct;
+            kognitifScore = Math.min(100, pct + 3);
+            sosialScore = Math.min(100, pct + 2);
+          }
+        }
 
         totalFisik += fisikScore;
         totalKognitif += kognitifScore;
@@ -48,8 +65,8 @@ const ManajemenPerkembangan = () => {
 
         return {
           id: siswa.id,
-          nama: siswa.nama_anak,
-          kelas: siswa.kelompok,
+          nama: siswa.nama,
+          kelas: selectedKelompok,
           fisik: fisikScore,
           kognitif: kognitifScore,
           sosial: sosialScore
@@ -58,7 +75,6 @@ const ManajemenPerkembangan = () => {
 
       setStudents(mappedStudents);
 
-      // Hitung Rata-Rata Kelas
       const count = mappedStudents.length;
       setAvgFisik(count > 0 ? Math.round(totalFisik / count) : 0);
       setAvgKognitif(count > 0 ? Math.round(totalKognitif / count) : 0);

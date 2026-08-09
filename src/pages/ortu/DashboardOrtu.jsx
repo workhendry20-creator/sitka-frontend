@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, LabelList
 } from 'recharts';
 import {
   Star, Calendar, BookOpen, Megaphone, School, Baby,
@@ -401,18 +401,21 @@ const DashboardOrtu = () => {
           {/* BAR CHART GRAFIK HARIAN 4 EMOJI */}
           <div className="h-64 w-full pt-2 min-w-0">
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <BarChart data={emojiChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+              <BarChart data={emojiChartData} margin={{ top: 20, right: 10, left: -20, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="category" stroke="#94a3b8" fontSize={11} fontWeight="bold" tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
+                <XAxis dataKey="category" stroke="#475569" fontSize={11} fontWeight="bold" tickLine={false} />
+                <YAxis stroke="#475569" fontSize={11} tickLine={false} allowDecimals={false} />
                 <Tooltip
                   formatter={(val, name, item) => [`${val} Catatan Anekdot`, item.payload.category]}
-                  contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
+                  contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#ffffff', border: '1px solid #1e293b', fontSize: '11px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
+                  itemStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                  labelStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
                 />
                 <Bar dataKey="jumlah" radius={[12, 12, 0, 0]}>
                   {emojiChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
+                  <LabelList dataKey="jumlah" position="top" fill="#334155" fontSize={11} fontWeight="bold" />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -435,7 +438,7 @@ const DashboardOrtu = () => {
 
             {hasSemesterEvaluation ? (
               <span className="text-[10px] font-black bg-purple-50 text-purple-700 px-3 py-1 rounded-full border border-purple-200">
-                ✨ 100% Terisi
+                ✨ Rapor Terbit
               </span>
             ) : (
               <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-3 py-1 rounded-full border border-slate-200 flex items-center gap-1">
@@ -453,21 +456,25 @@ const DashboardOrtu = () => {
                 </div>
                 <h4 className="font-black text-slate-800 text-sm">Grafik Semester Masih Kosong</h4>
                 <p className="text-[11px] text-slate-400 max-w-xs">
-                  Wali Kelas belum menginput nilai evaluasi semester. Grafik akan otomatis tampil sempurna 100% saat nilai diterbitkan.
+                  Wali Kelas belum menginput nilai evaluasi semester. Grafik akan otomatis tampil saat nilai diterbitkan.
                 </p>
               </div>
             )}
 
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <BarChart data={semesterChartData} margin={{ top: 10, right: 10, left: -25, bottom: 20 }}>
+              <BarChart data={semesterChartData} margin={{ top: 20, right: 10, left: -25, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="domain" stroke="#94a3b8" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
-                <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} unit="%" tickLine={false} />
+                <XAxis dataKey="domain" stroke="#475569" fontSize={9} fontWeight="bold" tickLine={false} interval={0} />
+                <YAxis stroke="#475569" fontSize={11} domain={[0, 100]} unit="%" tickLine={false} />
                 <Tooltip
                   formatter={(val, name, item) => [item.payload.label, 'Capaian']}
-                  contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
+                  contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#ffffff', border: '1px solid #1e293b', fontSize: '11px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
+                  itemStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                  labelStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
                 />
-                <Bar dataKey="nilai" fill={hasSemesterEvaluation ? '#8b5cf6' : '#cbd5e1'} radius={[12, 12, 0, 0]} />
+                <Bar dataKey="nilai" fill={hasSemesterEvaluation ? '#8b5cf6' : '#cbd5e1'} radius={[12, 12, 0, 0]}>
+                  <LabelList dataKey="nilai" position="top" formatter={(v) => `${v}%`} fill="#6d28d9" fontSize={10} fontWeight="bold" />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -522,7 +529,9 @@ const DashboardOrtu = () => {
                 {realAttendanceData.hasData && (
                   <Tooltip 
                     formatter={(val, name) => [`${val} Hari`, name]}
-                    contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#fff', border: 'none', fontSize: '11px' }}
+                    contentStyle={{ backgroundColor: '#0a1e36', borderRadius: '16px', color: '#ffffff', border: '1px solid #1e293b', fontSize: '11px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
+                    itemStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                    labelStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
                   />
                 )}
               </PieChart>
