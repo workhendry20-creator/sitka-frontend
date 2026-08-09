@@ -24,26 +24,29 @@ const Login = ({ onLoginSuccess }) => {
     
     try {
       const lowerRole = selectedRole.toLowerCase();
+      const cleanId = idPengguna.trim();
+      const cleanPass = kataSandi.trim();
 
-      // 1. PENANGANAN LOGIN KHUSUS ADMIN (Bypass Sementara jika data admin belum di DB)
+      // 1. PENANGANAN LOGIN KHUSUS ADMIN (Bypass & Cloud Database)
       if (selectedRole === 'ADMIN') {
-        if (idPengguna === 'admin' && kataSandi === 'admin123') {
+        if (cleanId === 'admin' && cleanPass === 'admin123') {
           const adminSession = { nama: 'Administrator SITKA', role: 'admin' };
           localStorage.setItem('user_session', JSON.stringify(adminSession));
           onLoginSuccess(adminSession);
           navigate('/admin/dashboard');
           return;
         } else {
-          // Coba cari di database jika ada tabel admin khusus nantinya
-          const { data: adminData, error: adminErr } = await supabase
+          const { data: adminList, error: adminErr } = await supabase
             .from('users')
             .select('*')
             .eq('role', 'admin')
-            .eq('nama', idPengguna)
-            .eq('password', kataSandi)
-            .single();
+            .eq('nama', cleanId)
+            .eq('password', cleanPass)
+            .limit(1);
 
-          if (adminErr || !adminData) throw new Error('Kredensial Admin tidak valid, Senior!');
+          const adminData = (adminList && adminList.length > 0) ? adminList[0] : null;
+
+          if (adminErr || !adminData) throw new Error('Kredensial Admin tidak valid!');
           
           localStorage.setItem('user_session', JSON.stringify(adminData));
           onLoginSuccess(adminData);
@@ -57,15 +60,17 @@ const Login = ({ onLoginSuccess }) => {
 
       if (selectedRole === 'GURU') {
         // Cari baris data berdasarkan NIP dan Password
-        query = query.eq('nip', idPengguna).eq('password', kataSandi);
+        query = query.eq('nip', cleanId).eq('password', cleanPass);
       } else if (selectedRole === 'ORTU') {
-        // Cari baris data berdasarkan NISN dan Password
-        query = query.eq('nisn', idPengguna).eq('password', kataSandi);
+        // Cari baris data berdasarkan NISN atau Nama dan Password
+        query = query.or(`nisn.eq.${cleanId},nama.eq.${cleanId}`).eq('password', cleanPass);
       }
 
-      const { data: userData, error } = await query.maybeSingle();
+      const { data: userList, error } = await query.limit(1);
 
       if (error) throw error;
+
+      const userData = (userList && userList.length > 0) ? userList[0] : null;
 
       // 3. JIKA AKUN TIDAK DITEMUKAN
       if (!userData) {
