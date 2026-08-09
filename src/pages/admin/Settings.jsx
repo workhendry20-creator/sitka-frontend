@@ -10,7 +10,7 @@ import Swal from 'sweetalert2';
 const SettingsAdmin = () => {
   // --- STATE UTK PENGATURAN SISTEM ---
   const [systemConfig, setSystemConfig] = useState({
-    namaSekolah: 'TK SITKA INTERNASIONAL',
+    namaSekolah: 'SPS FLAMBOYAN',
     tahunAjaran: '2026/2027',
     semester: 'Ganjil',
     fiturChat: true,

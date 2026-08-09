@@ -87,7 +87,7 @@ const RaporPreviewModal = ({ isOpen, onClose, data }) => {
 
         {/* MODAL FOOTER */}
         <div className="p-4 bg-[#0a1e36] text-slate-400 border-t border-slate-800 text-xs font-bold text-center flex justify-between items-center px-8">
-          <span>📄 Dokumen Rapor Resmi Kurikulum PAUD SITKA</span>
+          <span>📄 Dokumen Rapor Resmi Kurikulum SPS FLAMBOYAN</span>
           <button onClick={onClose} className="text-amber-400 hover:underline">Tutup Preview</button>
         </div>
 

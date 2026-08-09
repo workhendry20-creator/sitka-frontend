@@ -1,7 +1,7 @@
 # SITKA Project Overview
 
 ## Deskripsi Proyek
-**SITKA (Sistem Informasi Tumbuh Kembang & Akademik Anak)** adalah platform manajemen pendidikan PAUD/TK modern yang menghubungkan secara lansung 3 *Role* utama: **Guru (Pendidik)**, **Orang Tua (Parent)**, dan **Administrator**. Platform ini menyediakan pelacakan perkembangan anak secara *real-time* berbasis standar **SDIDTK / Buku KIA** dan analisis cerdas **Naive Bayes**, yang sepenuhnya terintegrasi dengan basis data cloud Supabase.
+**SITKA (Sistem Informasi Tumbuh Kembang & Akademik Anak)** adalah platform manajemen pendidikan resmi **SPS FLAMBOYAN** yang menghubungkan secara langsung 3 *Role* utama: **Guru (Pendidik)**, **Orang Tua (Parent)**, dan **Administrator**. Platform ini menyediakan pelacakan perkembangan anak secara *real-time* berbasis standar **SDIDTK / Buku KIA** dan analisis cerdas **Naive Bayes**, yang sepenuhnya terintegrasi dengan basis data cloud Supabase.
 
 ---
 

@@ -221,7 +221,7 @@ export const generateRaporPDF = async (reportData, elementId = "rapor-pdf-contai
             <p style="border-bottom:1px solid #000; display:inline-block; width:150px; margin:0;">( ........................................ )</p>
           </div>
           <div style="width:40%;">
-            <p style="margin-bottom:40px; margin-top:0;">Taman Kanak-Kanak SITKA,<br/>Wali Kelas</p>
+            <p style="margin-bottom:40px; margin-top:0;">SPS FLAMBOYAN,<br/>Wali Kelas</p>
             <p style="border-bottom:1px solid #000; display:inline-block; width:150px; margin:0;">( ........................................ )</p>
           </div>
         </div>
@@ -430,7 +430,7 @@ const RaporOfficialPDF = ({ data }) => {
           <p className="border-b border-black inline-block min-w-36 m-0">( ........................................ )</p>
         </div>
         <div>
-          <p className="mb-10 mt-0">Taman Kanak-Kanak SITKA,<br/>Wali Kelas</p>
+          <p className="mb-10 mt-0">SPS FLAMBOYAN,<br/>Wali Kelas</p>
           <p className="border-b border-black inline-block min-w-36 m-0">( ........................................ )</p>
         </div>
       </div>

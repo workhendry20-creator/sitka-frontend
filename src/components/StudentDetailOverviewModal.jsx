@@ -380,7 +380,7 @@ const StudentDetailOverviewModal = ({
         {/* MODAL FOOTER WITH ACTIONS */}
         <div className="p-5 md:px-8 bg-slate-100 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <span className="text-xs font-bold text-slate-500 hidden sm:inline">
-            📄 Komparasi Detail Semester Siswa - SITKA PAUD
+            📄 Komparasi Detail Semester Siswa - SPS FLAMBOYAN
           </span>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">

@@ -11,7 +11,7 @@ INSERT INTO pengumuman (title, content, created_at)
 VALUES 
   ('📢 Kegiatan Outbound & Pengenalan Alam Sekolah', 'Diberitahukan kepada seluruh Orang Tua murid bahwa kegiatan Outbound Cerita Alam akan dilaksanakan pada hari Jumat depan. Mohon mempersiapkan seragam olahraga dan perlengkapan ananda.', NOW()),
   ('🏥 Jadwal Pemeriksaan Kesehatan & SDIDTK Rutin', 'Pemeriksaan Tumbuh Kembang Anak (SDIDTK) bekerjasama dengan Puskesmas setempat akan dilaksanakan minggu ini. Mohon mengisi buku KIA ananda.', NOW() - INTERVAL '1 day'),
-  ('🎨 Pameran Hasil Karya & Pentas Seni PAUD SITKA', 'Undangan bagi Ayah dan Bunda untuk menghadiri pameran kreativitas serta apresiasi bakat ananda pada akhir bulan ini.', NOW() - INTERVAL '2 days')
+  ('🎨 Pameran Hasil Karya & Pentas Seni SPS FLAMBOYAN', 'Undangan bagi Ayah dan Bunda untuk menghadiri pameran kreativitas serta apresiasi bakat ananda pada akhir bulan ini.', NOW() - INTERVAL '2 days')
 ON CONFLICT DO NOTHING;
 
 -- -----------------------------------------------------------------------
