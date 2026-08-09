@@ -1,6 +1,6 @@
 // src/pages/Login.jsx
 import React, { useState } from 'react';
-import { Mail, Lock, GraduationCap, Monitor, Users } from 'lucide-react';
+import { Mail, Lock, GraduationCap, Monitor, Users, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 // Impor koneksi Supabase Cloud kita
 import { supabase } from '../utils/supabaseClient';
@@ -12,6 +12,7 @@ const Login = ({ onLoginSuccess }) => {
   const [selectedRole, setSelectedRole] = useState('ADMIN');
   const [idPengguna, setIdPengguna] = useState('');
   const [kataSandi, setKataSandi] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const roles = ['ADMIN', 'GURU', 'ORTU'];
@@ -179,13 +180,21 @@ const Login = ({ onLoginSuccess }) => {
                 <Lock className="h-5 w-5" />
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={kataSandi}
                 onChange={(e) => setKataSandi(e.target.value)}
                 placeholder="Kata Sandi"
-                className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-2xl text-md outline-none focus:border-[#306896] focus:ring-4 focus:ring-blue-50 transition-all shadow-sm"
+                className="w-full pl-14 pr-14 py-4 bg-white border border-slate-200 rounded-2xl text-md outline-none focus:border-[#306896] focus:ring-4 focus:ring-blue-50 transition-all shadow-sm"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-400 hover:text-[#306896] transition-colors focus:outline-none cursor-pointer"
+                title={showPassword ? "Sembunyikan Password" : "Tampilkan Password"}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
 
             <button

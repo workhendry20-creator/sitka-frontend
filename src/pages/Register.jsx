@@ -1,26 +1,41 @@
-// src/pages/Register.jsx
 import React, { useState } from 'react';
-import { User, Fingerprint, KeyRound, Hash, Lock, ChevronLeft, Baby, School } from 'lucide-react';
+import { User, Fingerprint, KeyRound, Hash, Lock, ChevronLeft, Baby, School, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 
-// Komponen Input Reusable
-const InputField = ({ icon: Icon, placeholder, name, type = "text", value, onChange }) => (
-  <div className="relative">
-    <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-      <Icon className="h-5 w-5 text-slate-400" strokeWidth={1.5} />
+// Komponen Input Reusable (dengan Dukungan Hide/Unhide Password)
+const InputField = ({ icon: Icon, placeholder, name, type = "text", value, onChange }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+  const inputType = isPassword ? (showPassword ? "text" : "password") : type;
+
+  return (
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+        <Icon className="h-5 w-5 text-slate-400" strokeWidth={1.5} />
+      </div>
+      <input
+        type={inputType}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`w-full pl-16 ${isPassword ? 'pr-14' : 'pr-6'} py-4 border border-gray-100 bg-slate-50 rounded-2xl text-lg placeholder:text-slate-400 focus:border-[#306896] focus:ring-1 focus:ring-[#306896] outline-none transition`}
+        required
+      />
+      {isPassword && (
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute inset-y-0 right-0 pr-6 flex items-center text-slate-400 hover:text-[#306896] transition-colors focus:outline-none cursor-pointer"
+          title={showPassword ? "Sembunyikan Password" : "Tampilkan Password"}
+        >
+          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+        </button>
+      )}
     </div>
-    <input
-      type={type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className="w-full pl-16 pr-6 py-4 border border-gray-100 bg-slate-50 rounded-2xl text-lg placeholder:text-slate-400 focus:border-[#306896] focus:ring-1 focus:ring-[#306896] outline-none transition"
-      required
-    />
-  </div>
-);
+  );
+};
 
 const Register = () => {
   const [selectedRole, setSelectedRole] = useState('GURU');
