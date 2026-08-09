@@ -23,7 +23,7 @@ Seluruh tampilan dan visualisasi grafik di ketiga role **100% konsisten dan ters
 
 1. **`users`**: Menyimpan kredensial login dan profil akun (`id`, `nama`, `role` ['admin'|'guru'|'ortu'], `nip`, `nisn`, `password`, `token`, `nama_anak`, `kelompok`).
 2. **`siswa`**: Data induk 26 anak didik (`id`, `nama`, `rombel`, `tanggal_lahir`, `jk`, `nisn`, `nik`, `agama`, `alamat_lengkap`, `nama_ayah`, `nama_ibu`, `bb`, `tb`, `lingkar_kepala`, `no_wa`).
-3. **`nilai_harian`**: Catatan anekdot harian, presensi (`Hadir`, `Izin`, `Sakit`, `Alpa`), dan emosi mood anak (`Bahagia 😊`, `Aktif ⚡`, `Fokus 🎯`, `Ceria 🌟`, `Tenang 😐`, `Istimewa 🌟`).
+3. **`nilai_harian`**: Catatan anekdot harian, presensi (`Hadir`, `Izin`, `Sakit`, `Alpa`), dan emosi mood anak (`Bahagia 😊`, `Aktif ⚡`, `Fokus 🎯`, `Ceria 🌟`, `Tenang 😐`, `Marah 😡`).
 4. **`nilai_semester`**: Evaluasi rapor semester per anak (`semester: '1 (Ganjil)'` dan `'2 (Genap)'`), rekomendasi guru, serta objek JSONB `skor_indikator` (`nam_*`, `mot_*`, `kog_*`, `bah_*`, `se_*`).
 5. **`pengumuman`**: Informasi & broadcast kegiatan sekolah yang tersambung *live* ke beranda Guru dan Ortu.
 6. **`v_siswa_evaluasi`**: SQL View untuk pemetaan siswa lengkap dengan perhitungan usia dinamis.

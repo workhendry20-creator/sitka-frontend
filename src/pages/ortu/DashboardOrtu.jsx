@@ -136,12 +136,12 @@ const DashboardOrtu = () => {
   };
 
   // KALKULASI DUAL DIMENSI HITUNGAN 4 EMOJI UNTUK GRAFIK BATANG HARIAN
-  // Grafik perlahan naik secara akurat sesuai presisi input anekdot Guru (Bahagia, Tenang, Sedih, Istimewa)
+  // Grafik perlahan naik secara akurat sesuai presisi input anekdot Guru (Bahagia, Tenang, Sedih, Marah)
   const emojiChartData = useMemo(() => {
     let bahagiaCount = 0;
     let tenangCount = 0;
     let sedihCount = 0;
-    let istimewaCount = 0;
+    let marahCount = 0;
 
     if (catatanHarian.length > 0) {
       catatanHarian.forEach(rec => {
@@ -154,8 +154,8 @@ const DashboardOrtu = () => {
           tenangCount++;
         } else if (cond.includes('sedih') || cond.includes('menangis') || em === '😢') {
           sedihCount++;
-        } else if (cond.includes('istimewa') || cond.includes('aktif') || cond.includes('kreatif') || cond.includes('ceria') || em === '🌟' || em === '⚡') {
-          istimewaCount++;
+        } else if (cond.includes('marah') || cond.includes('istimewa') || cond.includes('aktif') || cond.includes('kreatif') || cond.includes('ceria') || em === '😡' || em === '🌟' || em === '⚡') {
+          marahCount++;
         } else {
           bahagiaCount++;
         }
@@ -166,7 +166,7 @@ const DashboardOrtu = () => {
       { category: 'Bahagia 😊', jumlah: bahagiaCount, fill: '#6366f1' },
       { category: 'Tenang 😐', jumlah: tenangCount, fill: '#3b82f6' },
       { category: 'Sedih 😢', jumlah: sedihCount, fill: '#f43f5e' },
-      { category: 'Istimewa 🌟', jumlah: istimewaCount, fill: '#f59e0b' },
+      { category: 'Marah 😡', jumlah: marahCount, fill: '#ef4444' },
     ];
   }, [catatanHarian]);
 

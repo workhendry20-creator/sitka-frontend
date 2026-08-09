@@ -996,7 +996,7 @@ const InputNilai = () => {
                           { emo: '😊', label: 'Bahagia' },
                           { emo: '😐', label: 'Tenang' },
                           { emo: '😢', label: 'Sedih' },
-                          { emo: '🌟', label: 'Istimewa' }
+                          { emo: '😡', label: 'Marah' }
                         ].map((item) => (
                           <button
                             key={item.emo}

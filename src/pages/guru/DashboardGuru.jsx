@@ -106,9 +106,9 @@ const DashboardGuru = () => {
           if (st.includes('Bahagia')) bahagia++;
           else if (st.includes('Aktif')) aktif++;
           else if (st.includes('Fokus')) fokus++;
-          else if (st.includes('Ceria') || st.includes('Istimewa')) ceria++;
+          else if (st.includes('Ceria') || st.includes('Marah')) ceria++;
 
-          if (st === 'Hadir' || st.includes('😊') || st.includes('⚡') || st.includes('🎯') || st.includes('🌟')) {
+          if (st === 'Hadir' || st.includes('😊') || st.includes('⚡') || st.includes('🎯') || st.includes('🌟') || st.includes('😡')) {
             totalHadir++;
             totalAbsen++;
           } else if (st === 'Izin' || st === 'Sakit' || st === 'Alpa') {
