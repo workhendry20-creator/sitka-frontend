@@ -1,6 +1,7 @@
 // src/components/RaporOfficialPDF.jsx
 import React from 'react';
 import html2pdf from 'html2pdf.js';
+import logoImg from '../assets/logo.png';
 
 // Dataset Indikator Resmi Sesuai Kurikulum PAUD / Dokumen Rapor
 export const DEFAULT_RAPOR_STRUCTURE = [
@@ -169,7 +170,13 @@ export const generateRaporPDF = async (reportData, elementId = "rapor-pdf-contai
 
     element.innerHTML = `
       <div style="font-family:'Times New Roman', Georgia, serif; padding:12px 16px; color:#000; background:#fff; width:100%; box-sizing:border-box; margin:0;">
-        <h1 style="text-align:center; font-weight:bold; font-size:17px; text-transform:uppercase; border-bottom:2px solid #000; padding-bottom:4px; margin-top:0; margin-bottom:12px; letter-spacing:0.5px;">PERKEMBANGAN ANAK DIDIK</h1>
+        <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:8px; padding-bottom:6px; border-bottom:2px solid #000;">
+          <img src="${logoImg}" style="height:50px; width:auto; object-fit:contain;" />
+          <div style="text-align:center;">
+            <h1 style="font-weight:bold; font-size:16px; text-transform:uppercase; margin:0; letter-spacing:0.5px; line-height:1.2;">LAPORAN PERKEMBANGAN ANAK DIDIK</h1>
+            <div style="font-size:12px; font-weight:bold; letter-spacing:1px; margin-top:2px;">SISTEM INFORMASI & TUMBUH KEMBANG ANAK (PAUD SITKA)</div>
+          </div>
+        </div>
         <div style="margin-bottom:12px; font-weight:bold; font-size:11.5px; line-height:1.4;">
           <div>NAMA ANAK : ${nama.toUpperCase()}</div>
           <div>KELAS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${kelas}</div>

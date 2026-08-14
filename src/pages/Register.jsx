@@ -139,7 +139,10 @@ const Register = () => {
         </Link>
 
         {/* Header Title */}
-        <div className="text-center mt-12 mb-12">
+        <div className="text-center mt-8 mb-10 flex flex-col items-center">
+          <div className="w-16 h-16 bg-blue-50 p-2 rounded-2xl border border-blue-100 flex items-center justify-center shadow-sm mb-4">
+            <img src={logoImg} alt="Logo PAUD SITKA" className="w-full h-full object-contain" />
+          </div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-[#0a1e36] tracking-tight mb-3">
             Daftar Akun
           </h1>

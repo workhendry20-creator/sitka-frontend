@@ -30,18 +30,57 @@ const DashboardGuru = () => {
   ]);
 
   const [dataAnekdotHarian, setDataAnekdotHarian] = useState([
-    { kondisi: 'Bahagia 😊', jumlah: 0, color: '#6366f1' },
-    { kondisi: 'Aktif ⚡', jumlah: 0, color: '#3b82f6' },
-    { kondisi: 'Fokus 🎯', jumlah: 0, color: '#10b981' },
-    { kondisi: 'Ceria 🌟', jumlah: 0, color: '#f59e0b' }
+    { kondisi: 'Bahagia 😊', jumlah: 0, color: '#10b981' },
+    { kondisi: 'Tenang 😐', jumlah: 0, color: '#3b82f6' },
+    { kondisi: 'Sedih 😢', jumlah: 0, color: '#f59e0b' },
+    { kondisi: 'Marah 😡', jumlah: 0, color: '#ef4444' }
   ]);
 
-  // --- HOOKS UTAMA SYNC DATABASE ---
+  // --- HOOKS UTAMA SYNC DATABASE (LIVE REALTIME) ---
   useEffect(() => {
     fetchCloudAnnouncements();
     fetchTotalSiswaRealtime();
     calculateClassMetrics();
     fetchAnekdotMetrics();
+
+    // Handler untuk pembaharuan instan dari input nilai guru di browser ini
+    const handleSemesterUpdate = () => {
+      calculateClassMetrics();
+      fetchTotalSiswaRealtime();
+    };
+
+    const handleHarianUpdate = () => {
+      fetchAnekdotMetrics();
+    };
+
+    const handleStorageChange = () => {
+      calculateClassMetrics();
+      fetchAnekdotMetrics();
+      fetchTotalSiswaRealtime();
+    };
+
+    window.addEventListener('sitka_semester_updated', handleSemesterUpdate);
+    window.addEventListener('sitka_harian_updated', handleHarianUpdate);
+    window.addEventListener('storage', handleStorageChange);
+
+    // Langganan Supabase Realtime Channel untuk sinkronisasi antar perangkat/browser secara live
+    const channel = supabase
+      .channel('dashboard_guru_live_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'nilai_semester' }, () => {
+        calculateClassMetrics();
+        fetchTotalSiswaRealtime();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'nilai_harian' }, () => {
+        fetchAnekdotMetrics();
+      })
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('sitka_semester_updated', handleSemesterUpdate);
+      window.removeEventListener('sitka_harian_updated', handleHarianUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // 1. Ambil Data Pengumuman Realtime
@@ -92,79 +131,176 @@ const DashboardGuru = () => {
     }
   };
 
-  // 3. Kalkulasi Anekdot Harian dari Supabase
+  // 3. Kalkulasi Mood & Anekdot Harian dari Supabase & LocalStorage (LIVE REALTIME)
   const fetchAnekdotMetrics = async () => {
     try {
-      const { data, error } = await supabase
+      // a. Ambil data dari Supabase Cloud (nilai_harian)
+      const { data: cloudData, error } = await supabase
         .from('nilai_harian')
-        .select('status_kondisi');
+        .select('*');
 
-      if (!error && data) {
-        let bahagia = 0, aktif = 0, fokus = 0, ceria = 0, totalAbsen = 0, totalHadir = 0;
-        data.forEach(row => {
-          const st = row.status_kondisi || '';
-          if (st.includes('Bahagia')) bahagia++;
-          else if (st.includes('Aktif')) aktif++;
-          else if (st.includes('Fokus')) fokus++;
-          else if (st.includes('Ceria') || st.includes('Marah')) ceria++;
+      // b. Ambil data fallback dari LocalStorage ('sitka_all_harian_reports')
+      let localData = [];
+      try {
+        const rawLocal = localStorage.getItem('sitka_all_harian_reports');
+        if (rawLocal) localData = JSON.parse(rawLocal);
+      } catch (e) {}
 
-          if (st === 'Hadir' || st.includes('😊') || st.includes('⚡') || st.includes('🎯') || st.includes('🌟') || st.includes('😡')) {
-            totalHadir++;
-            totalAbsen++;
-          } else if (st === 'Izin' || st === 'Sakit' || st === 'Alpa') {
-            totalAbsen++;
-          }
+      // c. Gabungkan data unik berdasarkan kombinasi (NISN/Nama + Tanggal)
+      const combinedMap = new Map();
+
+      if (localData && Array.isArray(localData)) {
+        localData.forEach(item => {
+          const key = `${item.nisn || item.nama_siswa}_${item.tanggal || ''}`;
+          combinedMap.set(key, item);
         });
+      }
 
-        setDataAnekdotHarian([
-          { kondisi: 'Bahagia 😊', jumlah: bahagia || 18, color: '#6366f1' },
-          { kondisi: 'Aktif ⚡', jumlah: aktif || 12, color: '#3b82f6' },
-          { kondisi: 'Fokus 🎯', jumlah: fokus || 15, color: '#10b981' },
-          { kondisi: 'Ceria 🌟', jumlah: ceria || 10, color: '#f59e0b' }
-        ]);
+      if (!error && cloudData && Array.isArray(cloudData)) {
+        cloudData.forEach(item => {
+          const key = `${item.nisn || item.nama_siswa}_${item.tanggal || ''}`;
+          combinedMap.set(key, item);
+        });
+      }
 
-        if (totalAbsen > 0) {
-          const rate = Math.round((totalHadir / totalAbsen) * 100);
-          setAttendanceRate(`${rate}%`);
+      const allRows = Array.from(combinedMap.values());
+
+      let bahagia = 0, tenang = 0, sedih = 0, marah = 0;
+      let totalAbsen = 0, totalHadir = 0;
+
+      allRows.forEach(row => {
+        const emo = row.emoji || '';
+        const st = (row.status_kondisi || '').toLowerCase();
+        const cat = (row.catatan_anekdot || '').toLowerCase();
+
+        // Hitung 4 mood utama dari emoji atau label kondisi
+        if (emo === '😊' || st.includes('bahagia') || cat.includes('bahagia')) {
+          bahagia++;
+          totalHadir++;
+        } else if (emo === '😐' || st.includes('tenang') || cat.includes('tenang')) {
+          tenang++;
+          totalHadir++;
+        } else if (emo === '😢' || st.includes('sedih') || cat.includes('sedih')) {
+          sedih++;
+          totalHadir++;
+        } else if (emo === '😡' || st.includes('marah') || cat.includes('marah')) {
+          marah++;
+          totalHadir++;
+        } else if (st.includes('hadir')) {
+          totalHadir++;
         }
+
+        if (st.includes('hadir') || emo || st.includes('izin') || st.includes('sakit') || st.includes('alpa') || bahagia || tenang || sedih || marah) {
+          totalAbsen++;
+        }
+      });
+
+      setDataAnekdotHarian([
+        { kondisi: 'Bahagia 😊', jumlah: bahagia, color: '#10b981' },
+        { kondisi: 'Tenang 😐', jumlah: tenang, color: '#3b82f6' },
+        { kondisi: 'Sedih 😢', jumlah: sedih, color: '#f59e0b' },
+        { kondisi: 'Marah 😡', jumlah: marah, color: '#ef4444' }
+      ]);
+
+      if (totalAbsen > 0) {
+        const rate = Math.round((totalHadir / Math.max(totalHadir, totalAbsen)) * 100);
+        setAttendanceRate(`${rate}%`);
       }
     } catch (e) {
       console.error("Error fetching anekdot metrics:", e);
     }
   };
 
-  // 4. Kalkulasi Ketercapaian Domain dari Cloud Supabase
+  // 4. Kalkulasi Ketercapaian Domain dari Cloud Supabase & LocalStorage (LIVE REALTIME)
   const calculateClassMetrics = async () => {
     try {
-      const { data, error } = await supabase
+      // a. Tarik data dari Cloud Supabase
+      const { data: cloudData, error } = await supabase
         .from('nilai_semester')
-        .select('skor_indikator');
+        .select('skor_indikator, nisn');
 
-      if (!error && data && data.length > 0) {
-        let gk = 88, gh = 85, bb = 92, sk = 87;
-        let count = data.length;
-        let gkSum = 0, ghSum = 0, bbSum = 0, skSum = 0;
+      // b. Tarik data fallback dari LocalStorage untuk sinkronisasi seketika
+      let localData = [];
+      try {
+        const rawSem = localStorage.getItem('sitka_all_semester_reports');
+        if (rawSem) localData = JSON.parse(rawSem);
+      } catch (e) {}
 
-        data.forEach(r => {
-          const scores = r.skor_indikator || {};
-          const keys = Object.keys(scores);
-          if (keys.length > 0) {
-            const bsbCount = keys.filter(k => scores[k] === 'BSB' || scores[k] === 'BSH').length;
-            const pct = Math.round((bsbCount / keys.length) * 100);
-            gkSum += pct;
-            ghSum += pct;
-            bbSum += pct;
-            skSum += pct;
-          } else {
-            gkSum += 85; ghSum += 85; bbSum += 85; skSum += 85;
+      // c. Gabungkan data unik berdasarkan NISN siswa
+      const combinedMap = new Map();
+
+      if (localData && Array.isArray(localData)) {
+        localData.forEach(item => {
+          if (item.nisn && (item.skorIndikator || item.skor_indikator)) {
+            combinedMap.set(item.nisn, item.skorIndikator || item.skor_indikator);
           }
         });
+      }
+
+      if (!error && cloudData && Array.isArray(cloudData)) {
+        cloudData.forEach(item => {
+          if (item.nisn && item.skor_indikator) {
+            combinedMap.set(item.nisn, item.skor_indikator);
+          }
+        });
+      }
+
+      const allScoresList = Array.from(combinedMap.values());
+
+      if (allScoresList.length > 0) {
+        const scaleToPercent = {
+          'BSB': 100,
+          'BSH': 85,
+          'B': 65,
+          'MM': 65,
+          'MB': 65,
+          'BM': 40,
+          'BB': 40,
+          '✓': 85
+        };
+
+        let totals = {
+          gk: { sum: 0, count: 0 },
+          gh: { sum: 0, count: 0 },
+          bb: { sum: 0, count: 0 },
+          sk: { sum: 0, count: 0 }
+        };
+
+        allScoresList.forEach(scoresObj => {
+          if (!scoresObj || typeof scoresObj !== 'object') return;
+          
+          Object.entries(scoresObj).forEach(([id, val]) => {
+            const pctVal = scaleToPercent[val] || (typeof val === 'number' ? val : 75);
+            
+            if (id.startsWith('bah_')) {
+              totals.bb.sum += pctVal;
+              totals.bb.count++;
+            } else if (id.startsWith('mot_')) {
+              const num = parseInt(id.split('_').pop() || '0');
+              if (num <= 5) {
+                totals.gk.sum += pctVal;
+                totals.gk.count++;
+              } else {
+                totals.gh.sum += pctVal;
+                totals.gh.count++;
+              }
+            } else if (id.startsWith('nam_') || id.startsWith('kog_') || id.startsWith('sos_')) {
+              totals.sk.sum += pctVal;
+              totals.sk.count++;
+            }
+          });
+        });
+
+        const gkAvg = totals.gk.count > 0 ? Math.round(totals.gk.sum / totals.gk.count) : 88;
+        const ghAvg = totals.gh.count > 0 ? Math.round(totals.gh.sum / totals.gh.count) : 82;
+        const bbAvg = totals.bb.count > 0 ? Math.round(totals.bb.sum / totals.bb.count) : 90;
+        const skAvg = totals.sk.count > 0 ? Math.round(totals.sk.sum / totals.sk.count) : 85;
 
         setDomainClassData([
-          { domain: 'Gerak Kasar', persentase: Math.round(gkSum / count), fill: '#0d9488' },
-          { domain: 'Gerak Halus', persentase: Math.round(ghSum / count), fill: '#4f46e5' },
-          { domain: 'Bicara & Bahasa', persentase: Math.round(bbSum / count), fill: '#c026d3' },
-          { domain: 'Sosial & Kemandirian', persentase: Math.round(skSum / count), fill: '#e11d48' },
+          { domain: 'Gerak Kasar', persentase: gkAvg, fill: '#0d9488' },
+          { domain: 'Gerak Halus', persentase: ghAvg, fill: '#4f46e5' },
+          { domain: 'Bicara & Bahasa', persentase: bbAvg, fill: '#c026d3' },
+          { domain: 'Sosial & Kemandirian', persentase: skAvg, fill: '#e11d48' },
         ]);
       }
     } catch (e) {

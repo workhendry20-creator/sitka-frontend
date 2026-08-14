@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import logoImg from '../assets/logo.png';
 
 const AdminLayout = ({ children, onLogout, user }) => {
   const location = useLocation();
@@ -68,8 +69,8 @@ const AdminLayout = ({ children, onLogout, user }) => {
       `}>
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#306896] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Shield size={24} className="text-white" />
+            <div className="w-10 h-10 bg-white p-1 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <img src={logoImg} alt="Logo PAUD SITKA" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-xl font-black tracking-tight uppercase">SITKA ADMIN</h1>
           </div>

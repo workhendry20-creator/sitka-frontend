@@ -1,36 +1,35 @@
 // src/layouts/OrtuLayout.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  LayoutDashboard, 
-  ClipboardList, 
-  Image as ImageIcon, 
-  MessageSquare, 
-  LogOut, 
-  Menu, 
-  Bell, 
-  X, 
-  TrendingUp 
+  LayoutDashboard, Heart, TrendingUp, FileText, 
+  MessageSquare, Settings, LogOut, Menu, Bell, X 
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import logoImg from '../assets/logo.png';
 
 const OrtuLayout = ({ children, onLogout, user }) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Otomatis tutup sidebar saat navigasi berubah di HP
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location]);
+
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/ortu/dashboard' },
-    { name: 'Laporan', icon: ClipboardList, path: '/ortu/laporan' },
-    { name: 'Progress', icon: TrendingUp, path: '/ortu/progress' },
-    { name: 'Aktivitas', icon: ImageIcon, path: '/ortu/aktivitas' },
-    { name: 'Chat Guru', icon: MessageSquare, path: '/ortu/chat' },
+    { name: 'Aktivitas Ananda', icon: Heart, path: '/ortu/aktivitas' },
+    { name: 'Perkembangan Ananda', icon: TrendingUp, path: '/ortu/progress' },
+    { name: 'Rapor Ananda', icon: FileText, path: '/ortu/laporan' },
+    { name: 'Konsultasi Guru', icon: MessageSquare, path: '/ortu/chat' },
   ];
 
-  // FUNGSI LOGOUT PREMIUM - SINKRON KE PUSAT APP.JSX
-  const handleLogout = () => {
+  // FUNGSI LOGOUT DENGAN POP-UP SWEETALERT2 PREMIUM
+  const handleLogoutClick = () => {
     Swal.fire({
       title: 'Konfirmasi Keluar',
-      text: "Apakah Bunda/Ayah yakin ingin keluar dari SITKA?",
+      text: "Apakah Ayah/Bunda yakin ingin keluar dari akun SITKA?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#306896',
@@ -46,7 +45,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
     }).then((result) => {
       if (result.isConfirmed) {
         // Eksekusi fungsi logout pusat dari App.jsx
-        onLogout();
+        onLogout(); 
       }
     });
   };
@@ -72,8 +71,8 @@ const OrtuLayout = ({ children, onLogout, user }) => {
       `}>
         <div className="p-8 flex items-center justify-between">
           <Link to="/ortu/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#306896] rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
-              <span className="text-white font-bold text-xl">S</span>
+            <div className="w-10 h-10 bg-blue-50 p-1 rounded-xl flex items-center justify-center border border-blue-100 shadow-sm">
+              <img src={logoImg} alt="Logo PAUD SITKA" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-2xl font-black text-[#0a1e36] tracking-tight">SITKA</h1>
           </Link>
@@ -105,7 +104,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
 
         <div className="p-6 border-t border-gray-50">
           <button 
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             className="flex items-center gap-4 px-4 py-4 text-red-500 font-bold hover:bg-red-50 w-full rounded-2xl transition-all"
           >
             <LogOut size={22} />

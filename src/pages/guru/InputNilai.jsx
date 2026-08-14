@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ClipboardCheck, Calendar, Users,
-  Save, User, Download, FileText, ChevronDown, BookOpen, Sparkles, Bot, Eye
+  Save, User, Download, FileText, ChevronDown, BookOpen, Sparkles, Bot, Eye, X
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
@@ -24,8 +24,28 @@ const InputNilai = () => {
 
   // State untuk Rekapitulasi Global
   const [rekapData, setRekapData] = useState([]);
-
   const [selectedRekapDetail, setSelectedRekapDetail] = useState(null);
+  const [selectedRekapTanggalDetail, setSelectedRekapTanggalDetail] = useState(null);
+
+  // Helper Format Tanggal Indonesia Lengkap
+  const formatIndoDateFull = (dateStr) => {
+    if (!dateStr || dateStr === 'Tanpa Tanggal') return 'Tanpa Tanggal';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        return d.toLocaleDateString('id-ID', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+      }
+      return dateStr;
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
   // State untuk Template Engine Rapor Official PDF & Preview Modal
   const [pdfDataToRender, setPdfDataToRender] = useState(null);
@@ -458,18 +478,125 @@ const InputNilai = () => {
     // Nilai default aman jika data umur kosong/eror
     return "5-6 Tahun";
   };
-  // --- EFEK TARIK DATA REALTIME DARI CLOUD ---
+  // --- EFEK TARIK DATA REALTIME DARI CLOUD DATABASE & LOCALSTORAGE ---
   useEffect(() => {
     fetchSiswaByKelompok();
-  }, [kelompok, tanggal]); // Setiap kelompok atau tanggal berubah, tarik ulang data ter-update
+    fetchRekapFromDatabase();
+
+    // Handler pembaharuan instan dari event DOM dan langganan Supabase Realtime
+    const handleLiveSync = () => {
+      fetchRekapFromDatabase();
+      fetchSiswaByKelompok();
+    };
+
+    window.addEventListener('sitka_harian_updated', handleLiveSync);
+    window.addEventListener('sitka_semester_updated', handleLiveSync);
+    window.addEventListener('storage', handleLiveSync);
+
+    const channel = supabase
+      .channel('input_nilai_live_rekap_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'nilai_harian' }, handleLiveSync)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'nilai_semester' }, handleLiveSync)
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('sitka_harian_updated', handleLiveSync);
+      window.removeEventListener('sitka_semester_updated', handleLiveSync);
+      window.removeEventListener('storage', handleLiveSync);
+      supabase.removeChannel(channel);
+    };
+  }, [kelompok, tanggal]);
+
+  // Fungsi khusus menyedot seluruh Rekapitulasi Anekdot Harian & Semester dari Database
+  const fetchRekapFromDatabase = async () => {
+    try {
+      // 1. Tarik Harian dari Supabase & LocalStorage
+      const { data: cloudHarian } = await supabase.from('nilai_harian').select('*');
+      let localHarian = [];
+      try {
+        const raw = localStorage.getItem('sitka_all_harian_reports');
+        if (raw) localHarian = JSON.parse(raw);
+      } catch (e) {}
+
+      // 2. Tarik Semester dari Supabase & LocalStorage
+      const { data: cloudSemester } = await supabase.from('nilai_semester').select('*');
+      let localSemester = [];
+      try {
+        const raw = localStorage.getItem('sitka_all_semester_reports');
+        if (raw) localSemester = JSON.parse(raw);
+      } catch (e) {}
+
+      const combinedList = [];
+
+      // Process Harian
+      const harianMap = new Map();
+      if (localHarian && Array.isArray(localHarian)) {
+        localHarian.forEach(item => {
+          const key = `${item.nisn || item.nama_siswa}_${item.tanggal}`;
+          harianMap.set(key, item);
+        });
+      }
+      if (cloudHarian && Array.isArray(cloudHarian)) {
+        cloudHarian.forEach(item => {
+          const key = `${item.nisn || item.nama_siswa}_${item.tanggal}`;
+          harianMap.set(key, item);
+        });
+      }
+
+      harianMap.forEach((item) => {
+        combinedList.push({
+          id: item.id || item.nisn || Math.random(),
+          nisn: item.nisn || '-',
+          nama: item.nama_siswa || item.nama || 'Siswa',
+          kelompok: item.kelompok || 'Kelompok A',
+          tanggal: item.tanggal || new Date().toISOString().split('T')[0],
+          label: item.status_kondisi || item.emoji || 'Anekdot Harian',
+          emoji: item.emoji || null,
+          catatan: item.catatan_anekdot || item.catatan || '',
+          nilaiSemester: {},
+          rekomendasi: ''
+        });
+      });
+
+      // Process Semester
+      const semesterMap = new Map();
+      if (localSemester && Array.isArray(localSemester)) {
+        localSemester.forEach(item => {
+          const key = `${item.nisn || item.nama_siswa}_${item.semester}`;
+          semesterMap.set(key, item);
+        });
+      }
+      if (cloudSemester && Array.isArray(cloudSemester)) {
+        cloudSemester.forEach(item => {
+          const key = `${item.nisn || item.nama_siswa}_${item.semester}`;
+          semesterMap.set(key, item);
+        });
+      }
+
+      semesterMap.forEach((item) => {
+        combinedList.push({
+          id: item.id || item.nisn || Math.random(),
+          nisn: item.nisn || '-',
+          nama: item.nama_siswa || item.nama || 'Siswa',
+          kelompok: item.kelompok || 'Kelompok A',
+          tanggal: item.tanggal || new Date().toISOString().split('T')[0],
+          label: `Semester ${item.semester || '1'}`,
+          emoji: null,
+          catatan: '',
+          nilaiSemester: item.skor_indikator || item.skorIndikator || {},
+          rekomendasi: item.rekomendasi_guru || item.rekomendasi || ''
+        });
+      });
+
+      setRekapData(combinedList);
+    } catch (err) {
+      console.error("Gagal load rekapitulasi database:", err);
+    }
+  };
 
   const fetchSiswaByKelompok = async () => {
     setLoading(true);
     try {
-      // =======================================================================
-      // 1. IF-ELSE KELOMPOK / ROMBEL
-      // Tugas: Mengubah string panjang dari UI menjadi huruf tunggal sesuai DB
-      // =======================================================================
       const dbRombel = kelompok === 'Kelompok A' ? 'A' : 'B';
 
       // Tarik data dari database Supabase
@@ -481,37 +608,45 @@ const InputNilai = () => {
 
       if (error) throw error;
 
+      // Tarik rincian harian tanggal ini dari cloud & local untuk pre-fill form
+      const { data: harianTanggalCloud } = await supabase
+        .from('nilai_harian')
+        .select('*')
+        .eq('tanggal', tanggal);
+
+      let harianTanggalLocal = [];
+      try {
+        const raw = localStorage.getItem('sitka_all_harian_reports');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          harianTanggalLocal = parsed.filter(item => item.tanggal === tanggal);
+        }
+      } catch (e) {}
+
       // Proses mapping data siswa ke dalam State UI
       const formattedSiswa = data.map(siswa => {
-        const existingInRekap = rekapData.find(r => r.id === siswa.id && r.kelompok === kelompok && r.tanggal === tanggal);
+        const existingInCloud = harianTanggalCloud ? harianTanggalCloud.find(h => 
+          (h.nisn && siswa.nisn && h.nisn !== '-' && h.nisn === siswa.nisn) ||
+          (h.nama_siswa && h.nama_siswa.toLowerCase().trim() === siswa.nama.toLowerCase().trim())
+        ) : null;
 
-        // =======================================================================
-        // 2. IF-ELSE USIA (Menerjemahkan Angka Umur ke Rumpun Kurikulum PAUD)
-        // Tugas: Memastikan indikator penilaian muncul tepat sesuai umur anak
-        // =======================================================================
-        const umurMentah = siswa.usia ? parseInt(siswa.usia, 10) : 5;
-        let kategoriUsiaFinal = "5-6 Tahun"; // Nilai default aman jika umur di atas 5 tahun atau kosong
+        const existingInLocal = harianTanggalLocal.find(h => 
+          (h.nisn && siswa.nisn && h.nisn !== '-' && h.nisn === siswa.nisn) ||
+          (h.nama_siswa && h.nama_siswa.toLowerCase().trim() === siswa.nama.toLowerCase().trim())
+        );
 
-        if (umurMentah === 2) {
-          kategoriUsiaFinal = "2-3 Tahun";
-        } else if (umurMentah === 3) {
-          kategoriUsiaFinal = "3-4 Tahun";
-        } else if (umurMentah === 4) {
-          kategoriUsiaFinal = "4-5 Tahun";
-        } else if (umurMentah === 5 || umurMentah === 6) {
-          kategoriUsiaFinal = "5-6 Tahun";
-        }
+        const existingDb = existingInCloud || existingInLocal;
 
         return {
           id: siswa.id,
           nama: siswa.nama,
           usia: siswa.usia,
           nisn: siswa.nisn || "-",
-          emoji: existingInRekap ? existingInRekap.emoji : null,
-          label: existingInRekap ? existingInRekap.label : null,
-          catatan: existingInRekap ? existingInRekap.catatan : "",
-          nilaiSemester: existingInRekap ? existingInRekap.nilaiSemester : {},
-          rekomendasi: existingInRekap ? existingInRekap.rekomendasi : ""
+          emoji: existingDb ? (existingDb.emoji || null) : null,
+          label: existingDb ? (existingDb.status_kondisi || null) : null,
+          catatan: existingDb ? (existingDb.catatan_anekdot || "") : "",
+          nilaiSemester: {},
+          rekomendasi: ""
         };
       });
 
@@ -764,13 +899,19 @@ const InputNilai = () => {
   };
 
   const downloadCSV = () => {
-    if (rekapData.length === 0) {
-      return Swal.fire('Oops!', 'Belum ada data rekap untuk di-export.', 'warning');
+    const dataKelompok = rekapData.filter(item => {
+      const itemKlp = (item.kelompok || '').toLowerCase().trim();
+      const curKlp = (kelompok || '').toLowerCase().trim();
+      return itemKlp === curKlp || itemKlp.includes(curKlp.replace('kelompok ', '')) || curKlp.includes(itemKlp);
+    });
+
+    if (dataKelompok.length === 0) {
+      return Swal.fire('Oops!', `Belum ada data rekapitulasi untuk ${kelompok} untuk di-export.`, 'warning');
     }
 
     const headers = "Tanggal,Kelompok,Nama Siswa,Periode/Status,Catatan/Rekomendasi\n";
-    const rows = rekapData.map(s => {
-      const catatanText = s.label.includes('Semester') ? s.rekomendasi : s.catatan;
+    const rows = dataKelompok.map(s => {
+      const catatanText = (s.label && s.label.includes('Semester')) ? s.rekomendasi : s.catatan;
       return `${s.tanggal},${s.kelompok},${s.nama},${s.label},"${(catatanText || '').replace(/"/g, '""')}"`;
     }).join("\n");
 
@@ -778,7 +919,7 @@ const InputNilai = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Rekap_Nilai_SITKA_${tanggal}.csv`;
+    a.download = `Rekap_Nilai_SITKA_${kelompok.replace(/\s+/g, '_')}_${tanggal}.csv`;
     a.click();
   };
 
@@ -1218,18 +1359,18 @@ const InputNilai = () => {
         </div>
       )}
 
-      {/* --- SECTION REKAPITULASI GLOBAL --- */}
+      {/* --- SECTION REKAPITULASI KELOMPOK TERFILTER PER HARI --- */}
       <div className="bg-[#0a1e36] p-8 md:p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h3 className="text-2xl font-black mb-1 italic">Rekapitulasi Input ({inputType})</h3>
-            <p className="text-indigo-300 text-xs font-bold uppercase tracking-[0.2em]">Data Terkumpul ({kelompok})</p>
+            <p className="text-indigo-300 text-xs font-bold uppercase tracking-[0.2em]">Terfilter Khusus ({kelompok})</p>
           </div>
           <button
             onClick={downloadCSV}
             className="flex items-center justify-center gap-3 px-6 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl active:scale-95"
           >
-            <Download size={18} /> Export ke CSV
+            <Download size={18} /> Export CSV {kelompok}
           </button>
         </div>
 
@@ -1237,71 +1378,209 @@ const InputNilai = () => {
           <table className="w-full text-left border-separate border-spacing-y-3">
             <thead>
               <tr className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">
-                <th className="px-6 pb-2">Kelompok</th>
-                <th className="px-6 pb-2">Siswa</th>
-                <th className="px-6 pb-2">Tipe / Periode</th>
-                <th className="px-6 pb-2">Keterangan Catatan / Rekomendasi</th>
+                <th className="px-6 pb-2">{inputType === 'Harian' ? 'Hari & Tanggal' : 'Kelompok'}</th>
+                <th className="px-6 pb-2">{inputType === 'Harian' ? 'Jumlah Siswa' : 'Siswa'}</th>
+                <th className="px-6 pb-2">{inputType === 'Harian' ? 'Ringkasan Mood Kelas' : 'Tipe / Periode'}</th>
+                <th className="px-6 pb-2 text-right">Aksi & Detail</th>
               </tr>
             </thead>
             <tbody>
               {(() => {
-                // ⚡ FILTER OTOMATIS: Pisahkan data agar tidak bercampur antara Harian/Semester
-                const dataTerfilter = rekapData.filter(item => {
+                // ⚡ 1. FILTER TERPISAH PER KELOMPOK YANG SEDANG DIPILIH DI ATAS
+                const dataKelompok = rekapData.filter(item => {
+                  const itemKlp = (item.kelompok || '').toLowerCase().trim();
+                  const curKlp = (kelompok || '').toLowerCase().trim();
+                  return itemKlp === curKlp || itemKlp.includes(curKlp.replace('kelompok ', '')) || curKlp.includes(itemKlp);
+                });
+
+                // ⚡ 2. FILTER SESUAI TIPE INPUT (HARIAN VS SEMESTER)
+                const dataTerfilter = dataKelompok.filter(item => {
                   if (inputType === 'Semester') {
-                    return item.label.includes('Semester');
+                    return item.label && item.label.includes('Semester');
                   } else {
-                    return !item.label.includes('Semester');
+                    return !item.label || !item.label.includes('Semester');
                   }
                 });
 
                 if (dataTerfilter.length === 0) {
                   return (
                     <tr>
-                      <td colSpan="4" className="text-center py-10 text-slate-500 font-bold italic bg-white/5 rounded-2xl">
-                        📭 Belum ada data rekapitulasi untuk kategori <span className="text-indigo-400">{inputType}</span>.
+                      <td colSpan="4" className="text-center py-10 text-slate-400 font-bold italic bg-white/5 rounded-2xl">
+                        📭 Belum ada data rekapitulasi <span className="text-indigo-300">{inputType}</span> untuk <span className="text-emerald-400 font-black">{kelompok}</span>.
                       </td>
                     </tr>
                   );
                 }
 
-                return dataTerfilter
-                  .sort((a, b) => a.kelompok.localeCompare(b.kelompok))
-                  .map((item, idx) => (
-                    <tr
-                      key={idx}
-                      onClick={() => handleLihatDetailSiswa(item)} // 👈 TRIGER KLIK POPUP DETAIL BB, BSH, DLL
-                      className="bg-white/5 backdrop-blur-md rounded-2xl hover:bg-white/10 cursor-pointer transition-all group"
-                    >
-                      <td className="px-6 py-4">
-                        <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-lg text-[10px] font-black uppercase">
-                          {item.kelompok}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm group-hover:text-indigo-300 transition-colors">
-                            {item.nama}
+                // ⚡ 3. JIKA TIPE HARIAN: PENGELOMPOKAN EFISIEN PER HARI / TANGGAL
+                if (inputType === 'Harian') {
+                  const groupedByDate = {};
+                  dataTerfilter.forEach(item => {
+                    const dateKey = item.tanggal || 'Tanpa Tanggal';
+                    if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+                    groupedByDate[dateKey].push(item);
+                  });
+
+                  const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+
+                  return sortedDates.map((dateKey, idx) => {
+                    const itemsOnDate = groupedByDate[dateKey];
+                    const bahagiaCount = itemsOnDate.filter(i => i.emoji === '😊' || (i.label || '').includes('Bahagia')).length;
+                    const tenangCount = itemsOnDate.filter(i => i.emoji === '😐' || (i.label || '').includes('Tenang')).length;
+                    const sedihCount = itemsOnDate.filter(i => i.emoji === '😢' || (i.label || '').includes('Sedih')).length;
+                    const marahCount = itemsOnDate.filter(i => i.emoji === '😡' || (i.label || '').includes('Marah')).length;
+
+                    return (
+                      <tr
+                        key={idx}
+                        onClick={() => setSelectedRekapTanggalDetail({ tanggal: dateKey, items: itemsOnDate, kelompok })}
+                        className="bg-white/5 backdrop-blur-md rounded-2xl hover:bg-white/10 cursor-pointer transition-all group"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 bg-indigo-500/20 text-indigo-300 rounded-xl flex items-center justify-center font-bold text-xs">
+                              📅
+                            </span>
+                            <div>
+                              <p className="font-bold text-sm text-white group-hover:text-indigo-300 transition-colors">
+                                {formatIndoDateFull(dateKey)}
+                              </p>
+                              <span className="px-2 py-0.5 bg-white/10 text-slate-300 rounded text-[9px] font-black uppercase">
+                                {kelompok}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-3 py-1.5 bg-emerald-500/20 text-emerald-300 rounded-xl text-xs font-black">
+                            {itemsOnDate.length} Siswa Ter-rekam
                           </span>
-                          <span className="text-[10px] text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                            🔍 Lihat Detail
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-[10px] font-black bg-white/10 px-2 py-1 rounded-md text-slate-300">
-                          {item.label}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3 text-xs font-bold bg-white/5 px-4 py-2 rounded-xl border border-white/5 w-fit">
+                            <span>😊 {bahagiaCount}</span>
+                            <span className="opacity-40">|</span>
+                            <span>😐 {tenangCount}</span>
+                            <span className="opacity-40">|</span>
+                            <span>😢 {sedihCount}</span>
+                            <span className="opacity-40">|</span>
+                            <span>😡 {marahCount}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button className="px-4 py-2 bg-indigo-500/20 group-hover:bg-indigo-600 text-indigo-300 group-hover:text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 ml-auto shadow-sm">
+                            🔍 Lihat Rincian Anekdot
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  });
+                }
+
+                // ⚡ 4. JIKA TIPE SEMESTER: TAMPILKAN PER SISWA
+                return dataTerfilter.map((item, idx) => (
+                  <tr
+                    key={idx}
+                    onClick={() => handleLihatDetailSiswa(item)}
+                    className="bg-white/5 backdrop-blur-md rounded-2xl hover:bg-white/10 cursor-pointer transition-all group"
+                  >
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-lg text-[10px] font-black uppercase">
+                        {item.kelompok}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm group-hover:text-indigo-300 transition-colors">
+                          {item.nama}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-300 italic max-w-xs truncate">
-                        {item.label.includes('Semester') ? (item.rekomendasi || "(Tidak ada rekomendasi)") : (item.catatan || "(Tidak ada catatan)")}
-                      </td>
-                    </tr>
-                  ));
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-[10px] font-black bg-white/10 px-2.5 py-1 rounded-md text-slate-300">
+                        {item.label}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="px-4 py-2 bg-indigo-500/20 group-hover:bg-indigo-600 text-indigo-300 group-hover:text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 ml-auto">
+                        🔍 Detail Rapor Semester
+                      </button>
+                    </td>
+                  </tr>
+                ));
               })()}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* MODAL POPUP DETAIL ANEKDOT HARIAN PER TANGGAL */}
+      {selectedRekapTanggalDetail && (
+        <div className="fixed inset-0 bg-[#0a1e36]/70 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-4xl rounded-[2.5rem] p-6 md:p-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between pb-6 border-b border-gray-100 shrink-0">
+              <div>
+                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">
+                  {selectedRekapTanggalDetail.kelompok}
+                </span>
+                <h3 className="text-2xl font-black text-[#0a1e36] mt-1">
+                  Rincian Anekdot Harian Siswa
+                </h3>
+                <p className="text-xs font-bold text-slate-400">
+                  📅 {formatIndoDateFull(selectedRekapTanggalDetail.tanggal)} ({selectedRekapTanggalDetail.items.length} Siswa Ter-rekam)
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedRekapTanggalDetail(null)}
+                className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-6 space-y-4 pr-1">
+              {selectedRekapTanggalDetail.items.map((siswa, idx) => (
+                <div key={idx} className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#306896] text-white rounded-2xl flex items-center justify-center font-bold text-sm shadow-sm">
+                        {siswa.nama ? siswa.nama.charAt(0) : 'S'}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#0a1e36] text-base">{siswa.nama}</h4>
+                        <p className="text-[10px] font-bold text-slate-400">NISN: {siswa.nisn || '-'}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-2xs">
+                      <span className="text-2xl">{siswa.emoji || '😐'}</span>
+                      <span className="text-xs font-black text-[#0a1e36] uppercase">{siswa.label || 'Tenang'}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Catatan Anekdot Harian Guru:</p>
+                    {siswa.catatan ? (
+                      <p className="italic font-serif text-slate-800">"{siswa.catatan}"</p>
+                    ) : (
+                      <p className="text-slate-400 italic">(Tidak ada catatan tertulis untuk siswa ini)</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t border-gray-100 flex justify-end shrink-0">
+              <button
+                onClick={() => setSelectedRekapTanggalDetail(null)}
+                className="px-8 py-3.5 bg-[#0a1e36] hover:bg-slate-800 text-white font-bold text-xs rounded-2xl uppercase tracking-wider transition-all shadow-lg active:scale-95"
+              >
+                Tutup Rincian
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ELEMEN TEMPLATE RAPOR PDF OFFICIAL */}
       <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">

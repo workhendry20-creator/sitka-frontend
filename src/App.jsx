@@ -103,6 +103,7 @@ function App() {
         }
       >
         <Route path="dashboard" element={<DashboardGuru />} />
+        <Route path="input-nilai" element={<InputNilai />} />
         <Route path="nilai" element={<InputNilai />} />
         <Route path="absensi" element={<Absensi />} />
         <Route path="aktivitas" element={<Aktivitas />} />
