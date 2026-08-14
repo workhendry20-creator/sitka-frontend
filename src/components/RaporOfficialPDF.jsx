@@ -122,9 +122,36 @@ export const generateRaporPDF = async (reportData, elementId = "rapor-pdf-contai
     const skorMap = reportData?.skorIndikator || reportData?.skor_indikator || {};
     const catatan = reportData?.catatanGuru || reportData?.rekomendasi_guru || reportData?.semesterRekomendasi || "";
 
-    const isSelected = (key, pred) => {
-      const val = skorMap[key];
-      return val && val.toString().toUpperCase() === pred.toUpperCase();
+    const checkPredicateMatch = (value, predicate) => {
+      if (!value || !predicate) return false;
+      const val = value.toString().trim().toUpperCase();
+      const pred = predicate.toString().trim().toUpperCase();
+
+      if (val === pred) return true;
+
+      if (pred === 'BM' && val === 'BM') return true;
+      if (pred === 'MM' && val === 'MM') return true;
+      if (pred === 'B' && (val === 'B' || val === 'BSH' || val === 'BSB')) return true;
+      if (pred === 'BSH' && (val === 'BSH' || val === 'BSB' || val === 'B')) return true;
+      if (pred === 'BB' && (val === 'BB' || val === 'BSB' || val === 'BSH')) return true;
+
+      return false;
+    };
+
+    const isSelected = (itemKey, predicate) => {
+      if (!skorMap || typeof skorMap !== 'object') return false;
+
+      if (checkPredicateMatch(skorMap[itemKey], predicate)) return true;
+
+      const parts = itemKey.split(/_\d{2}_/);
+      if (parts.length === 2) {
+        for (const ageCode of ['_23_', '_34_', '_45_', '_56_']) {
+          const altKey = `${parts[0]}${ageCode}${parts[1]}`;
+          if (checkPredicateMatch(skorMap[altKey], predicate)) return true;
+        }
+      }
+
+      return false;
     };
 
     let tableRowsHtml = "";
@@ -294,11 +321,36 @@ const RaporOfficialPDF = ({ data }) => {
   const skorMap = data?.skorIndikator || data?.skor_indikator || {};
   const catatanGuru = data?.catatanGuru || data?.rekomendasi_guru || data?.semesterRekomendasi || "";
 
-  // Helper untuk menentukan apakah predikat cocok
+  const checkPredicateMatch = (value, predicate) => {
+    if (!value || !predicate) return false;
+    const val = value.toString().trim().toUpperCase();
+    const pred = predicate.toString().trim().toUpperCase();
+
+    if (val === pred) return true;
+
+    if (pred === 'BM' && val === 'BM') return true;
+    if (pred === 'MM' && val === 'MM') return true;
+    if (pred === 'B' && (val === 'B' || val === 'BSH' || val === 'BSB')) return true;
+    if (pred === 'BSH' && (val === 'BSH' || val === 'BSB' || val === 'B')) return true;
+    if (pred === 'BB' && (val === 'BB' || val === 'BSB' || val === 'BSH')) return true;
+
+    return false;
+  };
+
   const isSelected = (itemKey, predicate) => {
-    const val = skorMap[itemKey];
-    if (!val) return false;
-    return (val || '').toString().toUpperCase() === predicate.toUpperCase();
+    if (!skorMap || typeof skorMap !== 'object') return false;
+
+    if (checkPredicateMatch(skorMap[itemKey], predicate)) return true;
+
+    const parts = itemKey.split(/_\d{2}_/);
+    if (parts.length === 2) {
+      for (const ageCode of ['_23_', '_34_', '_45_', '_56_']) {
+        const altKey = `${parts[0]}${ageCode}${parts[1]}`;
+        if (checkPredicateMatch(skorMap[altKey], predicate)) return true;
+      }
+    }
+
+    return false;
   };
 
   return (

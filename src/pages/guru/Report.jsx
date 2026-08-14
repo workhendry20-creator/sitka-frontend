@@ -234,9 +234,16 @@ const ReportGuru = () => {
     window.addEventListener('sitka_harian_updated', handleHarianUpdated);
     window.addEventListener('sitka_semester_updated', handleSemesterUpdated);
 
+    const channel = supabase
+      .channel('report_guru_live_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'nilai_harian' }, handleHarianUpdated)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'nilai_semester' }, handleSemesterUpdated)
+      .subscribe();
+
     return () => {
       window.removeEventListener('sitka_harian_updated', handleHarianUpdated);
       window.removeEventListener('sitka_semester_updated', handleSemesterUpdated);
+      supabase.removeChannel(channel);
     };
   }, [selectedKelompok]);
 
@@ -324,41 +331,27 @@ const ReportGuru = () => {
 
       setHarianData(combinedHarian);
 
-      // 3. Tarik Data Nilai Semester (Cloud + LocalStorage Sinkron)
+      // 3. Tarik Data Nilai Semester (Cloud Database prioritised & Live)
       let combinedSemester = [];
       try {
         const { data: dataSem } = await supabase
           .from('nilai_semester')
           .select('*')
           .eq('kelompok', selectedKelompok);
-        if (dataSem && dataSem.length > 0) {
-          combinedSemester = [...dataSem];
-        }
-      } catch (e) {
-        console.warn("Belum ada tabel nilai_semester di cloud, menggunakan fallback.");
-      }
 
-      try {
-        const rawLocalSem = localStorage.getItem('sitka_all_semester_reports');
-        if (rawLocalSem) {
-          const localSemList = JSON.parse(rawLocalSem);
-          if (Array.isArray(localSemList)) {
-            localSemList.forEach(item => {
-              const cleanName = (item.nama_siswa || "").toLowerCase().trim();
-              const exists = combinedSemester.some(c => 
-                (c.semester === item.semester) && 
-                ((c.nisn && item.nisn && c.nisn !== '-' && c.nisn === item.nisn) || 
-                 (c.nama_siswa && c.nama_siswa.toLowerCase().trim() === cleanName))
-              );
-              if (!exists && (item.kelompok === selectedKelompok || !item.kelompok)) {
-                combinedSemester.push(item);
-              }
-            });
+        if (dataSem) {
+          combinedSemester = [...dataSem];
+          // Jika di Cloud Database semester dalam kondisi bersih (0 data), bersihkan juga cache lokal
+          if (dataSem.length === 0) {
+            try {
+              localStorage.removeItem('sitka_all_semester_reports');
+            } catch (e) {}
           }
         }
       } catch (e) {
-        console.error("Gagal membaca sitka_all_semester_reports dari local:", e);
+        console.warn("Gagal membaca nilai_semester dari Cloud.");
       }
+
       setSemesterData(combinedSemester);
 
       // 4. Ambil registry laporan ortu dari LocalStorage
