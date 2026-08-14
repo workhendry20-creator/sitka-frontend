@@ -133,239 +133,225 @@ const getBase64Image = (imgUrl) => {
 };
 
 export const generateRaporPDF = async (reportData) => {
-  // 1. Dapatkan Base64 Data URI logo (dengan batas waktu 1.5 detik)
-  const logoBase64 = await getBase64Image(logoImg);
+  return new Promise(async (resolve, reject) => {
+    let iframe = null;
+    try {
+      // 1. Dapatkan Base64 Data URI logo (dengan batas waktu 1.5 detik)
+      const logoBase64 = await getBase64Image(logoImg);
 
-  // 2. Selalu gunakan elemen DOM terisolasi bersih (Bebas dari pengaruh z-index modal, backdrop blur, & CSS OKLCH)
-  const element = document.createElement("div");
-  element.id = "temp-rapor-pdf-export";
-  element.style.position = "absolute";
-  element.style.left = "-9999px";
-  element.style.top = "0";
-  element.style.margin = "0";
-  element.style.padding = "0";
-  element.style.width = "194mm"; // Area cetak A4 presisi
-  element.style.backgroundColor = "#ffffff";
-  element.style.boxSizing = "border-box";
+      const nama = reportData?.namaSiswa || reportData?.nama_siswa || "Siswa";
+      const kelas = reportData?.kelompok || reportData?.rombel || "A";
+      const semester = reportData?.semester || "2";
+      const skorMap = reportData?.skorIndikator || reportData?.skor_indikator || {};
+      const catatan = reportData?.catatanGuru || reportData?.rekomendasi_guru || reportData?.semesterRekomendasi || "";
 
-  const nama = reportData?.namaSiswa || reportData?.nama_siswa || "Siswa";
-  const kelas = reportData?.kelompok || reportData?.rombel || "A";
-  const semester = reportData?.semester || "2";
-  const skorMap = reportData?.skorIndikator || reportData?.skor_indikator || {};
-  const catatan = reportData?.catatanGuru || reportData?.rekomendasi_guru || reportData?.semesterRekomendasi || "";
+      const getSingleSelectedColumn = (itemKey, sMap) => {
+        if (!sMap || typeof sMap !== 'object') return null;
 
-  const getSingleSelectedColumn = (itemKey, sMap) => {
-    if (!sMap || typeof sMap !== 'object') return null;
-
-    let rawVal = sMap[itemKey];
-    if (!rawVal) {
-      const parts = itemKey.split(/_\d{2}_/);
-      if (parts.length === 2) {
-        for (const ageCode of ['_56_', '_45_', '_34_', '_23_']) {
-          const altKey = `${parts[0]}${ageCode}${parts[1]}`;
-          if (sMap[altKey]) {
-            rawVal = sMap[altKey];
-            break;
+        let rawVal = sMap[itemKey];
+        if (!rawVal) {
+          const parts = itemKey.split(/_\d{2}_/);
+          if (parts.length === 2) {
+            for (const ageCode of ['_56_', '_45_', '_34_', '_23_']) {
+              const altKey = `${parts[0]}${ageCode}${parts[1]}`;
+              if (sMap[altKey]) {
+                rawVal = sMap[altKey];
+                break;
+              }
+            }
           }
         }
-      }
-    }
 
-    if (!rawVal) return null;
+        if (!rawVal) return null;
 
-    const valUpper = rawVal.toString().trim().toUpperCase();
-    if (valUpper === 'BM') return 'BM';
-    if (valUpper === 'MM') return 'MM';
-    if (valUpper === 'B') return 'B';
-    if (valUpper === 'BSH') return 'BSH';
-    if (valUpper === 'BSB' || valUpper === 'BB') return 'BB';
+        const valUpper = rawVal.toString().trim().toUpperCase();
+        if (valUpper === 'BM') return 'BM';
+        if (valUpper === 'MM') return 'MM';
+        if (valUpper === 'B') return 'B';
+        if (valUpper === 'BSH') return 'BSH';
+        if (valUpper === 'BSB' || valUpper === 'BB') return 'BB';
 
-    return valUpper;
-  };
+        return valUpper;
+      };
 
-  let tableRowsHtml = "";
-  DEFAULT_RAPOR_STRUCTURE.forEach((cat, cIdx) => {
-    const roman = cIdx === 0 ? "I" : cIdx === 1 ? "II" : cIdx === 2 ? "III" : cIdx === 3 ? "IV" : "V";
-    tableRowsHtml += `
-      <tr style="border-top:1px solid #000; border-bottom:1px solid #000; font-weight:bold; background-color:#f9fafb;">
-        <td style="border-right:1px solid #000; padding:4px 6px; text-align:center; vertical-align:top;">${roman}</td>
-        <td style="border-right:1px solid #000; padding:4px 6px;" colSpan="2">${cat.categoryTitle}</td>
-      </tr>
-    `;
-
-    cat.subcategories.forEach((sub) => {
-      if (sub.subTitle) {
+      let tableRowsHtml = "";
+      DEFAULT_RAPOR_STRUCTURE.forEach((cat, cIdx) => {
+        const roman = cIdx === 0 ? "I" : cIdx === 1 ? "II" : cIdx === 2 ? "III" : cIdx === 3 ? "IV" : "V";
         tableRowsHtml += `
-          <tr style="border-top:1px solid #000; border-bottom:1px solid #000; font-weight:bold; background-color:#ffffff;">
-            <td style="border-right:1px solid #000; padding:3px 6px;"></td>
-            <td style="border-right:1px solid #000; padding:4px 6px; padding-left:14px;" colSpan="2">${sub.subTitle}</td>
+          <tr style="border-top:1px solid #000; border-bottom:1px solid #000; font-weight:bold; background-color:#f9fafb;">
+            <td style="border-right:1px solid #000; padding:4px 6px; text-align:center; vertical-align:top;">${roman}</td>
+            <td style="border-right:1px solid #000; padding:4px 6px;" colSpan="2">${cat.categoryTitle}</td>
           </tr>
         `;
-      }
 
-      sub.items.forEach((item) => {
-        let predCellsHtml = "";
-        const targetCol = getSingleSelectedColumn(item.id, skorMap);
-
-        ['BM', 'MM', 'B', 'BSH', 'BB'].forEach((pred) => {
-          const isMatch = targetCol === pred;
-          predCellsHtml += `<td style="text-align:center; vertical-align:middle; width:20%; font-size:12px; font-weight:bold; color:#000;">${isMatch ? '✓' : ''}</td>`;
-        });
-
-        tableRowsHtml += `
-          <tr style="border-top:1px solid #000; font-size:10.5px; page-break-inside:avoid;">
-            <td style="border-right:1px solid #000; padding:4px 6px; text-align:center;">${item.no}</td>
-            <td style="border-right:1px solid #000; padding:4px 6px; line-height:1.3;">${item.text}</td>
-            <td style="padding:3px 2px;">
-              <table style="width:100%; border-collapse:collapse;"><tr>${predCellsHtml}</tr></table>
-            </td>
-          </tr>
-        `;
-      });
-    });
-  });
-
-  element.innerHTML = `
-    <div style="font-family:'Times New Roman', Georgia, serif; padding:12px 16px; color:#000; background:#fff; width:100%; box-sizing:border-box; margin:0;">
-      <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:8px; padding-bottom:6px; border-bottom:2px solid #000;">
-        ${logoBase64 ? `<img src="${logoBase64}" style="height:50px; width:auto; object-fit:contain;" />` : ''}
-        <div style="text-align:center;">
-          <h1 style="font-weight:bold; font-size:16px; text-transform:uppercase; margin:0; letter-spacing:0.5px; line-height:1.2;">LAPORAN PERKEMBANGAN ANAK DIDIK</h1>
-          <div style="font-size:12px; font-weight:bold; letter-spacing:1px; margin-top:2px;">SISTEM INFORMASI & TUMBUH KEMBANG ANAK (PAUD SITKA)</div>
-        </div>
-      </div>
-      <div style="margin-bottom:12px; font-weight:bold; font-size:11.5px; line-height:1.4;">
-        <div>NAMA ANAK : ${nama.toUpperCase()}</div>
-        <div>KELAS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${kelas}</div>
-        <div>SEMESTER &nbsp;&nbsp;: ${semester}</div>
-      </div>
-
-      <table style="width:100%; border-collapse:collapse; border:2px solid #000; font-size:10.5px;">
-        <thead>
-          <tr style="border-bottom:2px solid #000; background-color:#f3f4f6; page-break-inside:avoid;">
-            <th style="border-right:1px solid #000; padding:5px; text-align:center; width:28px;">No</th>
-            <th style="border-right:1px solid #000; padding:5px; text-align:center;">Aspek Perkembangan</th>
-            <th style="padding:5px; text-align:center; width:180px;">
-              <div style="border-bottom:1px solid #000; padding-bottom:3px; margin-bottom:3px; font-weight:bold;">Hasil Pengamatan</div>
-              <table style="width:100%; border-collapse:collapse; font-weight:bold; font-size:9.5px;">
-                <tr>
-                  <td style="width:20%; text-align:center;">BM</td>
-                  <td style="width:20%; text-align:center;">MM</td>
-                  <td style="width:20%; text-align:center;">B</td>
-                  <td style="width:20%; text-align:center;">BSH</td>
-                  <td style="width:20%; text-align:center;">BB</td>
-                </tr>
-              </table>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tableRowsHtml}
-        </tbody>
-      </table>
-
-      <div style="margin-top:12px; font-size:10px; font-weight:bold; line-height:1.4; page-break-inside:avoid;">
-        <div>BM &nbsp;&nbsp;: Belum Muncul</div>
-        <div>MM &nbsp;&nbsp;: Mulai Muncul</div>
-        <div>B &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: Berkembang</div>
-        <div>BSH &nbsp;: Berkembang Sesuai Harapan</div>
-        <div>BB &nbsp;&nbsp;&nbsp;: Berkembang dengan Baik</div>
-      </div>
-
-      ${catatan ? `
-        <div style="margin-top:12px; border:2px solid #000; padding:8px 10px; font-size:10px; page-break-inside:avoid;">
-          <div style="font-weight:bold; text-transform:uppercase; border-bottom:1px solid #000; padding-bottom:2px; margin-bottom:4px;">Catatan & Rekomendasi Guru:</div>
-          <div style="font-style:italic; line-height:1.3;">"${catatan}"</div>
-        </div>
-      ` : ''}
-
-      <div style="margin-top:24px; display:flex; justify-content:space-between; text-align:center; font-size:10px; font-weight:bold; page-break-inside:avoid;">
-        <div style="width:40%;">
-          <p style="margin-bottom:40px; margin-top:0;">Mengetahui,<br/>Orang Tua / Wali Murid</p>
-          <p style="border-bottom:1px solid #000; display:inline-block; width:150px; margin:0;">( ........................................ )</p>
-        </div>
-        <div style="width:40%;">
-          <p style="margin-bottom:40px; margin-top:0;">SPS FLAMBOYAN,<br/>Wali Kelas</p>
-          <p style="border-bottom:1px solid #000; display:inline-block; width:150px; margin:0;">( ........................................ )</p>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(element);
-
-  const cleanName = (reportData?.namaSiswa || reportData?.nama_siswa || "Siswa").replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `Rapor_PAUD_${cleanName}_Semester_${reportData?.semester || '2'}.pdf`;
-
-  const opt = {
-    margin: [6, 6, 6, 6],
-    filename: filename,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { 
-      scale: 2, 
-      useCORS: true, 
-      allowTaint: true,
-      logging: false,
-      scrollX: 0,
-      scrollY: 0,
-      windowWidth: 1024,
-      onclone: (clonedDoc) => {
-        // 🛡️ SOLUSI TUNTAS 100% BEBAS OKLCH:
-        // 1. Bersihkan & ganti clonedDoc.head dengan CSS minimal murni
-        // Dokumen Rapor PDF 100% menggunakan gaya inline murni, sehingga menghapus tag style Tailwind v4
-        // menghilangkan 100% fungsi warna oklch yang memicu error pada html2canvas!
-        try {
-          if (clonedDoc.head) {
-            clonedDoc.head.innerHTML = `
-              <style>
-                * { box-sizing: border-box; }
-                body { margin: 0; padding: 0; background-color: #ffffff; color: #000000; font-family: 'Times New Roman', Georgia, serif; }
-                table { border-collapse: collapse; }
-              </style>
+        cat.subcategories.forEach((sub) => {
+          if (sub.subTitle) {
+            tableRowsHtml += `
+              <tr style="border-top:1px solid #000; border-bottom:1px solid #000; font-weight:bold; background-color:#ffffff;">
+                <td style="border-right:1px solid #000; padding:3px 6px;"></td>
+                <td style="border-right:1px solid #000; padding:4px 6px; padding-left:14px;" colSpan="2">${sub.subTitle}</td>
+              </tr>
             `;
           }
-        } catch (e) {}
 
-        // 2. Hapus seluruh sisa tag style atau link stylesheet di body jika ada
-        try {
-          const extraStyles = clonedDoc.querySelectorAll('style, link');
-          extraStyles.forEach(el => {
-            try { el.remove(); } catch (e) {}
-          });
-        } catch (e) {}
+          sub.items.forEach((item) => {
+            let predCellsHtml = "";
+            const targetCol = getSingleSelectedColumn(item.id, skorMap);
 
-        // 3. Sanitasi atribut style inline pada seluruh elemen
-        try {
-          const allElements = clonedDoc.querySelectorAll('*');
-          allElements.forEach((el) => {
-            try {
-              const inlineStyle = el.getAttribute('style');
-              if (inlineStyle && inlineStyle.includes('oklch')) {
-                el.setAttribute('style', inlineStyle.replace(/oklch\([^)]+\)/gi, '#000000'));
-              }
-            } catch (e) {}
+            ['BM', 'MM', 'B', 'BSH', 'BB'].forEach((pred) => {
+              const isMatch = targetCol === pred;
+              predCellsHtml += `<td style="text-align:center; vertical-align:middle; width:20%; font-size:12px; font-weight:bold; color:#000;">${isMatch ? '✓' : ''}</td>`;
+            });
+
+            tableRowsHtml += `
+              <tr style="border-top:1px solid #000; font-size:10.5px; page-break-inside:avoid;">
+                <td style="border-right:1px solid #000; padding:4px 6px; text-align:center;">${item.no}</td>
+                <td style="border-right:1px solid #000; padding:4px 6px; line-height:1.3;">${item.text}</td>
+                <td style="padding:3px 2px;">
+                  <table style="width:100%; border-collapse:collapse;"><tr>${predCellsHtml}</tr></table>
+                </td>
+              </tr>
+            `;
           });
-        } catch (e) {}
+        });
+      });
+
+      const raporFullHtml = `
+        <div style="font-family:'Times New Roman', Georgia, serif; padding:12px 16px; color:#000; background:#fff; width:100%; box-sizing:border-box; margin:0;">
+          <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-bottom:8px; padding-bottom:6px; border-bottom:2px solid #000;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="height:50px; width:auto; object-fit:contain;" />` : ''}
+            <div style="text-align:center;">
+              <h1 style="font-weight:bold; font-size:16px; text-transform:uppercase; margin:0; letter-spacing:0.5px; line-height:1.2;">LAPORAN PERKEMBANGAN ANAK DIDIK</h1>
+              <div style="font-size:12px; font-weight:bold; letter-spacing:1px; margin-top:2px;">SISTEM INFORMASI & TUMBUH KEMBANG ANAK (PAUD SITKA)</div>
+            </div>
+          </div>
+          <div style="margin-bottom:12px; font-weight:bold; font-size:11.5px; line-height:1.4;">
+            <div>NAMA ANAK : ${nama.toUpperCase()}</div>
+            <div>KELAS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ${kelas}</div>
+            <div>SEMESTER &nbsp;&nbsp;: ${semester}</div>
+          </div>
+
+          <table style="width:100%; border-collapse:collapse; border:2px solid #000; font-size:10.5px;">
+            <thead>
+              <tr style="border-bottom:2px solid #000; background-color:#f3f4f6; page-break-inside:avoid;">
+                <th style="border-right:1px solid #000; padding:5px; text-align:center; width:28px;">No</th>
+                <th style="border-right:1px solid #000; padding:5px; text-align:center;">Aspek Perkembangan</th>
+                <th style="padding:5px; text-align:center; width:180px;">
+                  <div style="border-bottom:1px solid #000; padding-bottom:3px; margin-bottom:3px; font-weight:bold;">Hasil Pengamatan</div>
+                  <table style="width:100%; border-collapse:collapse; font-weight:bold; font-size:9.5px;">
+                    <tr>
+                      <td style="width:20%; text-align:center;">BM</td>
+                      <td style="width:20%; text-align:center;">MM</td>
+                      <td style="width:20%; text-align:center;">B</td>
+                      <td style="width:20%; text-align:center;">BSH</td>
+                      <td style="width:20%; text-align:center;">BB</td>
+                    </tr>
+                  </table>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRowsHtml}
+            </tbody>
+          </table>
+
+          <div style="margin-top:12px; font-size:10px; font-weight:bold; line-height:1.4; page-break-inside:avoid;">
+            <div>BM &nbsp;&nbsp;: Belum Muncul</div>
+            <div>MM &nbsp;&nbsp;: Mulai Muncul</div>
+            <div>B &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: Berkembang</div>
+            <div>BSH &nbsp;: Berkembang Sesuai Harapan</div>
+            <div>BB &nbsp;&nbsp;&nbsp;: Berkembang dengan Baik</div>
+          </div>
+
+          ${catatan ? `
+            <div style="margin-top:12px; border:2px solid #000; padding:8px 10px; font-size:10px; page-break-inside:avoid;">
+              <div style="font-weight:bold; text-transform:uppercase; border-bottom:1px solid #000; padding-bottom:2px; margin-bottom:4px;">Catatan & Rekomendasi Guru:</div>
+              <div style="font-style:italic; line-height:1.3;">"${catatan}"</div>
+            </div>
+          ` : ''}
+
+          <div style="margin-top:24px; display:flex; justify-content:space-between; text-align:center; font-size:10px; font-weight:bold; page-break-inside:avoid;">
+            <div style="width:40%;">
+              <p style="margin-bottom:40px; margin-top:0;">Mengetahui,<br/>Orang Tua / Wali Murid</p>
+              <p style="border-bottom:1px solid #000; display:inline-block; width:150px; margin:0;">( ........................................ )</p>
+            </div>
+            <div style="width:40%;">
+              <p style="margin-bottom:40px; margin-top:0;">SPS FLAMBOYAN,<br/>Wali Kelas</p>
+              <p style="border-bottom:1px solid #000; display:inline-block; width:150px; margin:0;">( ........................................ )</p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 2. Buat IFRAME terpisah di DOM untuk mengisolasi 100% dari document.styleSheets induk yang berisi Tailwind v4 / oklch!
+      iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-9999px';
+      iframe.style.top = '-9999px';
+      iframe.style.width = '194mm';
+      iframe.style.height = '1000px';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const frameDoc = iframe.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <style>
+              * { box-sizing: border-box; }
+              body { margin: 0; padding: 0; background-color: #ffffff; color: #000000; font-family: 'Times New Roman', Georgia, serif; }
+              table { border-collapse: collapse; }
+            </style>
+          </head>
+          <body>
+            <div id="rapor-export-isolated">${raporFullHtml}</div>
+          </body>
+        </html>
+      `);
+      frameDoc.close();
+
+      // Beri jeda rendering DOM pada iframe
+      await new Promise(r => setTimeout(r, 250));
+
+      const isolatedTarget = frameDoc.getElementById('rapor-export-isolated');
+      const cleanName = nama.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `Rapor_PAUD_${cleanName}_Semester_${semester}.pdf`;
+
+      const opt = {
+        margin: [6, 6, 6, 6],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          allowTaint: true,
+          logging: false,
+          windowWidth: 1024
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'] }
+      };
+
+      const pdfPromise = Promise.race([
+        html2pdf().set(opt).from(isolatedTarget).save(),
+        new Promise((_, rj) => setTimeout(() => rj(new Error("Timeout pembuatan PDF (10 detik).")), 10000))
+      ]);
+
+      await pdfPromise;
+      resolve(true);
+
+    } catch (err) {
+      console.error("Gagal export PDF isolated:", err);
+      reject(err);
+    } finally {
+      if (iframe && iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe);
       }
-    },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['css', 'legacy'] }
-  };
-
-  try {
-    // 🛡️ Promise.race dengan Timeout 10 detik: Mencegah PDF export menggantung (ngefreeze) secara permanen
-    const pdfPromise = Promise.race([
-      html2pdf().set(opt).from(element).save(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Waktu pembuatan PDF melebihi batas (Timeout 10 detik).")), 10000)
-      )
-    ]);
-    await pdfPromise;
-  } finally {
-    if (element && element.parentNode) {
-      element.parentNode.removeChild(element);
     }
-  }
+  });
 };
 
 const RaporOfficialPDF = ({ data }) => {
