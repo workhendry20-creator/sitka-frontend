@@ -310,19 +310,34 @@ export const generateRaporPDF = async (reportData) => {
       scrollY: 0,
       windowWidth: 1024,
       onclone: (clonedDoc) => {
-        const styleTags = clonedDoc.querySelectorAll('style');
-        styleTags.forEach((style) => {
-          if (style.innerText && style.innerText.includes('oklch')) {
-            style.innerText = style.innerText.replace(/oklch\([^)]+\)/gi, '#64748b');
-          }
+        // 🛡️ PERBAIKAN TOTAL OKLCH TAILWIND V4: Bersihkan fungsi oklch, lab, & color-mix dari seluruh tag style
+        const styleNodes = clonedDoc.querySelectorAll('style, link');
+        styleNodes.forEach((node) => {
+          try {
+            const content = node.textContent || node.innerText || '';
+            if (content.includes('oklch') || content.includes('color-mix') || content.includes('lab(')) {
+              const cleanContent = content
+                .replace(/oklch\([^;}\n]+\)/gi, '#000000')
+                .replace(/color-mix\([^;}\n]+\)/gi, '#000000')
+                .replace(/lab\([^;}\n]+\)/gi, '#000000');
+              if (node.textContent !== undefined) node.textContent = cleanContent;
+              else if (node.innerText !== undefined) node.innerText = cleanContent;
+            }
+          } catch (e) {}
         });
 
         const allElements = clonedDoc.querySelectorAll('*');
         allElements.forEach((el) => {
-          const inlineStyle = el.getAttribute('style');
-          if (inlineStyle && inlineStyle.includes('oklch')) {
-            el.setAttribute('style', inlineStyle.replace(/oklch\([^)]+\)/gi, '#64748b'));
-          }
+          try {
+            const inlineStyle = el.getAttribute('style');
+            if (inlineStyle && (inlineStyle.includes('oklch') || inlineStyle.includes('color-mix') || inlineStyle.includes('lab('))) {
+              el.setAttribute('style', inlineStyle
+                .replace(/oklch\([^;}\n]+\)/gi, '#000000')
+                .replace(/color-mix\([^;}\n]+\)/gi, '#000000')
+                .replace(/lab\([^;}\n]+\)/gi, '#000000')
+              );
+            }
+          } catch (e) {}
         });
       }
     },
