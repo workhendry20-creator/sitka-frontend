@@ -107,16 +107,8 @@ const Login = ({ onLoginSuccess }) => {
         <div className="absolute bottom-[-10%] right-[-10%] w-80 h-80 bg-blue-400/20 rounded-full blur-3xl"></div>
 
         <div className="relative z-10 text-white max-w-md text-center md:text-left">
-          {/* LOGO EYE CATCHING TANPA BACKGROUND KAKU */}
-          <div className="relative group inline-block mb-8">
-            <div className="absolute inset-0 bg-white/20 rounded-full blur-2xl transform group-hover:scale-110 transition-all duration-500"></div>
-            <div className="relative p-5 bg-white/10 backdrop-blur-xl rounded-[2.5rem] border border-white/20 shadow-2xl inline-flex items-center justify-center">
-              <img 
-                src={logoImg} 
-                alt="Logo PAUD SITKA" 
-                className="w-28 h-28 md:w-32 md:h-32 object-contain mix-blend-multiply filter drop-shadow-2xl transition-transform duration-300 hover:scale-105" 
-              />
-            </div>
+          <div className="mb-8 p-4 bg-white/10 backdrop-blur-md rounded-2xl inline-block shadow-lg">
+            <GraduationCap size={56} className="text-white" />
           </div>
 
           <h2 className="text-4xl font-bold mb-6 leading-tight tracking-tight">
