@@ -1,8 +1,8 @@
 // src/layouts/GuruLayout.jsx
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, UserCheck, Heart, BookOpen, 
-  MessageSquare, FileText, Settings, LogOut, Menu, Bell, X 
+import {
+  LayoutDashboard, UserCheck, Heart, BookOpen,
+  MessageSquare, FileText, Settings, LogOut, Menu, Bell, X
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -21,9 +21,9 @@ const GuruLayout = ({ children, onLogout, user }) => {
     { name: 'Dashboard', icon: LayoutDashboard, path: '/guru/dashboard' },
     { name: 'Absensi Siswa', icon: UserCheck, path: '/guru/absensi' },
     { name: 'Jurnal Aktivitas', icon: Heart, path: '/guru/aktivitas' },
-    { name: 'Input Nilai Rapor', icon: BookOpen, path: '/guru/input-nilai' },
+    { name: 'Input Nilai', icon: BookOpen, path: '/guru/input-nilai' },
     { name: 'Laporan Perkembangan', icon: FileText, path: '/guru/report' },
-    { name: 'Pesan & Obrolan', icon: MessageSquare, path: '/guru/chat' },
+    { name: 'Pesan', icon: MessageSquare, path: '/guru/chat' },
   ];
 
   // FUNGSI LOGOUT DENGAN POP-UP SWEETALERT2 PREMIUM
@@ -45,17 +45,17 @@ const GuruLayout = ({ children, onLogout, user }) => {
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        onLogout(); 
+        onLogout();
       }
     });
   };
 
   return (
     <div className="flex h-screen bg-slate-50 relative overflow-hidden">
-      
+
       {/* --- OVERLAY UNTUK MOBILE --- */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
@@ -88,11 +88,10 @@ const GuruLayout = ({ children, onLogout, user }) => {
                 key={item.name}
                 to={item.path}
                 onClick={() => setIsSidebarOpen(false)}
-                className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all duration-200 ${
-                  isActive 
-                  ? 'bg-[#306896] text-white shadow-lg shadow-blue-900/20' 
-                  : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
-                }`}
+                className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all duration-200 ${isActive
+                    ? 'bg-[#306896] text-white shadow-lg shadow-blue-900/20'
+                    : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
+                  }`}
               >
                 <item.icon size={22} />
                 {item.name}
@@ -103,7 +102,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
 
         {/* Footer Sidebar - Tombol Keluar */}
         <div className="p-6 border-t border-gray-50">
-          <button 
+          <button
             onClick={handleLogoutClick}
             className="flex items-center gap-4 px-4 py-4 text-red-500 font-bold hover:bg-red-50 w-full rounded-2xl transition-all"
           >
@@ -118,7 +117,7 @@ const GuruLayout = ({ children, onLogout, user }) => {
         {/* HEADER */}
         <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-8 flex-shrink-0 z-30">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 hover:bg-slate-100 rounded-lg md:hidden transition-colors"
             >
@@ -131,10 +130,10 @@ const GuruLayout = ({ children, onLogout, user }) => {
 
           <div className="flex items-center gap-3 md:gap-6">
             <button className="relative text-slate-400 hover:text-slate-600 p-2">
-               <Bell size={22} />
-               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+              <Bell size={22} />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </button>
-            
+
             <Link to="/guru/settings" className="flex items-center gap-3 md:gap-4 text-right group transition-all">
               {/* 🔥 SEKARANG NAMA PROFIL SINKRON OTOMATIS DARI SUPABASE */}
               <div className="hidden sm:block">

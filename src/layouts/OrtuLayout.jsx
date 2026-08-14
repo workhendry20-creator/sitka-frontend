@@ -1,8 +1,8 @@
 // src/layouts/OrtuLayout.jsx
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, Heart, TrendingUp, FileText, 
-  MessageSquare, Settings, LogOut, Menu, Bell, X 
+import {
+  LayoutDashboard, Heart, TrendingUp, FileText,
+  MessageSquare, Settings, LogOut, Menu, Bell, X
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -19,9 +19,9 @@ const OrtuLayout = ({ children, onLogout, user }) => {
 
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/ortu/dashboard' },
-    { name: 'Aktivitas Ananda', icon: Heart, path: '/ortu/aktivitas' },
-    { name: 'Perkembangan Ananda', icon: TrendingUp, path: '/ortu/progress' },
-    { name: 'Rapor Ananda', icon: FileText, path: '/ortu/laporan' },
+    { name: 'Aktivitas', icon: Heart, path: '/ortu/aktivitas' },
+    { name: 'Perkembangan', icon: TrendingUp, path: '/ortu/progress' },
+    { name: 'Laporan', icon: FileText, path: '/ortu/laporan' },
     { name: 'Konsultasi Guru', icon: MessageSquare, path: '/ortu/chat' },
   ];
 
@@ -45,7 +45,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
     }).then((result) => {
       if (result.isConfirmed) {
         // Eksekusi fungsi logout pusat dari App.jsx
-        onLogout(); 
+        onLogout();
       }
     });
   };
@@ -55,10 +55,10 @@ const OrtuLayout = ({ children, onLogout, user }) => {
 
   return (
     <div className="flex h-screen bg-slate-50 relative overflow-hidden">
-      
+
       {/* OVERLAY MOBILE */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
@@ -89,11 +89,10 @@ const OrtuLayout = ({ children, onLogout, user }) => {
                 key={item.name}
                 to={item.path}
                 onClick={() => setIsSidebarOpen(false)}
-                className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all duration-200 ${
-                  isActive 
-                  ? 'bg-[#306896] text-white shadow-lg shadow-blue-900/20' 
+                className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all duration-200 ${isActive
+                  ? 'bg-[#306896] text-white shadow-lg shadow-blue-900/20'
                   : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
-                }`}
+                  }`}
               >
                 <item.icon size={22} />
                 {item.name}
@@ -103,7 +102,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
         </nav>
 
         <div className="p-6 border-t border-gray-50">
-          <button 
+          <button
             onClick={handleLogoutClick}
             className="flex items-center gap-4 px-4 py-4 text-red-500 font-bold hover:bg-red-50 w-full rounded-2xl transition-all"
           >
@@ -117,7 +116,7 @@ const OrtuLayout = ({ children, onLogout, user }) => {
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-6 md:px-8 flex-shrink-0 z-30">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 hover:bg-slate-100 rounded-lg md:hidden transition-colors"
             >
@@ -130,10 +129,10 @@ const OrtuLayout = ({ children, onLogout, user }) => {
 
           <div className="flex items-center gap-3 md:gap-6">
             <button className="relative text-slate-400 hover:text-slate-600 p-2">
-               <Bell size={22} />
-               <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full border-2 border-white"></span>
+              <Bell size={22} />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-orange-500 rounded-full border-2 border-white"></span>
             </button>
-            
+
             <Link to="/ortu/settings" className="flex items-center gap-3 md:gap-4 text-right group transition-all">
               {/* 🔥 SEKARANG NAMA ORANG TUA SINKRON OTOMATIS DARI SUPABASE */}
               <div className="hidden sm:block">
