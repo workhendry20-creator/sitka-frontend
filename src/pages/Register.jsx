@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Fingerprint, KeyRound, Hash, Lock, ChevronLeft, Baby, School, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
+import logoImg from '../assets/logo.png';
 
 // Komponen Input Reusable (dengan Dukungan Hide/Unhide Password)
 const InputField = ({ icon: Icon, placeholder, name, type = "text", value, onChange }) => {
@@ -27,8 +28,7 @@ const InputField = ({ icon: Icon, placeholder, name, type = "text", value, onCha
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          className="absolute inset-y-0 right-0 pr-6 flex items-center text-slate-400 hover:text-[#306896] transition-colors focus:outline-none cursor-pointer"
-          title={showPassword ? "Sembunyikan Password" : "Tampilkan Password"}
+          className="absolute inset-y-0 right-0 pr-6 flex items-center text-slate-400 hover:text-[#306896] transition focus:outline-none"
         >
           {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
         </button>
@@ -36,6 +36,8 @@ const InputField = ({ icon: Icon, placeholder, name, type = "text", value, onCha
     </div>
   );
 };
+
+const TOKEN_REGISTRASI_GURU_RAHASIA = "SITKA-GURU-2026";
 
 const Register = () => {
   const [selectedRole, setSelectedRole] = useState('GURU');
@@ -60,37 +62,36 @@ const Register = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      alert("🔴 KATA SANDI TIDAK COCOK: Kata sandi dan konfirmasi kata sandi harus sama!");
+      return;
+    }
+
+    if (selectedRole === 'GURU') {
+      if (formData.token !== TOKEN_REGISTRASI_GURU_RAHASIA) {
+        alert("🔴 TOKEN GURU SALAH: Token pendaftaran guru yang Anda masukkan tidak valid!");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
-      if (formData.password !== formData.confirmPassword) {
-        throw new Error('Konfirmasi Kata Sandi tidak cocok dengan Password Baru!');
-      }
-
-      // 1. Siapkan payload data dasar
       let payload = {
-        nama: formData.namaLengkap,
-        password: formData.password,
-        role: selectedRole.toLowerCase() 
+        role: selectedRole.toLowerCase(),
+        nama: formData.namaLengkap.trim(),
+        password: formData.password.trim(),
       };
 
-      // 2. Pemilahan Input Berdasarkan Kategori Akun
       if (selectedRole === 'GURU') {
-        if (!formData.nip) throw new Error('NIP wajib diisi, Senior!');
-        if (!formData.token) throw new Error('Aktivasi Token wajib diisi, Senior!');
-        
-        payload.nip = formData.nip;
-        payload.token = formData.token;
+        payload.nip = formData.nip.trim();
+        payload.token = formData.token.trim();
         payload.nisn = null; 
         payload.nama_anak = null;
         payload.kelompok = null;
       } else {
-        if (!formData.nisn) throw new Error('NISN wajib diisi!');
-        if (!formData.namaAnak) throw new Error('Nama Anak wajib diisi!');
-        if (!formData.kelompok) throw new Error('Kelompok Belajar wajib diisi!');
-        
-        payload.nisn = formData.nisn;
-        payload.nama_anak = formData.namaAnak;
+        payload.nisn = formData.nisn.trim();
+        payload.nama_anak = formData.namaAnak.trim();
         payload.kelompok = formData.kelompok;
         payload.nip = null;   
         payload.token = null; 
@@ -140,13 +141,11 @@ const Register = () => {
 
         {/* Header Title */}
         <div className="text-center mt-8 mb-10 flex flex-col items-center">
-          <div className="w-16 h-16 bg-blue-50 p-2 rounded-2xl border border-blue-100 flex items-center justify-center shadow-sm mb-4">
-            <img src={logoImg} alt="Logo PAUD SITKA" className="w-full h-full object-contain" />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-[#0a1e36] tracking-tight mb-3">
-            Daftar Akun
+          <img src={logoImg} alt="Logo PAUD SITKA" className="h-20 w-auto object-contain mix-blend-multiply mb-3 filter drop-shadow-sm transition-transform hover:scale-105" />
+          <h1 className="text-4xl md:text-5xl font-extrabold text-[#0a1e36] tracking-tight mb-2">
+            Daftar Akun SITKA
           </h1>
-          <p className="text-sm font-bold text-slate-400 tracking-widest uppercase">
+          <p className="text-xs font-bold text-slate-400 tracking-widest uppercase">
             SILAKAN LENGKAPI DATA AUTENTIKASI
           </p>
         </div>
