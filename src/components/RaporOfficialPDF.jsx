@@ -310,35 +310,42 @@ export const generateRaporPDF = async (reportData) => {
       scrollY: 0,
       windowWidth: 1024,
       onclone: (clonedDoc) => {
-        // 🛡️ PERBAIKAN TOTAL OKLCH TAILWIND V4: Bersihkan fungsi oklch, lab, & color-mix dari seluruh tag style
-        const styleNodes = clonedDoc.querySelectorAll('style, link');
-        styleNodes.forEach((node) => {
-          try {
-            const content = node.textContent || node.innerText || '';
-            if (content.includes('oklch') || content.includes('color-mix') || content.includes('lab(')) {
-              const cleanContent = content
-                .replace(/oklch\([^;}\n]+\)/gi, '#000000')
-                .replace(/color-mix\([^;}\n]+\)/gi, '#000000')
-                .replace(/lab\([^;}\n]+\)/gi, '#000000');
-              if (node.textContent !== undefined) node.textContent = cleanContent;
-              else if (node.innerText !== undefined) node.innerText = cleanContent;
-            }
-          } catch (e) {}
-        });
+        // 🛡️ SOLUSI TUNTAS 100% BEBAS OKLCH:
+        // 1. Bersihkan & ganti clonedDoc.head dengan CSS minimal murni
+        // Dokumen Rapor PDF 100% menggunakan gaya inline murni, sehingga menghapus tag style Tailwind v4
+        // menghilangkan 100% fungsi warna oklch yang memicu error pada html2canvas!
+        try {
+          if (clonedDoc.head) {
+            clonedDoc.head.innerHTML = `
+              <style>
+                * { box-sizing: border-box; }
+                body { margin: 0; padding: 0; background-color: #ffffff; color: #000000; font-family: 'Times New Roman', Georgia, serif; }
+                table { border-collapse: collapse; }
+              </style>
+            `;
+          }
+        } catch (e) {}
 
-        const allElements = clonedDoc.querySelectorAll('*');
-        allElements.forEach((el) => {
-          try {
-            const inlineStyle = el.getAttribute('style');
-            if (inlineStyle && (inlineStyle.includes('oklch') || inlineStyle.includes('color-mix') || inlineStyle.includes('lab('))) {
-              el.setAttribute('style', inlineStyle
-                .replace(/oklch\([^;}\n]+\)/gi, '#000000')
-                .replace(/color-mix\([^;}\n]+\)/gi, '#000000')
-                .replace(/lab\([^;}\n]+\)/gi, '#000000')
-              );
-            }
-          } catch (e) {}
-        });
+        // 2. Hapus seluruh sisa tag style atau link stylesheet di body jika ada
+        try {
+          const extraStyles = clonedDoc.querySelectorAll('style, link');
+          extraStyles.forEach(el => {
+            try { el.remove(); } catch (e) {}
+          });
+        } catch (e) {}
+
+        // 3. Sanitasi atribut style inline pada seluruh elemen
+        try {
+          const allElements = clonedDoc.querySelectorAll('*');
+          allElements.forEach((el) => {
+            try {
+              const inlineStyle = el.getAttribute('style');
+              if (inlineStyle && inlineStyle.includes('oklch')) {
+                el.setAttribute('style', inlineStyle.replace(/oklch\([^)]+\)/gi, '#000000'));
+              }
+            } catch (e) {}
+          });
+        } catch (e) {}
       }
     },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
