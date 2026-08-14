@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   UserCheck, Users, Calendar, 
-  Search, CheckCircle, XCircle, 
+  Search, CheckCircle, CheckCircle2, XCircle, 
   Clock, AlertCircle, Save, Download,
   BarChart3, History
 } from 'lucide-react';
@@ -10,9 +10,11 @@ import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
 
 const Absensi = () => {
-  const [kelompok, setKelompok] = useState('Kelompok A');
-  const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [kelompok, setKelompok] = useState(() => localStorage.getItem('sitka_active_kelompok') || 'Kelompok A');
+  const [tanggal, setTanggal] = useState(() => localStorage.getItem('sitka_active_date') || new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
+  const [isAlreadySubmitted, setIsAlreadySubmitted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // State dinamis menampung siswa dari Cloud Supabase
   const [daftarSiswa, setDaftarSiswa] = useState([]);
@@ -22,6 +24,8 @@ const Absensi = () => {
 
   // --- AMBIL DATA SISWA & ATTENDANCE REKAP REALTIME DARI CLOUD ---
   useEffect(() => {
+    localStorage.setItem('sitka_active_kelompok', kelompok);
+    localStorage.setItem('sitka_active_date', tanggal);
     fetchSiswaByKelompok();
     fetchRekapHistory();
   }, [kelompok, tanggal]);
@@ -46,13 +50,17 @@ const Absensi = () => {
         .eq('kelompok', kelompok)
         .eq('tanggal', tanggal);
 
+      const hasSubmitted = (harianData || []).length > 0 && (harianData || []).some(h => ['Hadir', 'Izin', 'Sakit', 'Alpa'].includes(h.status_kondisi));
+      setIsAlreadySubmitted(hasSubmitted);
+      setIsEditing(false);
+
       const formattedSiswa = (siswaData || []).map(siswa => {
         const existing = (harianData || []).find(h => 
           (h.nisn && h.nisn === siswa.nisn) || 
           (h.nama_siswa && h.nama_siswa.toLowerCase().trim() === siswa.nama.toLowerCase().trim())
         );
 
-        let statusVal = 'Hadir';
+        let statusVal = null; // Default null jika belum diabsen hari ini
         if (existing) {
           if (['Hadir', 'Izin', 'Sakit', 'Alpa'].includes(existing.status_kondisi)) {
             statusVal = existing.status_kondisi;
@@ -117,6 +125,37 @@ const Absensi = () => {
       return Swal.fire('Oops!', 'Tidak ada data siswa untuk disimpan.', 'warning');
     }
 
+    // ⚡ VALIDASI KETAT ABSENSI: PASTIKAN TIDAK ADA SISWA YANG TERLEWAT
+    const siswaBelumDiabsen = daftarSiswa.filter(s => !s.status || !['Hadir', 'Izin', 'Sakit', 'Alpa'].includes(s.status));
+
+    if (siswaBelumDiabsen.length > 0) {
+      const daftarNama = siswaBelumDiabsen.map(s => `
+        <li class="flex items-center justify-between text-xs py-1.5 border-b border-rose-100">
+          <span class="font-bold text-slate-800">• ${s.nama}</span>
+          <span class="text-rose-600 font-extrabold text-[10px] bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">Belum Ditentukan</span>
+        </li>
+      `).join('');
+
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Absensi Belum Lengkap! ⚠️',
+        html: `<div class="text-left space-y-3">
+          <p class="text-xs text-slate-600 font-medium leading-relaxed">
+            Terdapat <b>${siswaBelumDiabsen.length} siswa</b> di ${kelompok} yang belum ditentukan status kehadirannya (Hadir/Izin/Sakit/Alpa):
+          </p>
+          <ul class="max-h-52 overflow-y-auto pr-1">
+            ${daftarNama}
+          </ul>
+          <p class="text-[11px] font-extrabold text-rose-600 italic mt-2">
+            📌 Mohon tentukan status kehadiran seluruh siswa atau klik "Tandai Semua Hadir" sebelum menyimpan.
+          </p>
+        </div>`,
+        confirmButtonColor: '#f43f5e',
+        confirmButtonText: 'Saya Mengerti, Pilih Status',
+        customClass: { popup: 'rounded-[2.5rem]' }
+      });
+    }
+
     setLoading(true);
     try {
       const payloadAbsen = daftarSiswa.map(s => ({
@@ -125,7 +164,7 @@ const Absensi = () => {
         kelompok: kelompok,
         tanggal: tanggal,
         status_kondisi: s.status,
-        catatan_anekdot: `Presensi tanggal ${tanggal}`,
+        catatan_anekdot: s.status === 'Hadir' ? 'Isi catatan mood anak hari ini' : `(Anak tidak hadir di sekolah - Status: ${s.status})`,
         input_oleh_guru: `Wali Kelas ${kelompok}`
       }));
 
@@ -136,6 +175,8 @@ const Absensi = () => {
       if (error) throw error;
 
       await fetchRekapHistory();
+      setIsAlreadySubmitted(true);
+      setIsEditing(false);
 
       Swal.fire({
         icon: 'success',
@@ -221,6 +262,34 @@ const Absensi = () => {
         ))}
       </div>
 
+      {/* --- NOTIFIKASI PENGUNCIAN DATA ABSENSI --- */}
+      {isAlreadySubmitted && (
+        <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3.5 text-emerald-900">
+            <CheckCircle2 size={26} className="text-emerald-600 shrink-0" />
+            <div>
+              <p className="font-black text-sm text-emerald-950">Presensi {kelompok} Tanggal {tanggal} Telah Tersimpan</p>
+              <p className="text-xs text-emerald-700 font-medium mt-0.5">
+                {isEditing ? 'Form dibuka untuk pengeditan data presensi.' : 'Form dikunci otomatis untuk mencegah duplikasi data presensi.'}
+              </p>
+            </div>
+          </div>
+          {!isEditing ? (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="px-5 py-2.5 bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-100 rounded-2xl font-bold text-xs shrink-0 transition-all shadow-2xs cursor-pointer"
+            >
+              ✏️ Edit / Perbarui Absensi
+            </button>
+          ) : (
+            <span className="px-4 py-2 bg-emerald-200/60 text-emerald-800 rounded-xl font-bold text-xs uppercase tracking-wider shrink-0">
+              🔓 Mode Edit Aktif
+            </span>
+          )}
+        </div>
+      )}
+
       {/* --- MAIN INPUT TABLE --- */}
       <div className="bg-white rounded-[3rem] border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
@@ -249,12 +318,13 @@ const Absensi = () => {
                         {['Hadir', 'Izin', 'Sakit', 'Alpa'].map((st) => (
                           <button
                             key={st}
+                            disabled={isAlreadySubmitted && !isEditing}
                             onClick={() => updateStatus(siswa.id, st)}
                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${
                               siswa.status === st 
                               ? 'bg-[#0a1e36] text-white shadow-md scale-105' 
                               : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-                            }`}
+                            } ${isAlreadySubmitted && !isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
                             {st}
                           </button>

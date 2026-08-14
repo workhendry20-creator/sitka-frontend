@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ClipboardCheck, Calendar, Users,
-  Save, User, Download, FileText, ChevronDown, BookOpen, Sparkles, Bot, Eye, X
+  Save, User, Download, FileText, ChevronDown, BookOpen, Sparkles, Bot, Eye, X, CheckCircle2
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
@@ -13,11 +13,13 @@ import RaporPreviewModal from '../../components/RaporPreviewModal';
 const InputNilai = () => {
   // --- STATE UTAMA ---
   const [inputType, setInputType] = useState('Harian');
-  const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
-  const [kelompok, setKelompok] = useState('Kelompok A');
+  const [tanggal, setTanggal] = useState(() => localStorage.getItem('sitka_active_date') || new Date().toISOString().split('T')[0]);
+  const [kelompok, setKelompok] = useState(() => localStorage.getItem('sitka_active_kelompok') || 'Kelompok A');
   const [selectedSemester, setSelectedSemester] = useState('1 (Ganjil)');
   const [selectedSiswaId, setSelectedSiswaId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isAlreadySubmitted, setIsAlreadySubmitted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // State Dinamis Penampung Anak Didik dari Database Supabase
   const [anekdotSiswa, setAnekdotSiswa] = useState([]);
@@ -480,6 +482,9 @@ const InputNilai = () => {
   };
   // --- EFEK TARIK DATA REALTIME DARI CLOUD DATABASE & LOCALSTORAGE ---
   useEffect(() => {
+    localStorage.setItem('sitka_active_kelompok', kelompok);
+    localStorage.setItem('sitka_active_date', tanggal);
+
     fetchSiswaByKelompok();
     fetchRekapFromDatabase();
 
@@ -507,9 +512,30 @@ const InputNilai = () => {
     };
   }, [kelompok, tanggal]);
 
+  // Helper normalisasi format tanggal aman (YYYY-MM-DD)
+  const normalizeDateStr = (rawDate) => {
+    if (!rawDate) return new Date().toISOString().split('T')[0];
+    if (typeof rawDate === 'string' && rawDate.includes('T')) {
+      return rawDate.split('T')[0];
+    }
+    return String(rawDate).trim();
+  };
+
   // Fungsi khusus menyedot seluruh Rekapitulasi Anekdot Harian & Semester dari Database
   const fetchRekapFromDatabase = async () => {
     try {
+      // 0. Tarik pemetaan rombel/kelompok siswa resmi dari database Supabase
+      const { data: allSiswa } = await supabase.from('siswa').select('nama, nisn, rombel');
+      const studentRombelMap = new Map();
+      if (allSiswa && Array.isArray(allSiswa)) {
+        allSiswa.forEach(s => {
+          const cleanName = (s.nama || '').toLowerCase().trim();
+          const targetKlp = (s.rombel === 'B' || s.rombel === 'b' || s.rombel === 'Kelompok B') ? 'Kelompok B' : 'Kelompok A';
+          if (cleanName) studentRombelMap.set(cleanName, targetKlp);
+          if (s.nisn && s.nisn !== '-') studentRombelMap.set(s.nisn, targetKlp);
+        });
+      }
+
       // 1. Tarik Harian dari Supabase & LocalStorage
       const { data: cloudHarian } = await supabase.from('nilai_harian').select('*');
       let localHarian = [];
@@ -528,47 +554,116 @@ const InputNilai = () => {
 
       const combinedList = [];
 
-      // Process Harian
+      // Process Harian (Pencocokan Unik Berdasarkan Nama Siswa & Tanggal Ter-normalisasi)
       const harianMap = new Map();
+
+      const processHarianItem = (item) => {
+        if (!item) return;
+        const nameClean = (item.nama_siswa || item.nama || item.nisn || '').toLowerCase().trim();
+        if (!nameClean) return;
+        const dateStr = normalizeDateStr(item.tanggal);
+        const mapKey = `${nameClean}_${dateStr}`;
+
+        const existing = harianMap.get(mapKey);
+        if (!existing) {
+          harianMap.set(mapKey, { ...item, mepDate: dateStr });
+        } else {
+          // Utamakan data yang memiliki emoji atau catatan spesifik (bukan presensi bawaan)
+          const existingIsGeneric = !existing.catatan_anekdot || existing.catatan_anekdot.startsWith('Presensi') || existing.catatan_anekdot === 'Isi catatan mood anak hari ini';
+          const newIsGeneric = !item.catatan_anekdot || item.catatan_anekdot.startsWith('Presensi') || item.catatan_anekdot === 'Isi catatan mood anak hari ini';
+
+          if (existingIsGeneric && !newIsGeneric) {
+            harianMap.set(mapKey, { ...item, mepDate: dateStr });
+          } else if (item.emoji && item.emoji !== '-' && (!existing.emoji || existing.emoji === '-')) {
+            harianMap.set(mapKey, { ...item, mepDate: dateStr });
+          }
+        }
+      };
+
+      // Gabungkan LocalStorage & Supabase Cloud
       if (localHarian && Array.isArray(localHarian)) {
-        localHarian.forEach(item => {
-          const key = `${item.nisn || item.nama_siswa}_${item.tanggal}`;
-          harianMap.set(key, item);
-        });
+        localHarian.forEach(processHarianItem);
       }
       if (cloudHarian && Array.isArray(cloudHarian)) {
-        cloudHarian.forEach(item => {
-          const key = `${item.nisn || item.nama_siswa}_${item.tanggal}`;
-          harianMap.set(key, item);
-        });
+        cloudHarian.forEach(processHarianItem);
       }
 
       harianMap.forEach((item) => {
+        const rawNote = item.catatan_anekdot || item.catatan || '';
+        const isGenericNote = rawNote.startsWith('Presensi') || rawNote === 'Isi catatan mood anak hari ini';
+        const isAbs = ['Sakit', 'Izin', 'Alpa'].includes(item.status_kondisi);
+        const finalNote = isAbs 
+          ? (!isGenericNote && rawNote ? rawNote : `(Anak tidak hadir di sekolah - Status: ${item.status_kondisi})`)
+          : (isGenericNote ? '' : rawNote);
+
+        let labelFinal = item.status_kondisi;
+        if (!labelFinal || labelFinal === 'Hadir') {
+          labelFinal = 'Bahagia';
+        }
+
+        let emojiFinal = (item.emoji && item.emoji !== '-') ? item.emoji : null;
+        if (!emojiFinal && !isAbs) {
+          if (labelFinal === 'Bahagia') emojiFinal = '😊';
+          else if (labelFinal === 'Tenang') emojiFinal = '😐';
+          else if (labelFinal === 'Sedih') emojiFinal = '😢';
+          else if (labelFinal === 'Marah') emojiFinal = '😡';
+          else emojiFinal = '😊';
+        }
+
+        const cleanStudentName = (item.nama_siswa || item.nama || '').toLowerCase().trim();
+        const mappedKlp = item.kelompok || studentRombelMap.get(cleanStudentName) || studentRombelMap.get(item.nisn) || kelompok;
+
         combinedList.push({
           id: item.id || item.nisn || Math.random(),
-          nisn: item.nisn || '-',
+          nisn: (item.nisn && item.nisn !== '-') ? item.nisn : '-',
           nama: item.nama_siswa || item.nama || 'Siswa',
-          kelompok: item.kelompok || 'Kelompok A',
-          tanggal: item.tanggal || new Date().toISOString().split('T')[0],
-          label: item.status_kondisi || item.emoji || 'Anekdot Harian',
-          emoji: item.emoji || null,
-          catatan: item.catatan_anekdot || item.catatan || '',
+          kelompok: mappedKlp,
+          tanggal: item.mepDate || normalizeDateStr(item.tanggal),
+          label: isAbs ? item.status_kondisi : labelFinal,
+          emoji: isAbs ? null : emojiFinal,
+          catatan: finalNote,
           nilaiSemester: {},
           rekomendasi: ''
         });
       });
 
-      // Process Semester
+      // 🔥 POPULASI SINKRON INSTAN: Jika ada siswa pada form aktif yang sudah terisi, pastikan masuk rekap
+      if (anekdotSiswa && Array.isArray(anekdotSiswa) && anekdotSiswa.length > 0) {
+        const curDateClean = normalizeDateStr(tanggal);
+        anekdotSiswa.forEach(s => {
+          if (s.emoji || s.catatan || s.isAbsent) {
+            const cleanName = (s.nama || '').toLowerCase().trim();
+            const mapKey = `${cleanName}_${curDateClean}`;
+            if (!harianMap.has(mapKey)) {
+              const isAbs = s.isAbsent;
+              combinedList.push({
+                id: s.id || Math.random(),
+                nisn: s.nisn || '-',
+                nama: s.nama,
+                kelompok: kelompok,
+                tanggal: curDateClean,
+                label: isAbs ? (s.absentStatus || 'Sakit') : (s.label || 'Bahagia'),
+                emoji: isAbs ? null : (s.emoji || '😊'),
+                catatan: s.catatan || '',
+                nilaiSemester: {},
+                rekomendasi: ''
+              });
+            }
+          }
+        });
+      }
+
+      // Process Semester (Prioritas Supabase Cloud Database)
       const semesterMap = new Map();
       if (localSemester && Array.isArray(localSemester)) {
         localSemester.forEach(item => {
-          const key = `${item.nisn || item.nama_siswa}_${item.semester}`;
+          const key = `${(item.nama_siswa || item.nama || '').toLowerCase().trim()}_${item.semester}`;
           semesterMap.set(key, item);
         });
       }
       if (cloudSemester && Array.isArray(cloudSemester)) {
         cloudSemester.forEach(item => {
-          const key = `${item.nisn || item.nama_siswa}_${item.semester}`;
+          const key = `${(item.nama_siswa || item.nama || '').toLowerCase().trim()}_${item.semester}`;
           semesterMap.set(key, item);
         });
       }
@@ -579,7 +674,7 @@ const InputNilai = () => {
           nisn: item.nisn || '-',
           nama: item.nama_siswa || item.nama || 'Siswa',
           kelompok: item.kelompok || 'Kelompok A',
-          tanggal: item.tanggal || new Date().toISOString().split('T')[0],
+          tanggal: normalizeDateStr(item.tanggal),
           label: `Semester ${item.semester || '1'}`,
           emoji: null,
           catatan: '',
@@ -623,7 +718,13 @@ const InputNilai = () => {
         }
       } catch (e) {}
 
-      // Proses mapping data siswa ke dalam State UI
+      // Deteksi jika catatan anekdot tanggal ini sudah pernah disubmit sebelumnya
+      const hasSubmitted = (harianTanggalCloud || []).some(h => (h.emoji && h.emoji !== '-') || (h.catatan_anekdot && !h.catatan_anekdot.startsWith('Presensi') && h.catatan_anekdot !== 'Isi catatan mood anak hari ini')) ||
+                           (harianTanggalLocal || []).some(h => (h.emoji && h.emoji !== '-') || (h.catatan_anekdot && !h.catatan_anekdot.startsWith('Presensi') && h.catatan_anekdot !== 'Isi catatan mood anak hari ini'));
+      setIsAlreadySubmitted(hasSubmitted);
+      setIsEditing(false);
+
+      // Proses mapping data siswa ke dalam State UI (Dengan Deteksi Absensi Siswa Opsi 1)
       const formattedSiswa = data.map(siswa => {
         const existingInCloud = harianTanggalCloud ? harianTanggalCloud.find(h => 
           (h.nisn && siswa.nisn && h.nisn !== '-' && h.nisn === siswa.nisn) ||
@@ -636,15 +737,24 @@ const InputNilai = () => {
         );
 
         const existingDb = existingInCloud || existingInLocal;
+        const statusKondisi = existingDb ? (existingDb.status_kondisi || '') : '';
+        const isAbsent = ['Sakit', 'Izin', 'Alpa'].includes(statusKondisi);
+
+        const existingCatatan = existingDb ? (existingDb.catatan_anekdot || "") : "";
+        const isGenericPresensi = existingCatatan.startsWith('Presensi tanggal') || existingCatatan === 'Isi catatan mood anak hari ini';
 
         return {
           id: siswa.id,
           nama: siswa.nama,
           usia: siswa.usia,
           nisn: siswa.nisn || "-",
-          emoji: existingDb ? (existingDb.emoji || null) : null,
-          label: existingDb ? (existingDb.status_kondisi || null) : null,
-          catatan: existingDb ? (existingDb.catatan_anekdot || "") : "",
+          emoji: isAbsent ? null : (existingDb ? (existingDb.emoji || null) : null),
+          label: isAbsent ? statusKondisi : (existingDb ? (existingDb.status_kondisi || null) : null),
+          catatan: isAbsent 
+            ? (!isGenericPresensi && existingCatatan ? existingCatatan : `(Anak tidak hadir di sekolah - Status: ${statusKondisi})`) 
+            : (isGenericPresensi ? "" : existingCatatan),
+          isAbsent: isAbsent,
+          absentStatus: statusKondisi,
           nilaiSemester: {},
           rekomendasi: ""
         };
@@ -743,6 +853,47 @@ const InputNilai = () => {
       return Swal.fire('Form Belum Lengkap', 'Silakan pilih nama anak didik terlebih dahulu.', 'warning');
     }
 
+    // ⚡ VALIDASI STRIKT UNTUK HARIAN: PASTIKAN SELURUH SISWA HADIR SUDAH DIISI EMOJI & CATATAN
+    if (inputType === 'Harian') {
+      const siswaHadirBelumLengkap = anekdotSiswa.filter(s => {
+        if (s.isAbsent) return false; // Siswa Sakit/Izin/Alpa dilewati karena sudah ada status
+        const memoKosong = !s.catatan || s.catatan.trim() === '';
+        const emojiKosong = !s.emoji;
+        return emojiKosong || memoKosong;
+      });
+
+      if (siswaHadirBelumLengkap.length > 0) {
+        const daftarNama = siswaHadirBelumLengkap.map(s => {
+          const missing = [];
+          if (!s.emoji) missing.push('Emoji Mood');
+          if (!s.catatan || s.catatan.trim() === '') missing.push('Catatan Anekdot');
+          return `<li class="flex items-center justify-between text-xs py-1.5 border-b border-rose-100">
+            <span class="font-bold text-slate-800">• ${s.nama}</span>
+            <span class="text-rose-600 font-extrabold text-[10px] bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">Belum: ${missing.join(' & ')}</span>
+          </li>`;
+        }).join('');
+
+        return Swal.fire({
+          icon: 'warning',
+          title: 'Pengisian Anekdot Belum Lengkap! ⚠️',
+          html: `<div class="text-left space-y-3">
+            <p class="text-xs text-slate-600 font-medium leading-relaxed">
+              Terdapat <b>${siswaHadirBelumLengkap.length} siswa</b> di ${kelompok} yang belum diisi emoji mood atau catatan anekdotnya:
+            </p>
+            <ul class="max-h-52 overflow-y-auto pr-1">
+              ${daftarNama}
+            </ul>
+            <p class="text-[11px] font-extrabold text-rose-600 italic mt-2">
+              📌 Mohon lengkapi seluruh catatan observasi siswa sebelum menyimpan ke Rekapitulasi.
+            </p>
+          </div>`,
+          confirmButtonColor: '#f43f5e',
+          confirmButtonText: 'Saya Mengerti, Lengkapi Sekarang',
+          customClass: { popup: 'rounded-[2.5rem]' }
+        });
+      }
+    }
+
     Swal.fire({
       title: 'Menyimpan Nilai...',
       text: `Sedang merekam data ${inputType} ke Supabase Cloud.`,
@@ -795,16 +946,22 @@ const InputNilai = () => {
         window.dispatchEvent(new CustomEvent('sitka_semester_updated', { detail: payloadSemester }));
 
       } else {
-        const payloadHarian = anekdotSiswa.map(s => ({
-          nisn: s.nisn || "-",
-          nama_siswa: s.nama,
-          kelompok: kelompok,
-          tanggal: tanggal,
-          emoji: s.emoji || '-',
-          status_kondisi: s.label || '-',
-          catatan_anekdot: s.catatan || '',
-          input_oleh_guru: `Wali Kelas ${kelompok}`
-        }));
+        // 🔥 HARIAN / ANEKDOT MODAL & EDITING SYNC TO DATABASE
+        const payloadHarian = anekdotSiswa.map(s => {
+          const isAbs = s.isAbsent || ['Sakit', 'Izin', 'Alpa'].includes(s.label);
+          return {
+            nisn: s.nisn || "-",
+            nama_siswa: s.nama,
+            kelompok: kelompok,
+            tanggal: tanggal,
+            emoji: isAbs ? '-' : (s.emoji || '😊'),
+            status_kondisi: isAbs ? (s.absentStatus || s.label || 'Sakit') : (s.label && s.label !== 'Hadir' ? s.label : 'Bahagia'),
+            catatan_anekdot: isAbs 
+              ? (s.catatan || `(Anak tidak hadir di sekolah - Status: ${s.absentStatus || s.label || 'Sakit'})`)
+              : (s.catatan || ''),
+            input_oleh_guru: `Wali Kelas ${kelompok}`
+          };
+        });
 
         // -----------------------------------------------------------
         // 🔥 SINKRONISASI DAY-BY-DAY KE LOCALSTORAGE UNTUK REPORT GURU
@@ -813,13 +970,11 @@ const InputNilai = () => {
           const rawHar = localStorage.getItem('sitka_all_harian_reports');
           const existingHar = rawHar ? JSON.parse(rawHar) : [];
 
-          // Gabungkan data baru dengan filter pencocokan (nisn/nama & tanggal)
           const updatedHar = [...existingHar];
           payloadHarian.forEach(item => {
             const cleanName = (item.nama_siswa || "").toLowerCase().trim();
             const matchIndex = updatedHar.findIndex(h =>
-              ((h.nisn && item.nisn && h.nisn !== '-' && h.nisn === item.nisn) ||
-                (h.nama_siswa && h.nama_siswa.toLowerCase().trim() === cleanName)) &&
+              (h.nama_siswa && h.nama_siswa.toLowerCase().trim() === cleanName) &&
               h.tanggal === item.tanggal
             );
 
@@ -848,43 +1003,16 @@ const InputNilai = () => {
         window.dispatchEvent(new CustomEvent('sitka_harian_updated', { detail: payloadHarian }));
       }
 
-      // =======================================================================
-      // 🔥 PERBAIKAN SINKRONISASI LOKAL (Data Detail Ikut Tersimpan Permanen)
-      // =======================================================================
-      let updatedData = [];
-      if (inputType === 'Semester') {
-        const targetSiswa = anekdotSiswa.find(s => s.id === parseInt(selectedSiswaId));
-        if (targetSiswa) {
-          updatedData = [{
-            ...targetSiswa,
-            kelompok,
-            tanggal,
-            label: `Semester ${selectedSemester}`,
-            rekomendasi: targetSiswa.rekomendasi || '',
-            nilaiSemester: { ...targetSiswa.nilaiSemester }
-          }];
-        }
-      } else {
-        updatedData = anekdotSiswa.map(s => ({ ...s, kelompok, tanggal }));
-      }
-
-      setRekapData(prev => {
-        const idsToFilter = updatedData.map(u => u.id);
-        const filtered = prev.filter(p => !(
-          p.kelompok === kelompok &&
-          p.tanggal === tanggal &&
-          idsToFilter.includes(p.id) &&
-          p.label.includes(inputType === 'Semester' ? 'Semester' : 'Bahagia')
-        ));
-        return [...filtered, ...updatedData];
-      });
+      await fetchRekapFromDatabase();
+      setIsAlreadySubmitted(true);
+      setIsEditing(false);
 
       Swal.fire({
         icon: 'success',
-        title: 'Sukses Sinkronisasi!',
-        text: `Data ${inputType} berhasil tersimpan per hari & terhubung ke modul Report Guru!`,
+        title: 'Sukses Perbarui Data!',
+        text: `Catatan Anekdot Harian ${kelompok} berhasil diperbarui di database & Rekapitulasi!`,
         confirmButtonColor: '#306896',
-        customClass: { popup: 'rounded-[2rem]' }
+        customClass: { popup: 'rounded-[2.5rem]' }
       });
 
     } catch (err) {
@@ -1113,74 +1241,131 @@ const InputNilai = () => {
           {/* --- FORM CONDITION 1: INPUT HARIAN --- */}
           {inputType === 'Harian' && (
             <div className="space-y-6">
+
+              {/* --- BANNER PENGUNCIAN ANEKDOT HARIAN --- */}
+              {isAlreadySubmitted && (
+                <div className="p-5 bg-indigo-50 border border-indigo-200 rounded-[2rem] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm text-left">
+                  <div className="flex items-center gap-3.5 text-indigo-950">
+                    <CheckCircle2 size={26} className="text-indigo-600 shrink-0" />
+                    <div>
+                      <p className="font-black text-sm">Catatan Anekdot Harian {kelompok} Tanggal {formatIndoDateFull(tanggal)} Telah Tersimpan</p>
+                      <p className="text-xs text-indigo-700 font-medium mt-0.5">
+                        {isEditing ? 'Form dibuka untuk pengeditan observasi harian.' : 'Form dikunci otomatis untuk mencegah duplikasi data anekdot.'}
+                      </p>
+                    </div>
+                  </div>
+                  {!isEditing ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                      className="px-5 py-2.5 bg-white border border-indigo-300 text-indigo-700 hover:bg-indigo-100 rounded-2xl font-bold text-xs shrink-0 transition-all shadow-2xs cursor-pointer"
+                    >
+                      ✏️ Edit / Perbarui Anekdot
+                    </button>
+                  ) : (
+                    <span className="px-4 py-2 bg-indigo-200/60 text-indigo-800 rounded-xl font-bold text-xs uppercase tracking-wider shrink-0">
+                      🔓 Mode Edit Aktif
+                    </span>
+                  )}
+                </div>
+              )}
+
               {anekdotSiswa.length === 0 ? (
                 <div className="bg-white p-12 rounded-[2.5rem] text-center text-slate-400 border border-dashed">
                   Belum ada data siswa terdaftar di {kelompok} pada database Cloud.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-6">
-                  {anekdotSiswa.map((siswa) => (
-                    <div key={siswa.id} className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col md:flex-row gap-6 items-start group hover:border-indigo-200 transition-all">
-                      <div className="flex items-center gap-4 min-w-[200px]">
-                        <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                          {siswa.nama ? siswa.nama.charAt(0) : 'S'}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-[#0a1e36]">{siswa.nama}</h4>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{kelompok}</p>
-                        </div>
-                      </div>
+                  {anekdotSiswa.map((siswa) => {
+                    const isDisabledInput = siswa.isAbsent || (isAlreadySubmitted && !isEditing);
+                    return (
+                      <div 
+                        key={siswa.id} 
+                        className={`p-6 rounded-[2.5rem] border shadow-sm flex flex-col md:flex-row gap-6 items-start transition-all ${
+                          siswa.isAbsent 
+                            ? 'bg-rose-50/40 border-rose-100' 
+                            : 'bg-white border-gray-100 group hover:border-indigo-200'
+                        }`}
+                      >
+                        <div className="flex flex-col gap-2 min-w-[200px]">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold transition-colors ${
+                              siswa.isAbsent ? 'bg-rose-100 text-rose-700' : 'bg-slate-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'
+                            }`}>
+                              {siswa.nama ? siswa.nama.charAt(0) : 'S'}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-[#0a1e36]">{siswa.nama}</h4>
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{kelompok}</p>
+                            </div>
+                          </div>
 
-                      {/* Emoji Picker - Klik emoji yg sudah dipilih untuk membatalkan (null) */}
-                      <div className="flex gap-2 p-2 bg-slate-50 rounded-[1.5rem]">
-                        {[
-                          { emo: '😊', label: 'Bahagia' },
-                          { emo: '😐', label: 'Tenang' },
-                          { emo: '😢', label: 'Sedih' },
-                          { emo: '😡', label: 'Marah' }
-                        ].map((item) => (
-                          <button
-                            key={item.emo}
-                            type="button"
-                            onClick={() => {
-                              // Jika sudah terpilih → klik lagi = deselect (null)
-                              if (siswa.emoji === item.emo) {
-                                updateSiswa(siswa.id, 'emoji', null, null);
-                              } else {
-                                updateSiswa(siswa.id, 'emoji', item.emo, item.label);
-                              }
-                            }}
-                            className={`flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all ${siswa.emoji === item.emo
-                                ? 'bg-white shadow-md scale-105 border-b-4 border-indigo-500'
-                                : 'opacity-40 hover:opacity-100 hover:bg-white/50'
-                              }`}
-                          >
-                            <span className="text-2xl">{item.emo}</span>
-                            <span className={`text-[8px] font-black uppercase mt-1 ${siswa.emoji === item.emo ? 'text-indigo-600' : 'text-slate-500'}`}>
-                              {item.label}
+                          {siswa.isAbsent && (
+                            <span className="px-3 py-1 bg-rose-100 text-rose-700 font-extrabold text-[10px] rounded-lg uppercase tracking-wider w-fit">
+                              🚫 Tidak Hadir ({siswa.absentStatus})
                             </span>
-                          </button>
-                        ))}
+                          )}
+                        </div>
+
+                        {/* Emoji Picker - Di-lock jika Siswa Tidak Hadir atau Sudah Terkunci */}
+                        <div className={`flex gap-2 p-2 rounded-[1.5rem] ${isDisabledInput ? 'bg-slate-100 opacity-40 pointer-events-none' : 'bg-slate-50'}`}>
+                          {[
+                            { emo: '😊', label: 'Bahagia' },
+                            { emo: '😐', label: 'Tenang' },
+                            { emo: '😢', label: 'Sedih' },
+                            { emo: '😡', label: 'Marah' }
+                          ].map((item) => (
+                            <button
+                              key={item.emo}
+                              type="button"
+                              disabled={isDisabledInput}
+                              onClick={() => {
+                                if (siswa.emoji === item.emo) {
+                                  updateSiswa(siswa.id, 'emoji', null, null);
+                                } else {
+                                  updateSiswa(siswa.id, 'emoji', item.emo, item.label);
+                                }
+                              }}
+                              className={`flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all ${siswa.emoji === item.emo
+                                  ? 'bg-white shadow-md scale-105 border-b-4 border-indigo-500'
+                                  : 'opacity-40 hover:opacity-100 hover:bg-white/50'
+                                }`}
+                            >
+                              <span className="text-2xl">{item.emo}</span>
+                              <span className={`text-[8px] font-black uppercase mt-1 ${siswa.emoji === item.emo ? 'text-indigo-600' : 'text-slate-500'}`}>
+                                {item.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+
+                        <textarea
+                          disabled={isDisabledInput}
+                          placeholder={
+                            siswa.isAbsent 
+                              ? `Observasi terkunci otomatis karena ananda tercatat ${siswa.absentStatus} pada Absensi.` 
+                              : (isAlreadySubmitted && !isEditing ? `Catatan telah tersimpan & terkunci.` : `Isi catatan mood anak hari ini...`)
+                          }
+                          value={siswa.catatan}
+                          onChange={(e) => updateSiswa(siswa.id, 'catatan', e.target.value)}
+                          className={`flex-1 w-full p-4 rounded-2xl text-sm outline-none min-h-[85px] resize-none ${
+                            isDisabledInput 
+                              ? 'bg-slate-100/90 text-slate-400 italic cursor-not-allowed border border-slate-200' 
+                              : 'bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500'
+                          }`}
+                        />
                       </div>
-
-
-                      <textarea
-                        placeholder={`Tulis catatan harian untuk ${siswa.nama}...`}
-                        value={siswa.catatan}
-                        onChange={(e) => updateSiswa(siswa.id, 'catatan', e.target.value)}
-                        className="flex-1 w-full p-4 bg-slate-50 border-none rounded-2xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 min-h-[85px] resize-none"
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
               <button
                 onClick={handleSaveToRekap}
-                disabled={anekdotSiswa.length === 0}
-                className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:bg-slate-300"
+                disabled={anekdotSiswa.length === 0 || (isAlreadySubmitted && !isEditing)}
+                className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:bg-slate-300 disabled:cursor-not-allowed"
               >
-                <Save size={16} /> Simpan Seluruh Catatan Harian Ke Rekap
+                <Save size={16} /> {isAlreadySubmitted && !isEditing ? '🔒 Catatan Anekdot Harian Sudah Terkunci' : 'Simpan Seluruh Catatan Harian Ke Rekap'}
               </button>
             </div>
           )}
@@ -1388,9 +1573,13 @@ const InputNilai = () => {
               {(() => {
                 // ⚡ 1. FILTER TERPISAH PER KELOMPOK YANG SEDANG DIPILIH DI ATAS
                 const dataKelompok = rekapData.filter(item => {
-                  const itemKlp = (item.kelompok || '').toLowerCase().trim();
-                  const curKlp = (kelompok || '').toLowerCase().trim();
-                  return itemKlp === curKlp || itemKlp.includes(curKlp.replace('kelompok ', '')) || curKlp.includes(itemKlp);
+                  if (!item.kelompok) return true;
+                  const itemKlp = (item.kelompok || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const curKlp = (kelompok || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                  if (itemKlp === curKlp) return true;
+                  if (itemKlp.endsWith('a') && curKlp.endsWith('a')) return true;
+                  if (itemKlp.endsWith('b') && curKlp.endsWith('b')) return true;
+                  return itemKlp.includes(curKlp) || curKlp.includes(itemKlp);
                 });
 
                 // ⚡ 2. FILTER SESUAI TIPE INPUT (HARIAN VS SEMESTER)
@@ -1552,10 +1741,16 @@ const InputNilai = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-2xs">
-                      <span className="text-2xl">{siswa.emoji || '😐'}</span>
-                      <span className="text-xs font-black text-[#0a1e36] uppercase">{siswa.label || 'Tenang'}</span>
-                    </div>
+                    {['Sakit', 'Izin', 'Alpa'].includes(siswa.label) ? (
+                      <span className="px-3.5 py-1.5 bg-rose-50 text-rose-700 font-extrabold text-xs rounded-2xl border border-rose-200 uppercase tracking-wider">
+                        🚫 Tidak Hadir ({siswa.label})
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-2xs">
+                        <span className="text-2xl">{siswa.emoji || '😊'}</span>
+                        <span className="text-xs font-black text-[#0a1e36] uppercase">{siswa.label || 'Bahagia'}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="bg-white p-4 rounded-2xl border border-slate-100 text-xs text-slate-700 leading-relaxed font-medium">
