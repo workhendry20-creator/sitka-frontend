@@ -14,6 +14,7 @@ const RaporPreviewModal = ({ isOpen, onClose, data }) => {
       title: 'Mencetak Rapor PDF...',
       text: `Sedang mengunduh dokumen Rapor Official untuk ${namaSiswa}.`,
       allowOutsideClick: false,
+      customClass: { popup: 'rounded-[2rem]' },
       didOpen: () => { Swal.showLoading(); }
     });
 
@@ -23,11 +24,18 @@ const RaporPreviewModal = ({ isOpen, onClose, data }) => {
         icon: 'success',
         title: 'PDF Terunduh! 📄',
         text: `Dokumen Rapor Official untuk ${namaSiswa} telah berhasil diunduh.`,
-        confirmButtonColor: '#0a1e36'
+        confirmButtonColor: '#0a1e36',
+        customClass: { popup: 'rounded-[2rem]' }
       });
     } catch (err) {
       console.error("Gagal mengunduh PDF:", err);
-      Swal.fire('Gagal Export PDF', err.message || 'Terjadi kesalahan saat mengunduh PDF.', 'error');
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Export PDF',
+        text: err.message || 'Terjadi kesalahan saat mengunduh PDF. Silakan gunakan tombol Cetak.',
+        confirmButtonColor: '#0a1e36',
+        customClass: { popup: 'rounded-[2rem]' }
+      });
     }
   };
 

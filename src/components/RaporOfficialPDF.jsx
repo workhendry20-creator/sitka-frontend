@@ -98,13 +98,20 @@ export const DEFAULT_RAPOR_STRUCTURE = [
   }
 ];
 
-// Helper konversi URL gambar ke Base64 Data URI untuk mencegah error CORS/Taint canvas pada unduh PDF di laptop lain
+// Helper konversi URL gambar ke Base64 Data URI dengan batas waktu timeout presisi agar 100% Tidak Pernah Ngefreeze
 const getBase64Image = (imgUrl) => {
   return new Promise((resolve) => {
     if (!imgUrl || typeof window === 'undefined') return resolve('');
+
+    // Safeguard: Batas waktu maksimal 1.5 detik. Jika konversi macet, langsung fallback kosong agar UI tidak freeze!
+    const timer = setTimeout(() => {
+      resolve('');
+    }, 1500);
+
     const img = new Image();
     img.crossOrigin = 'Anonymous';
     img.onload = () => {
+      clearTimeout(timer);
       try {
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth || img.width || 100;
@@ -114,16 +121,19 @@ const getBase64Image = (imgUrl) => {
         const dataURL = canvas.toDataURL('image/png');
         resolve(dataURL);
       } catch (e) {
-        resolve(imgUrl);
+        resolve('');
       }
     };
-    img.onerror = () => resolve(imgUrl);
+    img.onerror = () => {
+      clearTimeout(timer);
+      resolve('');
+    };
     img.src = imgUrl;
   });
 };
 
 export const generateRaporPDF = async (reportData) => {
-  // 1. Dapatkan Base64 Data URI logo agar 100% Bebas CORS & Taint error di seluruh browser/laptop
+  // 1. Dapatkan Base64 Data URI logo (dengan batas waktu 1.5 detik)
   const logoBase64 = await getBase64Image(logoImg);
 
   // 2. Selalu gunakan elemen DOM terisolasi bersih (Bebas dari pengaruh z-index modal, backdrop blur, & CSS OKLCH)
@@ -321,8 +331,14 @@ export const generateRaporPDF = async (reportData) => {
   };
 
   try {
-    const pdfPromise = await html2pdf().set(opt).from(element).save();
-    return pdfPromise;
+    // 🛡️ Promise.race dengan Timeout 10 detik: Mencegah PDF export menggantung (ngefreeze) secara permanen
+    const pdfPromise = Promise.race([
+      html2pdf().set(opt).from(element).save(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Waktu pembuatan PDF melebihi batas (Timeout 10 detik).")), 10000)
+      )
+    ]);
+    await pdfPromise;
   } finally {
     if (element && element.parentNode) {
       element.parentNode.removeChild(element);
