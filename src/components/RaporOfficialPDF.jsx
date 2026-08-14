@@ -122,36 +122,33 @@ export const generateRaporPDF = async (reportData, elementId = "rapor-pdf-contai
     const skorMap = reportData?.skorIndikator || reportData?.skor_indikator || {};
     const catatan = reportData?.catatanGuru || reportData?.rekomendasi_guru || reportData?.semesterRekomendasi || "";
 
-    const checkPredicateMatch = (value, predicate) => {
-      if (!value || !predicate) return false;
-      const val = value.toString().trim().toUpperCase();
-      const pred = predicate.toString().trim().toUpperCase();
+    const getSingleSelectedColumn = (itemKey, sMap) => {
+      if (!sMap || typeof sMap !== 'object') return null;
 
-      if (val === pred) return true;
-
-      if (pred === 'BM' && val === 'BM') return true;
-      if (pred === 'MM' && val === 'MM') return true;
-      if (pred === 'B' && (val === 'B' || val === 'BSH' || val === 'BSB')) return true;
-      if (pred === 'BSH' && (val === 'BSH' || val === 'BSB' || val === 'B')) return true;
-      if (pred === 'BB' && (val === 'BB' || val === 'BSB' || val === 'BSH')) return true;
-
-      return false;
-    };
-
-    const isSelected = (itemKey, predicate) => {
-      if (!skorMap || typeof skorMap !== 'object') return false;
-
-      if (checkPredicateMatch(skorMap[itemKey], predicate)) return true;
-
-      const parts = itemKey.split(/_\d{2}_/);
-      if (parts.length === 2) {
-        for (const ageCode of ['_23_', '_34_', '_45_', '_56_']) {
-          const altKey = `${parts[0]}${ageCode}${parts[1]}`;
-          if (checkPredicateMatch(skorMap[altKey], predicate)) return true;
+      let rawVal = sMap[itemKey];
+      if (!rawVal) {
+        const parts = itemKey.split(/_\d{2}_/);
+        if (parts.length === 2) {
+          for (const ageCode of ['_56_', '_45_', '_34_', '_23_']) {
+            const altKey = `${parts[0]}${ageCode}${parts[1]}`;
+            if (sMap[altKey]) {
+              rawVal = sMap[altKey];
+              break;
+            }
+          }
         }
       }
 
-      return false;
+      if (!rawVal) return null;
+
+      const valUpper = rawVal.toString().trim().toUpperCase();
+      if (valUpper === 'BM') return 'BM';
+      if (valUpper === 'MM') return 'MM';
+      if (valUpper === 'B') return 'B';
+      if (valUpper === 'BSH') return 'BSH';
+      if (valUpper === 'BSB' || valUpper === 'BB') return 'BB';
+
+      return valUpper;
     };
 
     let tableRowsHtml = "";
@@ -176,10 +173,11 @@ export const generateRaporPDF = async (reportData, elementId = "rapor-pdf-contai
 
         sub.items.forEach((item) => {
           let predCellsHtml = "";
+          const targetCol = getSingleSelectedColumn(item.id, skorMap);
+
           ['BM', 'MM', 'B', 'BSH', 'BB'].forEach((pred) => {
-            const checked = isSelected(item.id, pred);
-            const boxStyle = "display:inline-block; width:12px; height:12px; border:1px solid #000; text-align:center; line-height:10px; font-size:9px; font-weight:bold;";
-            predCellsHtml += `<td style="text-align:center; vertical-align:middle; width:20%;">${checked ? `<span style="${boxStyle} background-color:#000; color:#fff;">✓</span>` : `<span style="${boxStyle}"></span>`}</td>`;
+            const isMatch = targetCol === pred;
+            predCellsHtml += `<td style="text-align:center; vertical-align:middle; width:20%; font-size:12px; font-weight:bold; color:#000;">${isMatch ? '✓' : ''}</td>`;
           });
 
           tableRowsHtml += `
@@ -321,36 +319,33 @@ const RaporOfficialPDF = ({ data }) => {
   const skorMap = data?.skorIndikator || data?.skor_indikator || {};
   const catatanGuru = data?.catatanGuru || data?.rekomendasi_guru || data?.semesterRekomendasi || "";
 
-  const checkPredicateMatch = (value, predicate) => {
-    if (!value || !predicate) return false;
-    const val = value.toString().trim().toUpperCase();
-    const pred = predicate.toString().trim().toUpperCase();
+  const getSingleSelectedColumn = (itemKey) => {
+    if (!skorMap || typeof skorMap !== 'object') return null;
 
-    if (val === pred) return true;
-
-    if (pred === 'BM' && val === 'BM') return true;
-    if (pred === 'MM' && val === 'MM') return true;
-    if (pred === 'B' && (val === 'B' || val === 'BSH' || val === 'BSB')) return true;
-    if (pred === 'BSH' && (val === 'BSH' || val === 'BSB' || val === 'B')) return true;
-    if (pred === 'BB' && (val === 'BB' || val === 'BSB' || val === 'BSH')) return true;
-
-    return false;
-  };
-
-  const isSelected = (itemKey, predicate) => {
-    if (!skorMap || typeof skorMap !== 'object') return false;
-
-    if (checkPredicateMatch(skorMap[itemKey], predicate)) return true;
-
-    const parts = itemKey.split(/_\d{2}_/);
-    if (parts.length === 2) {
-      for (const ageCode of ['_23_', '_34_', '_45_', '_56_']) {
-        const altKey = `${parts[0]}${ageCode}${parts[1]}`;
-        if (checkPredicateMatch(skorMap[altKey], predicate)) return true;
+    let rawVal = skorMap[itemKey];
+    if (!rawVal) {
+      const parts = itemKey.split(/_\d{2}_/);
+      if (parts.length === 2) {
+        for (const ageCode of ['_56_', '_45_', '_34_', '_23_']) {
+          const altKey = `${parts[0]}${ageCode}${parts[1]}`;
+          if (skorMap[altKey]) {
+            rawVal = skorMap[altKey];
+            break;
+          }
+        }
       }
     }
 
-    return false;
+    if (!rawVal) return null;
+
+    const valUpper = rawVal.toString().trim().toUpperCase();
+    if (valUpper === 'BM') return 'BM';
+    if (valUpper === 'MM') return 'MM';
+    if (valUpper === 'B') return 'B';
+    if (valUpper === 'BSH') return 'BSH';
+    if (valUpper === 'BSB' || valUpper === 'BB') return 'BB';
+
+    return valUpper;
   };
 
   return (
@@ -427,18 +422,21 @@ const RaporOfficialPDF = ({ data }) => {
                       <td className="border-r border-black p-1 align-middle leading-tight">{item.text}</td>
                       <td className="p-1 text-center align-middle">
                         <div className="grid grid-cols-5 text-center items-center h-full font-bold">
-                          {['BM', 'MM', 'B', 'BSH', 'BB'].map((pred) => {
-                            const checked = isSelected(item.id, pred);
-                            return (
-                              <span key={pred} className="inline-flex justify-center items-center text-xs">
-                                {checked ? (
-                                  <span className="w-3.5 h-3.5 bg-black text-white rounded-2xs flex items-center justify-center text-[10px] leading-none">✓</span>
-                                ) : (
-                                  <span className="w-3 h-3 border border-black inline-block rounded-2xs"></span>
-                                )}
-                              </span>
-                            );
-                          })}
+                          {(() => {
+                            const targetCol = getSingleSelectedColumn(item.id);
+                            return ['BM', 'MM', 'B', 'BSH', 'BB'].map((pred) => {
+                              const isMatch = targetCol === pred;
+                              return (
+                                <span key={pred} className="inline-flex justify-center items-center text-xs">
+                                  {isMatch ? (
+                                    <span className="font-black text-black text-sm">✓</span>
+                                  ) : (
+                                    <span className="w-2.5 h-2.5 border border-slate-300 inline-block rounded-2xs"></span>
+                                  )}
+                                </span>
+                              );
+                            });
+                          })()}
                         </div>
                       </td>
                     </tr>
