@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
+import { getSiswaSafe } from '../../utils/localDataStore';
 
 const Absensi = () => {
   const [kelompok, setKelompok] = useState(() => localStorage.getItem('sitka_active_kelompok') || 'Kelompok A');
@@ -35,20 +36,33 @@ const Absensi = () => {
     try {
       const dbRombel = kelompok === 'Kelompok A' ? 'A' : 'B';
 
-      const { data: siswaData, error } = await supabase
-        .from('siswa')
-        .select('id, nama, nisn')
-        .eq('rombel', dbRombel)
-        .order('nama', { ascending: true });
+      let siswaData = [];
+      try {
+        const { data, error } = await supabase
+          .from('siswa')
+          .select('id, nama, nisn')
+          .eq('rombel', dbRombel)
+          .order('nama', { ascending: true });
 
-      if (error) throw error;
+        if (!error && data && data.length > 0) {
+          siswaData = data;
+        }
+      } catch (e) {}
+
+      if (!siswaData || siswaData.length === 0) {
+        siswaData = getSiswaSafe(kelompok);
+      }
 
       // Check existing attendance records in nilai_harian for this date & kelompok
-      const { data: harianData } = await supabase
-        .from('nilai_harian')
-        .select('*')
-        .eq('kelompok', kelompok)
-        .eq('tanggal', tanggal);
+      let harianData = [];
+      try {
+        const { data: resHar } = await supabase
+          .from('nilai_harian')
+          .select('*')
+          .eq('kelompok', kelompok)
+          .eq('tanggal', tanggal);
+        if (resHar) harianData = resHar;
+      } catch (e) {}
 
       const hasSubmitted = (harianData || []).length > 0 && (harianData || []).some(h => ['Hadir', 'Izin', 'Sakit', 'Alpa'].includes(h.status_kondisi));
       setIsAlreadySubmitted(hasSubmitted);

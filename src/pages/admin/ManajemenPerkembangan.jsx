@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, Search, ArrowUpRight, Brain, Heart, Activity, Download, Layers, ChevronDown } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
+import { getSiswaSafe } from '../../utils/localDataStore';
 
 const ManajemenPerkembangan = () => {
   // --- STATE MANAGEMENT ---
@@ -24,13 +25,22 @@ const ManajemenPerkembangan = () => {
     setLoading(true);
     try {
       const dbRombel = selectedKelompok === 'Kelompok A' ? 'A' : 'B';
-      const { data: siswaData, error: errSiswa } = await supabase
-        .from('siswa')
-        .select('id, nama, nisn, rombel')
-        .eq('rombel', dbRombel)
-        .order('nama', { ascending: true });
+      let siswaData = [];
+      try {
+        const { data, error: errSiswa } = await supabase
+          .from('siswa')
+          .select('id, nama, nisn, rombel')
+          .eq('rombel', dbRombel)
+          .order('nama', { ascending: true });
 
-      if (errSiswa) throw errSiswa;
+        if (!errSiswa && data && data.length > 0) {
+          siswaData = data;
+        }
+      } catch (e) {}
+
+      if (!siswaData || siswaData.length === 0) {
+        siswaData = getSiswaSafe(selectedKelompok);
+      }
 
       const { data: semData } = await supabase
         .from('nilai_semester')

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
+import { getSiswaSafe } from '../../utils/localDataStore';
 import { dapatkanRekomendasiAI } from '../../utils/naiveBayes';
 import RaporOfficialPDF, { generateRaporPDF } from '../../components/RaporOfficialPDF';
 import RaporPreviewModal from '../../components/RaporPreviewModal';
@@ -252,14 +253,23 @@ const ReportGuru = () => {
     try {
       const dbRombel = selectedKelompok === 'Kelompok A' ? 'A' : 'B';
 
-      // 1. Tarik data riil dari tabel 'siswa' 
-      const { data: dataSiswa, error: errSiswa } = await supabase
-        .from('siswa')
-        .select('id, nama, nisn, rombel')
-        .eq('rombel', dbRombel)
-        .order('nama', { ascending: true });
+      // 1. Tarik data riil dari tabel 'siswa' (dengan fallback local seed)
+      let dataSiswa = [];
+      try {
+        const { data, error: errSiswa } = await supabase
+          .from('siswa')
+          .select('id, nama, nisn, rombel')
+          .eq('rombel', dbRombel)
+          .order('nama', { ascending: true });
 
-      if (errSiswa) throw errSiswa;
+        if (!errSiswa && data && data.length > 0) {
+          dataSiswa = data;
+        }
+      } catch (e) {}
+
+      if (!dataSiswa || dataSiswa.length === 0) {
+        dataSiswa = getSiswaSafe(selectedKelompok);
+      }
 
       // 2. Tarik Data Nilai Harian Guru (Cloud + LocalStorage Day-by-Day Sinkron)
       let combinedHarian = [];

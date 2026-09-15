@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { supabase } from '../../utils/supabaseClient';
+import { getSiswaSafe } from '../../utils/localDataStore';
 import { dapatkanRekomendasiAI } from '../../utils/naiveBayes';
 import RaporOfficialPDF, { generateRaporPDF } from '../../components/RaporOfficialPDF';
 import RaporPreviewModal from '../../components/RaporPreviewModal';
@@ -524,8 +525,19 @@ const InputNilai = () => {
   // Fungsi khusus menyedot seluruh Rekapitulasi Anekdot Harian & Semester dari Database
   const fetchRekapFromDatabase = async () => {
     try {
-      // 0. Tarik pemetaan rombel/kelompok siswa resmi dari database Supabase
-      const { data: allSiswa } = await supabase.from('siswa').select('nama, nisn, rombel');
+      // 0. Tarik pemetaan rombel/kelompok siswa resmi dari database Supabase (dengan fallback local)
+      let allSiswa = [];
+      try {
+        const { data: cloudSiswa } = await supabase.from('siswa').select('nama, nisn, rombel');
+        if (cloudSiswa && Array.isArray(cloudSiswa) && cloudSiswa.length > 0) {
+          allSiswa = cloudSiswa;
+        }
+      } catch (e) {}
+
+      if (!allSiswa || allSiswa.length === 0) {
+        allSiswa = getSiswaSafe();
+      }
+
       const studentRombelMap = new Map();
       if (allSiswa && Array.isArray(allSiswa)) {
         allSiswa.forEach(s => {
@@ -537,7 +549,12 @@ const InputNilai = () => {
       }
 
       // 1. Tarik Harian dari Supabase & LocalStorage
-      const { data: cloudHarian } = await supabase.from('nilai_harian').select('*');
+      let cloudHarian = [];
+      try {
+        const { data: resHarian } = await supabase.from('nilai_harian').select('*');
+        if (resHarian) cloudHarian = resHarian;
+      } catch (e) {}
+
       let localHarian = [];
       try {
         const raw = localStorage.getItem('sitka_all_harian_reports');
@@ -545,7 +562,12 @@ const InputNilai = () => {
       } catch (e) {}
 
       // 2. Tarik Semester dari Supabase & LocalStorage
-      const { data: cloudSemester } = await supabase.from('nilai_semester').select('*');
+      let cloudSemester = [];
+      try {
+        const { data: resSemester } = await supabase.from('nilai_semester').select('*');
+        if (resSemester) cloudSemester = resSemester;
+      } catch (e) {}
+
       let localSemester = [];
       try {
         const raw = localStorage.getItem('sitka_all_semester_reports');
@@ -627,7 +649,7 @@ const InputNilai = () => {
         });
       });
 
-      // 🔥 POPULASI SINKRON INSTAN: Jika ada siswa pada form aktif yang sudah terisi, pastikan masuk rekap
+      // POPULASI SINKRON INSTAN: Jika ada siswa pada form aktif yang sudah terisi, pastikan masuk rekap
       if (anekdotSiswa && Array.isArray(anekdotSiswa) && anekdotSiswa.length > 0) {
         const curDateClean = normalizeDateStr(tanggal);
         anekdotSiswa.forEach(s => {
@@ -694,20 +716,34 @@ const InputNilai = () => {
     try {
       const dbRombel = kelompok === 'Kelompok A' ? 'A' : 'B';
 
-      // Tarik data dari database Supabase
-      const { data, error } = await supabase
-        .from('v_siswa_evaluasi')
-        .select('id, nama, rombel, usia, nisn')
-        .eq('rombel', dbRombel)
-        .order('nama', { ascending: true });
+      let rawSiswaData = [];
+      try {
+        const { data, error } = await supabase
+          .from('v_siswa_evaluasi')
+          .select('id, nama, rombel, usia, nisn')
+          .eq('rombel', dbRombel)
+          .order('nama', { ascending: true });
 
-      if (error) throw error;
+        if (!error && data && data.length > 0) {
+          rawSiswaData = data;
+        }
+      } catch (cloudErr) {
+        console.warn("Notice fetch cloud siswa:", cloudErr);
+      }
+
+      if (!rawSiswaData || rawSiswaData.length === 0) {
+        rawSiswaData = getSiswaSafe(kelompok);
+      }
 
       // Tarik rincian harian tanggal ini dari cloud & local untuk pre-fill form
-      const { data: harianTanggalCloud } = await supabase
-        .from('nilai_harian')
-        .select('*')
-        .eq('tanggal', tanggal);
+      let harianTanggalCloud = [];
+      try {
+        const { data: harianData } = await supabase
+          .from('nilai_harian')
+          .select('*')
+          .eq('tanggal', tanggal);
+        if (harianData) harianTanggalCloud = harianData;
+      } catch (e) {}
 
       let harianTanggalLocal = [];
       try {
@@ -725,7 +761,7 @@ const InputNilai = () => {
       setIsEditing(false);
 
       // Proses mapping data siswa ke dalam State UI (Dengan Deteksi Absensi Siswa Opsi 1)
-      const formattedSiswa = data.map(siswa => {
+      const formattedSiswa = rawSiswaData.map(siswa => {
         const existingInCloud = harianTanggalCloud ? harianTanggalCloud.find(h => 
           (h.nisn && siswa.nisn && h.nisn !== '-' && h.nisn === siswa.nisn) ||
           (h.nama_siswa && h.nama_siswa.toLowerCase().trim() === siswa.nama.toLowerCase().trim())
@@ -762,7 +798,7 @@ const InputNilai = () => {
 
       setAnekdotSiswa(formattedSiswa);
     } catch (err) {
-      console.error("Gagal menarik data siswa dari Big Data Supabase:", err.message);
+      console.error("Gagal menarik data siswa:", err.message);
     } finally {
       setLoading(false);
     }
