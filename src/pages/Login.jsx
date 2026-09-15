@@ -18,7 +18,46 @@ const Login = ({ onLoginSuccess }) => {
 
   const roles = ['ADMIN', 'GURU', 'ORTU'];
 
-  // --- LOGIKA VERIFIKASI LOGIN SUPABASE ---
+  // --- SEED USER DATABASES FOR OFFLINE / FALLBACK LOGIN ---
+  const LOCAL_SEED_USERS = [
+    // ADMIN
+    { id: 1, nama: 'Administrator SITKA', role: 'admin', nip: '00000000', password: 'admin123', token: 'SITKA_ADMIN' },
+
+    // GURU
+    { id: 2, nama: 'Sri Rahayu S.Pd', role: 'guru', nip: '12341234', password: '12341234', token: 'SITKA2026', kelompok: 'Kelompok A' },
+    { id: 3, nama: 'Endah Rahmawati, S.Pd.', role: 'guru', nip: '12341', password: '12341', token: 'SITKA2026', kelompok: 'Kelompok A' },
+    { id: 4, nama: 'Ahmad Hidayat, S.Pd.', role: 'guru', nip: '12342', password: '12342', token: 'SITKA2026', kelompok: 'Kelompok B' },
+
+    // ORTU
+    { id: 5, nama: 'GUSTI ARISANDI', role: 'ortu', nisn: '01', password: '12345', token: 'SITKA2026', nama_anak: 'ALBIYAN ABDUL AZIZ', kelompok: 'Kelompok A' },
+    { id: 6, nama: 'NIA SURYANI', role: 'ortu', nisn: '3203526409', password: '12345', token: 'SITKA2026', nama_anak: 'ALFAN ELRAMDAN SUGANDI', kelompok: 'Kelompok A' },
+    { id: 7, nama: 'FITRI INDRIYANI', role: 'ortu', nisn: '3217307882', password: '12345', token: 'SITKA2026', nama_anak: 'ALIFA ZAHRA FITRIANI', kelompok: 'Kelompok A' },
+    { id: 8, nama: 'YUNI AGUSTINA', role: 'ortu', nisn: '3218940150', password: '12345', token: 'SITKA2026', nama_anak: 'ALUCARD ILANO KEN KOSWARA', kelompok: 'Kelompok A' },
+    { id: 9, nama: 'NOVA SELIA HIDAYAT', role: 'ortu', nisn: '3209716523', password: '12345', token: 'SITKA2026', nama_anak: 'ANEESQA SYAREEFA AZZAHRA', kelompok: 'Kelompok A' },
+    { id: 10, nama: 'ERINA PEGI MAULANA', role: 'ortu', nisn: '3209070782', password: '12345', token: 'SITKA2026', nama_anak: 'AQIELA NAYRA PUTRI RASIDIN', kelompok: 'Kelompok A' },
+    { id: 11, nama: 'ARNI RIANI', role: 'ortu', nisn: '3209532660', password: '12345', token: 'SITKA2026', nama_anak: 'ARLAN PRABU WIJAYA', kelompok: 'Kelompok A' },
+    { id: 12, nama: 'DEA NURUL OKTAVIANA', role: 'ortu', nisn: '3202406647', password: '12345', token: 'SITKA2026', nama_anak: 'ARUMI NASHARA ZETA', kelompok: 'Kelompok A' },
+    { id: 13, nama: 'YUNI YULIAWATI', role: 'ortu', nisn: '3192331711', password: '12345', token: 'SITKA2026', nama_anak: 'AZZAM KHALIF PUTRA AHMAD', kelompok: 'Kelompok B' },
+    { id: 14, nama: 'FERLIANTINI', role: 'ortu', nisn: '3209364636', password: '12345', token: 'SITKA2026', nama_anak: 'CHELYNE AGASSI MAUZA UMBARAN', kelompok: 'Kelompok A' },
+    { id: 15, nama: 'ACI SUPRIYATI NINGSIH', role: 'ortu', nisn: '3215275264', password: '12345', token: 'SITKA2026', nama_anak: 'KAIFIYA HUMAIRAH ABIDAH', kelompok: 'Kelompok A' },
+    { id: 16, nama: 'DHENNIESA RAI PUTRI DJATNIKA', role: 'ortu', nisn: '3205085517', password: '12345', token: 'SITKA2026', nama_anak: 'KHALISA SAFWANA', kelompok: 'Kelompok A' },
+    { id: 17, nama: 'RINDY WARSONO', role: 'ortu', nisn: '3214032428', password: '12345', token: 'SITKA2026', nama_anak: 'LOVANDRA ALINA RACHMAN', kelompok: 'Kelompok A' },
+    { id: 18, nama: 'HANI HASANAH', role: 'ortu', nisn: '3191764473', password: '12345', token: 'SITKA2026', nama_anak: 'MIRZA AL FARIDZI PRASETYO', kelompok: 'Kelompok B' },
+    { id: 19, nama: 'INDAH PURNAMA SARI', role: 'ortu', nisn: '3192624309', password: '12345', token: 'SITKA2026', nama_anak: 'MOHAMMAD MAHAREKSA ADYAPUTRA', kelompok: 'Kelompok B' },
+    { id: 20, nama: 'ATIM', role: 'ortu', nisn: '3203512276', password: '12345', token: 'SITKA2026', nama_anak: 'MUHAMAD RESKY AL - FATIH', kelompok: 'Kelompok A' },
+    { id: 21, nama: 'NUNUR ISLAMIYAH', role: 'ortu', nisn: '3216094634', password: '12345', token: 'SITKA2026', nama_anak: 'MUHAMMAD ANDRE ALFIANSYAH', kelompok: 'Kelompok A' },
+    { id: 22, nama: 'IDA ROSMIATI', role: 'ortu', nisn: '3193980747', password: '12345', token: 'SITKA2026', nama_anak: 'MUHAMMAD ARKHAN ARAFAH SIDIQ', kelompok: 'Kelompok B' },
+    { id: 23, nama: 'NUNUR ISLAMIYAH', role: 'ortu', nisn: '3242455781', password: '12345', token: 'SITKA2026', nama_anak: 'MUHAMMAD ATHAR ALFIANSYAH', kelompok: 'Kelompok A' },
+    { id: 24, nama: 'LIA AMELIA', role: 'ortu', nisn: '3185578761', password: '12345', token: 'SITKA2026', nama_anak: 'MUHAMMAD AZMI FADHIL', kelompok: 'Kelompok B' },
+    { id: 25, nama: 'IRNA MARYANA', role: 'ortu', nisn: '3215183509', password: '12345', token: 'SITKA2026', nama_anak: 'NAFASYA KHALISA AZZAHRA', kelompok: 'Kelompok A' },
+    { id: 26, nama: 'SAGI MURNI', role: 'ortu', nisn: '3228963203', password: '12345', token: 'SITKA2026', nama_anak: 'RADEN AHMAD ADZRIEL FERNANDI', kelompok: 'Kelompok A' },
+    { id: 27, nama: 'CUCU SUMIATI', role: 'ortu', nisn: '3200787834', password: '12345', token: 'SITKA2026', nama_anak: 'SHAILA OKTAVIANI PUTRI', kelompok: 'Kelompok A' },
+    { id: 28, nama: 'WINENGSIH', role: 'ortu', nisn: '3207048095', password: '12345', token: 'SITKA2026', nama_anak: 'SYAHIRA FAJRINA', kelompok: 'Kelompok A' },
+    { id: 29, nama: 'PERNAWATI', role: 'ortu', nisn: '3214846245', password: '12345', token: 'SITKA2026', nama_anak: 'SYAKILLA HUMAIRA ARACELLI', kelompok: 'Kelompok A' },
+    { id: 30, nama: 'RISTI NURIANTI', role: 'ortu', nisn: '3228524772', password: '12345', token: 'SITKA2026', nama_anak: 'UZAYR KHAIR AHMAD', kelompok: 'Kelompok A' },
+  ];
+
+  // --- LOGIKA VERIFIKASI LOGIN SUPABASE DENGAN FALLBACK OFFLINE ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -28,67 +67,62 @@ const Login = ({ onLoginSuccess }) => {
       const cleanId = idPengguna.trim();
       const cleanPass = kataSandi.trim();
 
-      // 1. PENANGANAN LOGIN KHUSUS ADMIN (Bypass & Cloud Database)
-      if (selectedRole === 'ADMIN') {
-        if (cleanId === 'admin' && cleanPass === 'admin123') {
-          const adminSession = { nama: 'Administrator SITKA', role: 'admin' };
-          localStorage.setItem('user_session', JSON.stringify(adminSession));
-          onLoginSuccess(adminSession);
-          navigate('/admin/dashboard');
-          return;
-        } else {
-          const { data: adminList, error: adminErr } = await supabase
-            .from('users')
-            .select('*')
-            .eq('role', 'admin')
-            .eq('nama', cleanId)
-            .eq('password', cleanPass)
-            .limit(1);
+      let userData = null;
 
-          const adminData = (adminList && adminList.length > 0) ? adminList[0] : null;
+      // 1. DAHULUKAN CEK CLOUD SUPABASE (JIKA NETWORK TERSEDIA)
+      try {
+        let query = supabase.from('users').select('*').eq('role', lowerRole);
 
-          if (adminErr || !adminData) throw new Error('Kredensial Admin tidak valid!');
+        if (selectedRole === 'ADMIN') {
+          query = query.or(`nip.eq.${cleanId},nama.eq.${cleanId}`).eq('password', cleanPass);
+        } else if (selectedRole === 'GURU') {
+          query = query.eq('nip', cleanId).eq('password', cleanPass);
+        } else if (selectedRole === 'ORTU') {
+          query = query.or(`nisn.eq.${cleanId},nama.eq.${cleanId}`).eq('password', cleanPass);
+        }
 
-          localStorage.setItem('user_session', JSON.stringify(adminData));
-          onLoginSuccess(adminData);
-          navigate('/admin/dashboard');
-          return;
+        const { data: userList, error } = await query.limit(1);
+
+        if (!error && userList && userList.length > 0) {
+          userData = userList[0];
+        }
+      } catch (cloudErr) {
+        console.warn("⚠️ Supabase Cloud unreachable/offline, switching to local seed database fallback:", cloudErr.message);
+      }
+
+      // 2. JIKA CLOUD TIDAK TERHUBUNG/UNREACHABLE ATAU USER TIDAK DITEMUKAN DI CLOUD,
+      //    PERIKSA FALLBACK DATABASE LOKAL (SEED DATA)
+      if (!userData) {
+        const localMatch = LOCAL_SEED_USERS.find(u => {
+          if (u.role !== lowerRole) return false;
+          if (u.password !== cleanPass) return false;
+
+          const searchId = cleanId.toLowerCase();
+          if (lowerRole === 'admin') {
+            return searchId === 'admin' || u.nip === cleanId || u.nama.toLowerCase() === searchId;
+          } else if (lowerRole === 'guru') {
+            return u.nip === cleanId || u.nama.toLowerCase() === searchId;
+          } else if (lowerRole === 'ortu') {
+            return u.nisn === cleanId || u.nama.toLowerCase() === searchId;
+          }
+          return false;
+        });
+
+        if (localMatch) {
+          userData = localMatch;
         }
       }
 
-      // 2. LOGIKA VALIDASI UNTUK GURU & ORANG TUA
-      let query = supabase.from('users').select('*').eq('role', lowerRole);
-
-      if (selectedRole === 'GURU') {
-        // Cari baris data berdasarkan NIP dan Password
-        query = query.eq('nip', cleanId).eq('password', cleanPass);
-      } else if (selectedRole === 'ORTU') {
-        // Cari baris data berdasarkan NISN atau Nama dan Password
-        query = query.or(`nisn.eq.${cleanId},nama.eq.${cleanId}`).eq('password', cleanPass);
-      }
-
-      const { data: userList, error } = await query.limit(1);
-
-      if (error) throw error;
-
-      const userData = (userList && userList.length > 0) ? userList[0] : null;
-
-      // 3. JIKA AKUN TIDAK DITEMUKAN
+      // 3. JIKA TETAP TIDAK DITEMUKAN SAMPAI AKHIR
       if (!userData) {
-        throw new Error(`${selectedRole} dengan ID atau Kata Sandi tersebut tidak ditemukan di Cloud!`);
+        throw new Error(`${selectedRole} dengan ID "${cleanId}" atau Kata Sandi tersebut tidak ditemukan!`);
       }
 
       // 4. JIKA SUKSES TEMBUS LOGIN
-      // Simpan session lengkap di storage lokal browser biar kalau direfresh ga logout otomatis
       localStorage.setItem('user_session', JSON.stringify(userData));
-
-      // Kirim data user ke state pusat di App.jsx
       onLoginSuccess(userData);
 
-      // Lempar user ke Dashboard masing-masing sesuai role
       alert(`✨ Selamat Datang, ${userData.nama}!`);
-
-      // Mengarahkan ke route yang sesuai dengan arsitektur web Senior
       navigate(`/${lowerRole === 'ortu' ? 'ortu' : lowerRole}/dashboard`);
 
     } catch (error) {

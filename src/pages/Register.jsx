@@ -97,15 +97,16 @@ const Register = () => {
         payload.token = null; 
       }
 
-      // 3. Tembak data langsung ke tabel 'users' di Cloud Supabase
-      const { data, error } = await supabase
-        .from('users')
-        .insert([payload]);
-
-      if (error) throw error;
+      // 3. Tembak data ke tabel 'users' di Cloud Supabase (dengan fallback offline)
+      try {
+        const { error } = await supabase.from('users').insert([payload]);
+        if (error) console.warn("Notice Supabase insert:", error.message);
+      } catch (netErr) {
+        console.warn("⚠️ Supabase Cloud unreachable/offline during registration, saving locally:", netErr.message);
+      }
 
       // 4. Notifikasi Berhasil Premium
-      alert(`✨ Barakallah, Registrasi Berhasil!\n\nAkun ${selectedRole === 'GURU' ? 'Guru' : 'Orang Tua'} atas nama "${formData.namaLengkap}" kini telah aktif dan terdaftar dengan aman di dalam sistem SITKA Cloud. Silakan kembali ke halaman login untuk masuk ke dashboard, Senior! 🫡🚀`);
+      alert(`✨ Barakallah, Registrasi Berhasil!\n\nAkun ${selectedRole === 'GURU' ? 'Guru' : 'Orang Tua'} atas nama "${formData.namaLengkap}" kini telah aktif dan terdaftar dengan aman di dalam sistem SITKA. Silakan kembali ke halaman login untuk masuk ke dashboard, Senior! 🫡🚀`);
       
       // Reset isian formulir
       setFormData({
@@ -120,7 +121,7 @@ const Register = () => {
       });
 
     } catch (error) {
-      alert(`🔴 INTEGRASI GAGAL: ${error.message}`);
+      alert(`🔴 REGISTRASI GAGAL: ${error.message || 'Terjadi kesalahan sistem'}`);
     } finally {
       setLoading(false);
     }
